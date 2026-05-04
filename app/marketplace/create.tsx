@@ -267,6 +267,7 @@ export default function CreateListingScreen() {
       description: form.description.trim(),
       contact: form.contact.trim(),
       images: uploadedUrls,
+      main_image_url: uploadedUrls[0] ?? null,
       status: 'pending',
       main_make: form.main_make.trim(),
       main_model: form.main_model.trim(),

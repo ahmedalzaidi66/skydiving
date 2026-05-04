@@ -1150,7 +1150,7 @@ function MyGearListings() {
           {listings.map((item) => {
             const statusColor = GEAR_STATUS_COLORS[item.status] ?? Colors.textMuted;
             const statusLabel = GEAR_STATUS_LABELS[item.status] ?? item.status;
-            const thumb = item.images?.[0];
+            const thumb = item.main_image_url || item.images?.[0];
             const isSold = item.status === 'sold';
             const isRejected = item.status === 'rejected';
             const isApproved = item.status === 'approved';

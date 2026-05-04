@@ -67,6 +67,7 @@ export type UsedGearListing = {
   aad_jumps: number | null;
   aad_needs_service: boolean;
   aad_serial: string;
+  main_image_url: string | null;
 };
 
 type SellerRatingSummary = {
@@ -453,7 +454,7 @@ function ListingCard({
 }) {
   const { t } = useLanguage();
   const { isGearWishlisted, toggleGear } = useGearWishlist();
-  const thumb = listing.images?.[0];
+  const thumb = listing.main_image_url || listing.images?.[0];
   const condColor = CONDITION_COLORS[listing.condition] ?? Colors.textMuted;
   const condLabel = conditionLabel(listing.condition, t);
   const isVerified = listing.seller_verified || seller?.is_verified;

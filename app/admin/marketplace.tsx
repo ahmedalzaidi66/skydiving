@@ -375,7 +375,7 @@ function MarketplaceContent() {
 
   // ── Listing detail view ──────────────────────────────────────────────────
   if (selected) {
-    const thumb = selected.images?.[0];
+    const thumb = selected.main_image_url || selected.images?.[0];
     const condColor = CONDITION_COLORS[selected.condition] ?? Colors.textMuted;
 
     return (
@@ -724,8 +724,8 @@ function MarketplaceContent() {
                     activeOpacity={0.8}
                   >
                     <View style={styles.listingThumbWrap}>
-                      {item.images?.[0] ? (
-                        <Image source={{ uri: item.images[0] }} style={styles.listingThumb} resizeMode="cover" />
+                      {(item.main_image_url || item.images?.[0]) ? (
+                        <Image source={{ uri: item.main_image_url || item.images![0] }} style={styles.listingThumb} resizeMode="cover" />
                       ) : (
                         <View style={[styles.listingThumb, styles.listingThumbPlaceholder]}>
                           <Tag size={18} color={Colors.textMuted} strokeWidth={1.5} />

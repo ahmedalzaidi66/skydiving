@@ -274,7 +274,10 @@ export default function ListingDetailScreen() {
     );
   }
 
-  const images = listing.images ?? [];
+  const rawImages = listing.images ?? [];
+  const images = listing.main_image_url && !rawImages.includes(listing.main_image_url)
+    ? [listing.main_image_url, ...rawImages]
+    : rawImages.length > 0 ? rawImages : listing.main_image_url ? [listing.main_image_url] : [];
   const condColor = CONDITION_COLORS[listing.condition] ?? Colors.textMuted;
   const isVerified = listing.seller_verified || seller?.is_verified;
   const isRig = RIG_CATEGORIES.includes(listing.category);
