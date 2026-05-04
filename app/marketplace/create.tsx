@@ -226,20 +226,31 @@ export default function CreateListingScreen() {
     if (!validate()) return;
     setLoading(true);
 
-    // Upload file-based images
+    // Get the authoritative session user so RLS (auth.uid()) matches user_id
+    const { data: { user: sessionUser }, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !sessionUser) {
+      setErrors({ submit: `Not authenticated: ${userErr?.message ?? 'please sign in again'}` });
+      setLoading(false);
+      return;
+    }
+
+    // Upload file-based images to the 'uplods' bucket via 'general' folder
     const uploadedUrls: string[] = [];
     for (const img of images) {
       if (img.isUrl) {
         uploadedUrls.push(img.uri);
       } else if (img.file) {
         const result = await uploadImageToSupabase(img.file, 'general');
+        if (result.error) {
+          console.error('[CreateListing] image upload failed:', result.error);
+        }
         if (result.url) uploadedUrls.push(result.url);
       }
     }
 
     const payload: Record<string, unknown> = {
-      user_id: user!.id,
-      user_email: user!.email,
+      user_id: sessionUser.id,
+      user_email: sessionUser.email ?? '',
       title: form.title.trim().slice(0, 120),
       category: form.category,
       condition: form.condition,
@@ -257,38 +268,39 @@ export default function CreateListingScreen() {
       contact: form.contact.trim(),
       images: uploadedUrls,
       status: 'pending',
+      main_make: form.main_make.trim(),
+      main_model: form.main_model.trim(),
+      main_size: form.main_size.trim(),
+      main_dom: form.main_dom.trim(),
+      main_jumps: form.main_jumps !== '' ? Number(form.main_jumps) : null,
+      main_serial: form.main_serial.trim(),
+      reserve_make: form.reserve_make.trim(),
+      reserve_model: form.reserve_model.trim(),
+      reserve_size: form.reserve_size.trim(),
+      reserve_dom: form.reserve_dom.trim(),
+      reserve_repacks: form.reserve_repacks !== '' ? Number(form.reserve_repacks) : null,
+      reserve_serial: form.reserve_serial.trim(),
+      aad_make: form.aad_make.trim(),
+      aad_model: form.aad_model.trim(),
+      aad_dom: form.aad_dom.trim(),
+      aad_eol: form.aad_eol.trim(),
+      aad_jumps: form.aad_jumps !== '' ? Number(form.aad_jumps) : null,
+      aad_needs_service: form.aad_needs_service,
+      aad_serial: form.aad_serial.trim(),
     };
-
-    if (isRig) {
-      Object.assign(payload, {
-        main_make: form.main_make.trim(),
-        main_model: form.main_model.trim(),
-        main_size: form.main_size.trim(),
-        main_dom: form.main_dom.trim(),
-        main_jumps: form.main_jumps !== '' ? Number(form.main_jumps) : null,
-        main_serial: form.main_serial.trim(),
-        reserve_make: form.reserve_make.trim(),
-        reserve_model: form.reserve_model.trim(),
-        reserve_size: form.reserve_size.trim(),
-        reserve_dom: form.reserve_dom.trim(),
-        reserve_repacks: form.reserve_repacks !== '' ? Number(form.reserve_repacks) : null,
-        reserve_serial: form.reserve_serial.trim(),
-        aad_make: form.aad_make.trim(),
-        aad_model: form.aad_model.trim(),
-        aad_dom: form.aad_dom.trim(),
-        aad_eol: form.aad_eol.trim(),
-        aad_jumps: form.aad_jumps !== '' ? Number(form.aad_jumps) : null,
-        aad_needs_service: form.aad_needs_service,
-        aad_serial: form.aad_serial.trim(),
-      });
-    }
 
     const { error } = await supabase.from('used_gear_listings').insert(payload);
     setLoading(false);
     if (!error) {
       setSuccess(true);
     } else {
-      setErrors({ submit: t.tryAgain });
+      console.error('[CreateListing] insert failed', {
+        message: error.message,
+        code: (error as any).code,
+        details: (error as any).details,
+        hint: (error as any).hint,
+      });
+      setErrors({ submit: `Submit failed: ${error.message}${(error as any).hint ? ` — ${(error as any).hint}` : ''}` });
     }
   };
 
