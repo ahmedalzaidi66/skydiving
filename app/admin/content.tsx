@@ -195,7 +195,7 @@ function HeroEditorSection({
       .eq('language', language)
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error) { console.error('[HeroEditor] load error', error); setLoadingHero(false); return; }
+        if (error) { console.error('[HeroEditor] load error', { message: error.message, code: (error as any).code, details: (error as any).details }); setLoadingHero(false); return; }
         const loaded: Record<string, string> = {};
         (data ?? []).forEach((r: { key: string; value: string }) => { loaded[r.key] = r.value; });
         setFields(prev => ({
@@ -271,7 +271,9 @@ function HeroEditorSection({
 
     const firstError = results.find(r => r.error);
     if (firstError?.error) {
-      setSaveError(firstError.error.message);
+      const e = firstError.error;
+      console.error('[HeroEditor] save failed', { message: e.message, code: (e as any).code, details: (e as any).details, hint: (e as any).hint });
+      setSaveError(`Save failed: ${e.message}${(e as any).hint ? ` — ${(e as any).hint}` : ''}`);
       setSaving(false);
       return;
     }
