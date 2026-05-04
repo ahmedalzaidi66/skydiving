@@ -74,30 +74,36 @@ type EmployeeWithRole = {
   id: string;
   email: string;
   full_name: string;
+  auth_user_id: string | null;
   is_active: boolean;
-  roles: { key: string } | null;
+  role_id: number | null;
+  roles: { id: number; key: string; label: string } | null;
 };
 
-async function fetchEmployeeWithRole(authUserId: string, email: string): Promise<EmployeeWithRole | null> {
-  // Try by auth_user_id first, fall back to email
-  let { data } = await supabase
+async function fetchEmployeeWithRole(
+  authUserId: string,
+  email: string,
+): Promise<{ employee: EmployeeWithRole | null; error: string | null }> {
+  const { data: employee, error } = await supabase
     .from('employees')
-    .select('id, email, full_name, is_active, roles(key)')
-    .eq('auth_user_id', authUserId)
-    .eq('is_active', true)
+    .select(`
+      id,
+      email,
+      full_name,
+      auth_user_id,
+      is_active,
+      role_id,
+      roles (
+        id,
+        key,
+        label
+      )
+    `)
+    .or(`auth_user_id.eq.${authUserId},email.eq.${email}`)
     .maybeSingle();
 
-  if (!data) {
-    const res = await supabase
-      .from('employees')
-      .select('id, email, full_name, is_active, roles(key)')
-      .eq('email', email)
-      .eq('is_active', true)
-      .maybeSingle();
-    data = res.data;
-  }
-
-  return data as EmployeeWithRole | null;
+  if (error) return { employee: null, error: error.message };
+  return { employee: employee as EmployeeWithRole | null, error: null };
 }
 
 async function hydrateAdminFromSession(
@@ -105,14 +111,14 @@ async function hydrateAdminFromSession(
   email: string,
   setAdmin: (u: AdminUser | null) => void,
 ): Promise<void> {
-  const emp = await fetchEmployeeWithRole(authUserId, email);
-  if (!emp) return;
+  const { employee } = await fetchEmployeeWithRole(authUserId, email);
+  if (!employee) return;
 
-  const roleKey = emp.roles?.key ?? '';
+  const roleKey = employee.roles?.key ?? '';
   if (!ADMIN_ROLE_KEYS.includes(roleKey)) return;
 
-  const permissions = await fetchPermissions(emp.email);
-  setAdmin({ id: emp.id, email: emp.email, name: emp.full_name, role: roleKey, permissions });
+  const permissions = await fetchPermissions(employee.email);
+  setAdmin({ id: String(employee.id), email: employee.email, name: employee.full_name, role: roleKey, permissions });
 }
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
@@ -150,16 +156,21 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: authErr?.message ?? 'Invalid credentials' };
     }
 
-    const emp = await fetchEmployeeWithRole(authData.user.id, emailLower);
+    const { employee, error: empError } = await fetchEmployeeWithRole(authData.user.id, emailLower);
 
-    console.log('[AdminLogin] employee row:', emp ? `id=${emp.id} role=${emp.roles?.key}` : 'NOT FOUND');
+    console.log('[AdminLogin] employee row:', employee ? `id=${employee.id} role=${employee.roles?.key}` : 'NOT FOUND', '| empError:', empError);
 
-    if (!emp) {
+    if (empError) {
+      await supabase.auth.signOut();
+      return { success: false, error: empError };
+    }
+
+    if (!employee) {
       await supabase.auth.signOut();
       return { success: false, error: 'Admin profile not found' };
     }
 
-    const roleKey = emp.roles?.key ?? '';
+    const roleKey = employee.roles?.key ?? '';
     if (!ADMIN_ROLE_KEYS.includes(roleKey)) {
       await supabase.auth.signOut();
       return { success: false, error: 'You do not have admin access' };
@@ -171,7 +182,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     if (tokenData) setAdminSessionToken(tokenData);
 
     const permissions = await fetchPermissions(emailLower);
-    setAdmin({ id: emp.id, email: emp.email, name: emp.full_name, role: roleKey, permissions });
+    setAdmin({ id: String(employee.id), email: employee.email, name: employee.full_name, role: roleKey, permissions });
     return { success: true };
   }, []);
 
