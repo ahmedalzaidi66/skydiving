@@ -4,9 +4,16 @@ export type UploadResult =
   | { url: string; error: null }
   | { url: null; error: string };
 
-export type UploadFolder = 'products' | 'branding' | 'cms' | 'general';
+export type UploadFolder = 'products' | 'branding' | 'cms' | 'general' | 'tryon';
 
-const BUCKET = 'uploads';
+// Bucket routing — maps upload folder to the actual Supabase storage bucket name
+const BUCKET_MAP: Record<UploadFolder, string> = {
+  products: 'product-images',
+  branding: 'product-images',
+  cms:      'product-images',
+  general:  'uplods',
+  tryon:    'tryon-models',
+};
 
 const ALLOWED_TYPES = new Set([
   'image/jpeg',
@@ -33,8 +40,6 @@ export async function uploadImageToSupabase(
   file: File,
   folder: UploadFolder = 'general',
 ): Promise<UploadResult> {
-  // Verify the shared client has an authenticated session before attempting
-  // the upload — storage RLS requires auth.uid() IS NOT NULL.
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) {
     return {
@@ -43,31 +48,38 @@ export async function uploadImageToSupabase(
     };
   }
 
+  const bucket = BUCKET_MAP[folder];
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
   const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
   const { error } = await supabase.storage
-    .from(BUCKET)
+    .from(bucket)
     .upload(filename, file, {
       contentType: file.type,
       upsert: false,
     });
 
   if (error) {
-    return { url: null, error: error.message };
+    return { url: null, error: `Storage error (bucket: ${bucket}): ${error.message}` };
   }
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filename);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(filename);
   return { url: data.publicUrl, error: null };
 }
 
 export async function deleteImageFromSupabase(url: string): Promise<void> {
   try {
-    const marker = `/${BUCKET}/`;
-    const idx = url.indexOf(marker);
-    if (idx === -1) return;
-    const path = url.slice(idx + marker.length).split('?')[0];
-    await supabase.storage.from(BUCKET).remove([path]);
+    // Determine bucket from URL path
+    const buckets = Object.values(BUCKET_MAP);
+    for (const bucket of buckets) {
+      const marker = `/${bucket}/`;
+      const idx = url.indexOf(marker);
+      if (idx !== -1) {
+        const path = url.slice(idx + marker.length).split('?')[0];
+        await supabase.storage.from(bucket).remove([path]);
+        return;
+      }
+    }
   } catch {
     // Non-fatal
   }

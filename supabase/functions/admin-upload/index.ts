@@ -39,6 +39,16 @@ Deno.serve(async (req: Request) => {
     const fileName = req.headers.get('x-file-name') ?? 'upload.jpg';
     const contentType = req.headers.get('x-content-type') ?? 'application/octet-stream';
 
+    // Route to correct bucket based on folder
+    const bucketMap: Record<string, string> = {
+      products: 'product-images',
+      branding: 'product-images',
+      cms:      'product-images',
+      general:  'uplods',
+      tryon:    'tryon-models',
+    };
+    const bucket = bucketMap[folder] ?? 'uplods';
+
     const ext = fileName.includes('.') ? fileName.split('.').pop()!.toLowerCase() : 'jpg';
     const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
@@ -48,14 +58,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data, error: uploadErr } = await serviceClient.storage
-      .from('uploads')
+      .from(bucket)
       .upload(path, fileBuffer, { contentType, upsert: false });
 
     if (uploadErr) {
-      return json({ success: false, error: uploadErr.message }, 400);
+      return json({ success: false, error: `Storage error (bucket: ${bucket}): ${uploadErr.message}` }, 400);
     }
 
-    const { data: urlData } = serviceClient.storage.from('uploads').getPublicUrl(data.path);
+    const { data: urlData } = serviceClient.storage.from(bucket).getPublicUrl(data.path);
 
     return json({ success: true, publicUrl: urlData.publicUrl });
   } catch (err: unknown) {
