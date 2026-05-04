@@ -189,17 +189,20 @@ function MarketplaceContent() {
     if (!selected) return;
     setSaving(true);
     const newVerified = !(sellerProfile?.is_verified ?? false);
-    const { error } = await adminSupabase().rpc('set_seller_verified', {
-      p_user_id: selected.user_id,
+    const { error } = await adminSupabase().rpc('admin_verify_listing_seller', {
+      p_listing_id: selected.id,
       p_verified: newVerified,
     });
     setSaving(false);
-    if (!error) {
-      await fetchSellerProfile(selected.user_id);
-      await fetchListings();
-      setSelected((prev) => prev ? { ...prev, seller_verified: newVerified } : prev);
-      showFeedback(t.verifiedUpdated);
+    if (error) {
+      console.error('[toggleVerified] RPC error', { message: error.message, code: (error as any).code, details: (error as any).details });
+      showFeedback(`Error: ${error.message}`);
+      return;
     }
+    await fetchSellerProfile(selected.user_id);
+    await fetchListings();
+    setSelected((prev) => prev ? { ...prev, seller_verified: newVerified } : prev);
+    showFeedback(t.verifiedUpdated);
   };
 
   const openListing = (item: UsedGearListing) => {
@@ -224,19 +227,22 @@ function MarketplaceContent() {
     const note = noteOverride !== undefined ? noteOverride : adminNote;
     try {
       const { data, error } = await adminSupabase().rpc('admin_update_listing_status', {
-        p_id: id,
+        p_listing_id: id,
         p_status: status,
         p_admin_note: note || null,
       });
-      if (error) throw new Error(error.message);
-      if (data && data.ok === false) throw new Error(data.error ?? 'Update failed');
-      // Optimistic local update
+      if (error) {
+        console.error('[updateStatus] RPC error', { message: error.message, code: (error as any).code, details: (error as any).details, hint: (error as any).hint });
+        throw new Error(error.message);
+      }
+      if (data && data.ok === false) {
+        console.error('[updateStatus] RPC returned not-ok', data);
+        throw new Error(data.error ?? 'Update failed');
+      }
       setSelected((prev) => prev ? { ...prev, status, admin_note: note } : prev);
-      // Refresh list so filter counts and rows are correct
       await fetchListings();
       showFeedback(t.listingUpdated);
     } catch (e: any) {
-      console.error('Approve failed', e);
       showFeedback(`Error: ${e?.message ?? 'Update failed'}`);
     } finally {
       setSaving(false);
