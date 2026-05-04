@@ -93,7 +93,7 @@ async function fetchEmployeeWithRole(
       auth_user_id,
       is_active,
       role_id,
-      roles (
+      roles!fk_role (
         id,
         key,
         label
@@ -140,29 +140,47 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     password: string,
   ): Promise<{ success: boolean; error?: string }> => {
     const emailLower = email.trim().toLowerCase();
-    // Raw password — no trimming to preserve exact user input
-    const rawPassword = password;
 
-    console.log('[AdminLogin] email:', emailLower, '| password length:', rawPassword.length);
-
-    const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+    // Step 1: Supabase Auth
+    const { error: authErr } = await supabase.auth.signInWithPassword({
       email: emailLower,
-      password: rawPassword,
+      password,
     });
 
-    console.log('[AdminLogin] auth result:', authData?.user?.id ?? null, '| error:', authErr?.message ?? null);
-
-    if (authErr || !authData.user) {
-      return { success: false, error: authErr?.message ?? 'Invalid credentials' };
+    if (authErr) {
+      return { success: false, error: authErr.message };
     }
 
-    const { employee, error: empError } = await fetchEmployeeWithRole(authData.user.id, emailLower);
+    // Step 2: Get the authenticated user (safe — does not touch auth.users table directly)
+    const { data: { user }, error: userErr } = await supabase.auth.getUser();
 
-    console.log('[AdminLogin] employee row:', employee ? `id=${employee.id} role=${employee.roles?.key}` : 'NOT FOUND', '| empError:', empError);
+    if (userErr || !user) {
+      await supabase.auth.signOut();
+      return { success: false, error: userErr?.message ?? 'Failed to get user session' };
+    }
+
+    // Step 3: Fetch employee row joined with role via explicit FK
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select(`
+        id,
+        email,
+        full_name,
+        auth_user_id,
+        is_active,
+        role_id,
+        roles!fk_role (
+          id,
+          key,
+          label
+        )
+      `)
+      .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
+      .maybeSingle();
 
     if (empError) {
       await supabase.auth.signOut();
-      return { success: false, error: empError };
+      return { success: false, error: empError.message };
     }
 
     if (!employee) {
@@ -170,19 +188,22 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'Admin profile not found' };
     }
 
-    const roleKey = employee.roles?.key ?? '';
+    const empRow = employee as EmployeeWithRole;
+    const roleKey = empRow.roles?.key ?? '';
+
     if (!ADMIN_ROLE_KEYS.includes(roleKey)) {
       await supabase.auth.signOut();
       return { success: false, error: 'You do not have admin access' };
     }
 
+    // Step 4: Issue session token for is_admin_request() RLS policies
     const { data: tokenData } = await supabase.rpc('issue_admin_token_for_auth_user', {
-      p_auth_user_id: authData.user.id,
+      p_auth_user_id: user.id,
     });
     if (tokenData) setAdminSessionToken(tokenData);
 
     const permissions = await fetchPermissions(emailLower);
-    setAdmin({ id: String(employee.id), email: employee.email, name: employee.full_name, role: roleKey, permissions });
+    setAdmin({ id: String(empRow.id), email: empRow.email, name: empRow.full_name, role: roleKey, permissions });
     return { success: true };
   }, []);
 
