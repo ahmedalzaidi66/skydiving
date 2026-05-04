@@ -22,7 +22,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
-import { uploadImageToSupabase, validateImageFile } from '@/lib/imageUpload';
+import { validateImageFile } from '@/lib/imageUpload';
 import GlossyButton from '@/components/GlossyButton';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 import { UsedGearListing } from '@/app/(tabs)/marketplace';
@@ -288,7 +288,6 @@ export default function EditListingScreen() {
     if (!validate() || !form) return;
     setSaving(true);
 
-    // Get session-verified user so RLS auth.uid() matches
     const { data: { user: sessionUser }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !sessionUser) {
       setErrors({ submit: `Not authenticated: ${userErr?.message ?? 'please sign in again'}` });
@@ -296,17 +295,33 @@ export default function EditListingScreen() {
       return;
     }
 
-    const uploadedUrls: string[] = [];
+    // Upload every image directly to the 'uploads' bucket
+    const imageUrls: string[] = [];
     for (const img of images) {
-      if (img.isUrl) {
-        uploadedUrls.push(img.uri);
-      } else if (img.file) {
-        const result = await uploadImageToSupabase(img.file, 'general');
-        if (result.url) uploadedUrls.push(result.url);
+      if (img.isUrl && img.uri.startsWith('http')) {
+        imageUrls.push(img.uri);
+        continue;
       }
+      if (!img.file) continue;
+      const ext = img.file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const path = `gear/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('uploads')
+        .upload(path, img.file, { contentType: img.file.type, upsert: false });
+      if (uploadErr) {
+        console.error('[EditListing] storage upload failed:', uploadErr.message, uploadErr);
+        setErrors({ submit: `Image upload failed: ${uploadErr.message}` });
+        setSaving(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
+      console.log('[EditListing] uploaded image:', urlData.publicUrl);
+      imageUrls.push(urlData.publicUrl);
     }
 
-    const payload: Record<string, unknown> = {
+    console.log('[EditListing] imageUrls before update:', imageUrls);
+
+    const payload = {
       title: form.title.trim().slice(0, 120),
       category: form.category,
       condition: form.condition,
@@ -322,8 +337,8 @@ export default function EditListingScreen() {
       price: Number(form.price),
       description: form.description.trim(),
       contact: form.contact.trim(),
-      images: uploadedUrls,
-      main_image_url: uploadedUrls[0] ?? null,
+      main_image_url: imageUrls[0] ?? null,
+      images: imageUrls,
       status: 'pending',
       admin_note: '',
       updated_at: new Date().toISOString(),
@@ -350,7 +365,7 @@ export default function EditListingScreen() {
 
     const { error } = await supabase
       .from('used_gear_listings')
-      .update(payload)
+      .update({ ...payload, main_image_url: imageUrls[0] ?? null, images: imageUrls })
       .eq('id', id)
       .eq('user_id', sessionUser.id);
 

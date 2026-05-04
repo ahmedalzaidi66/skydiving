@@ -23,7 +23,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { uploadImageToSupabase, validateImageFile } from '@/lib/imageUpload';
+import { validateImageFile } from '@/lib/imageUpload';
 import GlossyButton from '@/components/GlossyButton';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 
@@ -226,7 +226,6 @@ export default function CreateListingScreen() {
     if (!validate()) return;
     setLoading(true);
 
-    // Get the authoritative session user so RLS (auth.uid()) matches user_id
     const { data: { user: sessionUser }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !sessionUser) {
       setErrors({ submit: `Not authenticated: ${userErr?.message ?? 'please sign in again'}` });
@@ -234,21 +233,33 @@ export default function CreateListingScreen() {
       return;
     }
 
-    // Upload file-based images to the 'uplods' bucket via 'general' folder
-    const uploadedUrls: string[] = [];
+    // Upload every image directly to the 'uploads' bucket
+    const imageUrls: string[] = [];
     for (const img of images) {
-      if (img.isUrl) {
-        uploadedUrls.push(img.uri);
-      } else if (img.file) {
-        const result = await uploadImageToSupabase(img.file, 'general');
-        if (result.error) {
-          console.error('[CreateListing] image upload failed:', result.error);
-        }
-        if (result.url) uploadedUrls.push(result.url);
+      if (img.isUrl && img.uri.startsWith('http')) {
+        imageUrls.push(img.uri);
+        continue;
       }
+      if (!img.file) continue;
+      const ext = img.file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const path = `gear/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('uploads')
+        .upload(path, img.file, { contentType: img.file.type, upsert: false });
+      if (uploadErr) {
+        console.error('[CreateListing] storage upload failed:', uploadErr.message, uploadErr);
+        setErrors({ submit: `Image upload failed: ${uploadErr.message}` });
+        setLoading(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
+      console.log('[CreateListing] uploaded image:', urlData.publicUrl);
+      imageUrls.push(urlData.publicUrl);
     }
 
-    const payload: Record<string, unknown> = {
+    console.log('[CreateListing] imageUrls before insert:', imageUrls);
+
+    const payload = {
       user_id: sessionUser.id,
       user_email: sessionUser.email ?? '',
       title: form.title.trim().slice(0, 120),
@@ -266,8 +277,8 @@ export default function CreateListingScreen() {
       price: Number(form.price),
       description: form.description.trim(),
       contact: form.contact.trim(),
-      images: uploadedUrls,
-      main_image_url: uploadedUrls[0] ?? null,
+      main_image_url: imageUrls[0] ?? null,
+      images: imageUrls,
       status: 'pending',
       main_make: form.main_make.trim(),
       main_model: form.main_model.trim(),
@@ -290,7 +301,11 @@ export default function CreateListingScreen() {
       aad_serial: form.aad_serial.trim(),
     };
 
-    const { error } = await supabase.from('used_gear_listings').insert(payload);
+    const { error } = await supabase.from('used_gear_listings').insert({
+      ...payload,
+      main_image_url: imageUrls[0] ?? null,
+      images: imageUrls,
+    });
     setLoading(false);
     if (!error) {
       setSuccess(true);
