@@ -190,14 +190,24 @@ function HeroEditorSection({
     setLoadingHero(true);
     supabase
       .from('homepage_content')
-      .select('key, value')
+      .select('key, value, background_image_url')
       .eq('section', 'hero')
       .eq('language', language)
       .then(({ data, error }) => {
         if (cancelled) return;
-        if (error) { console.error('[HeroEditor] load error', { message: error.message, code: (error as any).code, details: (error as any).details }); setLoadingHero(false); return; }
+        if (error) {
+          console.error('[HeroEditor] load error', { message: error.message, code: (error as any).code, details: (error as any).details });
+          setLoadingHero(false);
+          return;
+        }
         const loaded: Record<string, string> = {};
-        (data ?? []).forEach((r: { key: string; value: string }) => { loaded[r.key] = r.value; });
+        (data ?? []).forEach((r: { key: string; value: string; background_image_url: string | null }) => {
+          loaded[r.key] = r.value;
+          // If this is the image_url row and value is empty, fall back to background_image_url column
+          if (r.key === 'image_url' && !r.value && r.background_image_url) {
+            loaded['image_url'] = r.background_image_url;
+          }
+        });
         setFields(prev => ({
           media_type: 'image',
           image_url: '',
@@ -276,6 +286,20 @@ function HeroEditorSection({
       setSaveError(`Save failed: ${e.message}${(e as any).hint ? ` — ${(e as any).hint}` : ''}`);
       setSaving(false);
       return;
+    }
+
+    // Keep background_image_url column in sync with the image_url key/value row
+    // so both storage mechanisms stay consistent.
+    if (payload.image_url) {
+      const { error: bgErr } = await db
+        .from('homepage_content')
+        .update({ background_image_url: payload.image_url, updated_at: new Date().toISOString() })
+        .eq('section', 'hero')
+        .eq('key', 'image_url')
+        .eq('language', language);
+      if (bgErr) {
+        console.error('[HeroEditor] background_image_url sync failed', { message: bgErr.message, code: (bgErr as any).code });
+      }
     }
 
     // Auto-seed all other languages that have no hero content yet (use English as fallback)
