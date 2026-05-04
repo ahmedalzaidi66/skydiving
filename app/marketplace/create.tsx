@@ -234,62 +234,32 @@ export default function CreateListingScreen() {
     }
 
     // Upload every image directly to the 'uploads' bucket
-const imageUrls: string[] = [];
-
-for (const img of images) {
-  if (img.isUrl && img.uri?.startsWith('http')) {
-    imageUrls.push(img.uri);
-    continue;
-  }
-
-  if (!img.file) continue;
-
-  const ext = img.file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const path = `gear/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-  const { error: uploadErr } = await supabase.storage
-    .from('uploads')
-    .upload(path, img.file, {
-      contentType: img.file.type || 'image/jpeg',
-      upsert: false,
-    });
-
-  if (uploadErr) {
-    console.error(uploadErr);
-    continue;
-  }
-
-  const { data } = supabase.storage
-    .from('uploads')
-    .getPublicUrl(path);
-
-  if (data?.publicUrl) {
-    imageUrls.push(data.publicUrl);
-  }
-}
-
- 
+    const imageUrls: string[] = [];
+    for (const img of images) {
+      if (img.isUrl && img.uri.startsWith('http')) {
+        imageUrls.push(img.uri);
+        continue;
+      }
+      if (!img.file) continue;
+      const ext = img.file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+      const path = `gear/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from('uploads')
+        .upload(path, img.file, { contentType: img.file.type, upsert: false });
+      if (uploadErr) {
+        console.error('[CreateListing] storage upload failed:', uploadErr.message, uploadErr);
+        setErrors({ submit: `Image upload failed: ${uploadErr.message}` });
+        setLoading(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
+      console.log('[CreateListing] uploaded image:', urlData.publicUrl);
+      imageUrls.push(urlData.publicUrl);
+    }
 
     console.log('[CreateListing] imageUrls before insert:', imageUrls);
 
     const payload = {
-      console.log('[CreateListing] imageUrls before insert:', imageUrls);
-
-const payload = {
-  user_id: sessionUser.id,
-  user_email: sessionUser.email ?? '',
-  title: form.title.trim().slice(0, 120),
-
-  // باقي الحقول...
-
-  main_image_url: imageUrls[0] ?? null,
-  images: imageUrls,
-  status: 'pending',
-};
-
-const { error } = await supabase
-  .from('used_gear_listings')
-  .insert(payload);
       user_id: sessionUser.id,
       user_email: sessionUser.email ?? '',
       title: form.title.trim().slice(0, 120),
