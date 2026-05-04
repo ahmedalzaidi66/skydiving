@@ -234,24 +234,43 @@ export default function CreateListingScreen() {
     }
 
     // Upload every image directly to the 'uploads' bucket
-    const imageUrls: string[] = [];
-    for (const img of images) {
-      if (img.isUrl && img.uri.startsWith('http')) {
-        imageUrls.push(img.uri);
-        continue;
-      }
-      if (!img.file) continue;
-      const ext = img.file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const path = `gear/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('uploads')
-        .upload(path, img.file, { contentType: img.file.type, upsert: false });
-      if (uploadErr) {
-        console.error('[CreateListing] storage upload failed:', uploadErr.message, uploadErr);
-        setErrors({ submit: `Image upload failed: ${uploadErr.message}` });
-        setLoading(false);
-        return;
-      }
+const imageUrls: string[] = [];
+
+for (const img of images) {
+  if (img.isUrl && img.uri?.startsWith('http')) {
+    imageUrls.push(img.uri);
+    continue;
+  }
+
+  if (!img.file) continue;
+
+  const ext = img.file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const path = `gear/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+  const { error: uploadErr } = await supabase.storage
+    .from('uploads')
+    .upload(path, img.file, {
+      contentType: img.file.type || 'image/jpeg',
+      upsert: false,
+    });
+
+  if (uploadErr) {
+    console.error(uploadErr);
+    continue;
+  }
+
+ 
+  }
+}
+
+   const { error } = await supabase
+  .from('used_gear_listings')
+  .insert({
+    ...payload,
+    main_image_url: imageUrls[0] ?? null,
+    images: imageUrls,
+  });
+
       const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
       console.log('[CreateListing] uploaded image:', urlData.publicUrl);
       imageUrls.push(urlData.publicUrl);
