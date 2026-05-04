@@ -26,12 +26,13 @@ export default function AdminLoginScreen() {
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+    if (!email.trim() || !password) {
       setError(t.enterEmailAndPassword);
       return;
     }
     setError('');
     setLoading(true);
+    // Pass email trimmed but password completely raw — no trim/transform
     const result = await adminLogin(email.trim(), password);
     setLoading(false);
     if (result.success) {

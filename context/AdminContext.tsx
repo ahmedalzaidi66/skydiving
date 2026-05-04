@@ -134,17 +134,25 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     password: string,
   ): Promise<{ success: boolean; error?: string }> => {
     const emailLower = email.trim().toLowerCase();
+    // Raw password — no trimming to preserve exact user input
+    const rawPassword = password;
+
+    console.log('[AdminLogin] email:', emailLower, '| password length:', rawPassword.length);
 
     const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
       email: emailLower,
-      password,
+      password: rawPassword,
     });
+
+    console.log('[AdminLogin] auth result:', authData?.user?.id ?? null, '| error:', authErr?.message ?? null);
 
     if (authErr || !authData.user) {
       return { success: false, error: authErr?.message ?? 'Invalid credentials' };
     }
 
     const emp = await fetchEmployeeWithRole(authData.user.id, emailLower);
+
+    console.log('[AdminLogin] employee row:', emp ? `id=${emp.id} role=${emp.roles?.key}` : 'NOT FOUND');
 
     if (!emp) {
       await supabase.auth.signOut();
@@ -157,7 +165,6 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'You do not have admin access' };
     }
 
-    // Issue x-admin-token for is_admin_request() table policies
     const { data: tokenData } = await supabase.rpc('issue_admin_token_for_auth_user', {
       p_auth_user_id: authData.user.id,
     });
