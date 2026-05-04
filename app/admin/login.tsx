@@ -32,12 +32,12 @@ export default function AdminLoginScreen() {
     }
     setError('');
     setLoading(true);
-    const success = await adminLogin(email.trim(), password);
+    const result = await adminLogin(email.trim(), password);
     setLoading(false);
-    if (success) {
+    if (result.success) {
       router.replace('/admin/dashboard');
     } else {
-      setError(t.invalidAdminCredentials);
+      setError(result.error ?? t.invalidAdminCredentials);
     }
   };
 

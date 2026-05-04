@@ -53,139 +53,108 @@ export const ROUTE_PERMISSION: Record<string, string> = {
   '/admin/permissions': 'manage_permissions',
 };
 
+const ADMIN_ROLE_KEYS = ['super_admin', 'admin'];
+
 type AdminContextType = {
   admin: AdminUser | null;
   isAdminAuthenticated: boolean;
   isHydrated: boolean;
-  adminLogin: (email: string, password: string) => Promise<boolean>;
+  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   adminLogout: () => void;
 };
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function ensureAuthUser(
-  email: string,
-  password: string,
-  fullName: string,
-  adminToken: string,
-): Promise<void> {
-  try {
-    const fnUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/manage-employee-auth`;
-    await fetch(fnUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-        'x-admin-token': adminToken,
-      },
-      body: JSON.stringify({ action: 'ensure_auth_user', email, password, full_name: fullName }),
-    });
-  } catch {
-    // Non-fatal
-  }
-}
 
 async function fetchPermissions(email: string): Promise<string[]> {
   const { data } = await supabase.rpc('get_employee_permissions', { p_email: email });
   return data ? (data as { permission_key: string }[]).map((p) => p.permission_key) : [];
 }
 
-async function hydrateAdminFromEmail(
-  email: string,
-  setAdmin: (u: AdminUser | null) => void,
-): Promise<void> {
-  if (!email) return;
-  const emailLower = email.toLowerCase();
-  // employees SELECT is allowed via either is_admin_request() or the new
-  // "Employee can read own record by auth uid" policy added in migration.
-  const { data: emp } = await supabase
+type EmployeeWithRole = {
+  id: string;
+  email: string;
+  full_name: string;
+  is_active: boolean;
+  roles: { key: string } | null;
+};
+
+async function fetchEmployeeWithRole(authUserId: string, email: string): Promise<EmployeeWithRole | null> {
+  // Try by auth_user_id first, fall back to email
+  let { data } = await supabase
     .from('employees')
-    .select('id, email, full_name, role, is_active')
-    .eq('email', emailLower)
+    .select('id, email, full_name, is_active, roles(key)')
+    .eq('auth_user_id', authUserId)
     .eq('is_active', true)
     .maybeSingle();
 
-  if (!emp || emp.role === 'user') return;
-  const permissions = await fetchPermissions(emailLower);
-  setAdmin({ id: emp.id, email: emp.email, name: emp.full_name, role: emp.role, permissions });
+  if (!data) {
+    const res = await supabase
+      .from('employees')
+      .select('id, email, full_name, is_active, roles(key)')
+      .eq('email', email)
+      .eq('is_active', true)
+      .maybeSingle();
+    data = res.data;
+  }
+
+  return data as EmployeeWithRole | null;
 }
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
+async function hydrateAdminFromSession(
+  authUserId: string,
+  email: string,
+  setAdmin: (u: AdminUser | null) => void,
+): Promise<void> {
+  const emp = await fetchEmployeeWithRole(authUserId, email);
+  if (!emp) return;
+
+  const roleKey = emp.roles?.key ?? '';
+  if (!ADMIN_ROLE_KEYS.includes(roleKey)) return;
+
+  const permissions = await fetchPermissions(emp.email);
+  setAdmin({ id: emp.id, email: emp.email, name: emp.full_name, role: roleKey, permissions });
+}
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Restore session from existing Supabase Auth on mount
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.email) {
-        await hydrateAdminFromEmail(session.user.email, setAdmin);
+      if (session?.user) {
+        await hydrateAdminFromSession(session.user.id, session.user.email ?? '', setAdmin);
       }
       setIsHydrated(true);
     })();
   }, []);
 
-  const adminLogin = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const adminLogin = useCallback(async (
+    email: string,
+    password: string,
+  ): Promise<{ success: boolean; error?: string }> => {
     const emailLower = email.trim().toLowerCase();
 
-    // ── Step 1: verify admin credentials via legacy password_hash ─────────────
-    // This RPC is SECURITY DEFINER so it bypasses RLS and works for all admins.
-    const { data: credData } = await supabase.rpc('verify_admin_credentials', {
-      p_email: emailLower,
-      p_password: password,
-    });
-
-    if (credData && credData.length > 0) {
-      const row = credData[0];
-      if (row.role === 'user') return false;
-
-      const sessionToken: string = row.session_token ?? '';
-
-      // Store x-admin-token for is_admin_request() table RLS policies
-      setAdminSessionToken(sessionToken);
-
-      // ── Step 2: provision Supabase Auth account with the REAL password ──────
-      // Pass the real login password (not the session token) so that
-      // signInWithPassword(email, realPassword) works directly.
-      // The session token is sent as x-admin-token to authorize the edge function.
-      await ensureAuthUser(emailLower, password, row.full_name ?? '', sessionToken);
-
-      // ── Step 3: sign in with real credentials to get a valid JWT session ────
-      // This JWT is what storage RLS checks via auth.uid() IS NOT NULL.
-      const { error: signInErr } = await supabase.auth.signInWithPassword({
-        email: emailLower,
-        password,
-      });
-      if (signInErr) {
-        console.warn('[AdminContext] Auth sign-in failed:', signInErr.message);
-      }
-
-      const permissions = await fetchPermissions(emailLower);
-      setAdmin({ id: row.id, email: row.email, name: row.full_name, role: row.role, permissions });
-      return true;
-    }
-
-    // ── Fallback: employee already has a Supabase Auth account ────────────────
     const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
       email: emailLower,
       password,
     });
-    if (authErr || !authData.user) return false;
 
-    const { data: emp } = await supabase
-      .from('employees')
-      .select('id, email, full_name, role, is_active')
-      .eq('auth_user_id', authData.user.id)
-      .eq('is_active', true)
-      .maybeSingle();
+    if (authErr || !authData.user) {
+      return { success: false, error: authErr?.message ?? 'Invalid credentials' };
+    }
 
-    if (!emp || emp.role === 'user') {
+    const emp = await fetchEmployeeWithRole(authData.user.id, emailLower);
+
+    if (!emp) {
       await supabase.auth.signOut();
-      return false;
+      return { success: false, error: 'Admin profile not found' };
+    }
+
+    const roleKey = emp.roles?.key ?? '';
+    if (!ADMIN_ROLE_KEYS.includes(roleKey)) {
+      await supabase.auth.signOut();
+      return { success: false, error: 'You do not have admin access' };
     }
 
     // Issue x-admin-token for is_admin_request() table policies
@@ -195,8 +164,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     if (tokenData) setAdminSessionToken(tokenData);
 
     const permissions = await fetchPermissions(emailLower);
-    setAdmin({ id: emp.id, email: emp.email, name: emp.full_name, role: emp.role, permissions });
-    return true;
+    setAdmin({ id: emp.id, email: emp.email, name: emp.full_name, role: roleKey, permissions });
+    return { success: true };
   }, []);
 
   const adminLogout = useCallback(() => {
