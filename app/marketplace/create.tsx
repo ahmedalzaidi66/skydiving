@@ -259,26 +259,37 @@ for (const img of images) {
     continue;
   }
 
- 
+  const { data } = supabase.storage
+    .from('uploads')
+    .getPublicUrl(path);
+
+  if (data?.publicUrl) {
+    imageUrls.push(data.publicUrl);
   }
 }
 
-   const { error } = await supabase
-  .from('used_gear_listings')
-  .insert({
-    ...payload,
-    main_image_url: imageUrls[0] ?? null,
-    images: imageUrls,
-  });
-
-      const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(path);
-      console.log('[CreateListing] uploaded image:', urlData.publicUrl);
-      imageUrls.push(urlData.publicUrl);
-    }
+ 
 
     console.log('[CreateListing] imageUrls before insert:', imageUrls);
 
     const payload = {
+      console.log('[CreateListing] imageUrls before insert:', imageUrls);
+
+const payload = {
+  user_id: sessionUser.id,
+  user_email: sessionUser.email ?? '',
+  title: form.title.trim().slice(0, 120),
+
+  // باقي الحقول...
+
+  main_image_url: imageUrls[0] ?? null,
+  images: imageUrls,
+  status: 'pending',
+};
+
+const { error } = await supabase
+  .from('used_gear_listings')
+  .insert(payload);
       user_id: sessionUser.id,
       user_email: sessionUser.email ?? '',
       title: form.title.trim().slice(0, 120),
