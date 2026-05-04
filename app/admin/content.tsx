@@ -633,8 +633,11 @@ function ContentScreen() {
     setBranding((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
 
     const contentRows: { section: string; key: string; value: string; language: string }[] = [];
     Object.entries(content).forEach(([section, keys]) => {
@@ -646,7 +649,7 @@ function ContentScreen() {
     const brandingRows = Object.entries(branding).map(([key, value]) => ({ key, value }));
 
     const db = adminSupabase();
-    await Promise.all([
+    const results = await Promise.all([
       ...contentRows.map((row) =>
         db.from('homepage_content').upsert(
           { section: row.section, key: row.key, value: row.value, language: row.language, updated_at: new Date().toISOString() },
@@ -660,6 +663,15 @@ function ContentScreen() {
         )
       ),
     ]);
+
+    const firstErr = results.find(r => r.error);
+    if (firstErr?.error) {
+      const e = firstErr.error;
+      console.error('[ContentSave] failed', { message: e.message, code: (e as any).code, details: (e as any).details, hint: (e as any).hint });
+      setSaveError(`Save failed: ${e.message}${(e as any).hint ? ` — ${(e as any).hint}` : ''}`);
+      setSaving(false);
+      return;
+    }
 
     // Refresh global CMS context after save so storefront picks up changes
     await refreshCMS(language);
@@ -748,6 +760,12 @@ function ContentScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {saveError && (
+        <View style={heroStyles.errorBox}>
+          <Text style={heroStyles.errorText}>{saveError}</Text>
+        </View>
+      )}
 
       {/* Language selector */}
       <View style={styles.langBar}>

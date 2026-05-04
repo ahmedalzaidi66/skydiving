@@ -157,9 +157,9 @@ function CategoriesScreen() {
       if (validErr) { setImageError(validErr); return; }
       setUploadingImage(true);
       setImageError('');
-      const result = await uploadImageToSupabase(file, 'general');
+      const result = await uploadImageToSupabase(file, 'products');
       setUploadingImage(false);
-      if (result.error) { setImageError(result.error); return; }
+      if (result.error) { console.error('[Categories] image upload failed:', result.error); setImageError(result.error); return; }
       setImageUrl(result.url!);
     };
     input.click();
@@ -190,7 +190,10 @@ function CategoriesScreen() {
         .from('categories')
         .update({ slug: slug.trim(), active, sort_order: order, image: imageUrl.trim() || '', updated_at: new Date().toISOString() })
         .eq('id', editing.id);
-      if (error) { showToast('Save failed: ' + error.message, 'error'); setSaving(false); return; }
+      if (error) {
+        console.error('[Categories] update failed', { message: error.message, code: (error as any).code, details: (error as any).details });
+        showToast(`Save failed: ${error.message}`, 'error'); setSaving(false); return;
+      }
       categoryId = editing.id;
     } else {
       const { data: newCat, error } = await db
@@ -198,7 +201,10 @@ function CategoriesScreen() {
         .insert({ slug: slug.trim(), active, sort_order: order, image: imageUrl.trim() || '' })
         .select()
         .maybeSingle();
-      if (error || !newCat) { showToast('Save failed: ' + (error?.message ?? 'Unknown'), 'error'); setSaving(false); return; }
+      if (error || !newCat) {
+        console.error('[Categories] insert failed', { message: error?.message, code: (error as any)?.code, details: (error as any)?.details });
+        showToast(`Save failed: ${error?.message ?? 'No row returned'}`, 'error'); setSaving(false); return;
+      }
       categoryId = newCat.id;
     }
 
