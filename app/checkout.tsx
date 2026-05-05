@@ -195,27 +195,27 @@ export default function CheckoutScreen() {
     setLoading(true);
 
     try {
-      // getSession reads from local storage — this is what Supabase attaches as
-      // the Authorization header on every subsequent request from this client.
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      console.log('[SESSION]', session);
+      console.log('[CHECKOUT SESSION]', session);
 
-      // getUser verifies the token server-side; use session.user for identity
-      // so that resolvedUserId always matches what RLS sees as auth.uid().
-      const authUser = session?.user ?? null;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      console.log('[CHECKOUT USER]', user);
 
-      console.log('[CHECKOUT USER]', authUser);
+      // Use session.user for payload — session is what Supabase attaches as the
+      // Authorization header, so auth.uid() in RLS equals session.user.id.
+      // Never use the editable email field for the user_id or email when logged in.
+      const sessionUser = session?.user ?? null;
 
-      const resolvedEmail: string = authUser?.email
-        ? authUser.email
+      const resolvedUserId: string | null = sessionUser?.id ?? null;
+      const resolvedEmail: string = sessionUser?.email
+        ? sessionUser.email
         : form.email.trim().toLowerCase();
-      const resolvedUserId: string | null = authUser?.id ?? null;
 
-      console.log('[CHECKOUT RESOLVED]', { resolvedUserId, resolvedEmail });
-
-      if (!authUser && (!resolvedEmail || !resolvedEmail.includes('@'))) {
+      if (!sessionUser && (!resolvedEmail || !resolvedEmail.includes('@'))) {
         setErrors({ email: 'A valid email address is required for guest checkout.' });
         setLoading(false);
         return;
