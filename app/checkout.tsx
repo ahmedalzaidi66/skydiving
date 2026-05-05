@@ -199,10 +199,14 @@ export default function CheckoutScreen() {
       const { data: authData } = await supabase.auth.getUser();
       const authUser = authData?.user ?? null;
 
+      console.log('[CHECKOUT USER]', authUser);
+
       const resolvedEmail: string = authUser?.email
         ? authUser.email
         : form.email.trim().toLowerCase();
       const resolvedUserId: string | null = authUser?.id ?? null;
+
+      console.log('[CHECKOUT RESOLVED]', { resolvedUserId, resolvedEmail });
 
       if (!authUser && (!resolvedEmail || !resolvedEmail.includes('@'))) {
         setErrors({ email: 'A valid email address is required for guest checkout.' });
@@ -271,7 +275,7 @@ export default function CheckoutScreen() {
         status: 'confirmed',
       };
 
-      console.log('[checkout] order payload:', JSON.stringify(orderPayload, null, 2));
+      console.log('[CHECKOUT ORDER PAYLOAD]', orderPayload);
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -280,7 +284,7 @@ export default function CheckoutScreen() {
         .maybeSingle();
 
       if (orderError || !order) {
-        console.error('[checkout] order insert error:', orderError);
+        console.error('[CHECKOUT ORDER ERROR]', orderError);
         setErrors({ email: orderError?.message ?? 'Failed to place order. Please try again.' });
         return;
       }
