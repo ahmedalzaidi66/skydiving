@@ -78,41 +78,62 @@ export default function AppHeader({ showBack = false, title }: Props) {
   // LTR → ChevronLeft, RTL → ChevronRight (both visually point toward the start).
   const BackIcon = isRTL ? ChevronRight : ChevronLeft;
 
+  // Build trailing icons so they can be reused for both LTR and RTL
+  const trailingIcons = showIcons ? (
+    <>
+      <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/account')}>
+        <User size={22} color={colors.textPrimary} strokeWidth={2} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/wishlist')}>
+        <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+          <Heart size={22} color={wishlistCount > 0 ? '#FF4D6D' : colors.textPrimary} fill={wishlistCount > 0 ? '#FF4D6D' : 'transparent'} strokeWidth={2} />
+        </Animated.View>
+        {wishlistCount > 0 && (
+          <Animated.View style={[styles.badge, styles.wishlistBadge, isRTL ? styles.badgeRTL : styles.badgeLTR, { transform: [{ scale: badgeScale }] }]}>
+            <Text style={styles.badgeText}>{wishlistCount > 99 ? '99+' : wishlistCount}</Text>
+          </Animated.View>
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/cart')}>
+        <ShoppingCart size={22} color={colors.textPrimary} strokeWidth={2} />
+        {totalItems > 0 && (
+          <View style={[styles.badge, isRTL ? styles.badgeRTL : styles.badgeLTR]}>
+            <Text style={styles.badgeText}>{totalItems > 99 ? '99+' : totalItems}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </>
+  ) : null;
+
+  const leadingButton = showBack ? (
+    <TouchableOpacity
+      onPress={handleBackPress}
+      activeOpacity={1}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
+      <Animated.View style={[styles.backBtn, { borderColor: colors.neonBlue + '8C', shadowColor: colors.neonBlue, backgroundColor: colors.background }, { transform: [{ scale: backScale }] }]}>
+        <BackIcon size={20} color={colors.textPrimary} strokeWidth={2.5} />
+      </Animated.View>
+    </TouchableOpacity>
+  ) : (
+    <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => setDrawerOpen(true)}>
+      <Menu size={22} color={colors.textPrimary} strokeWidth={2} />
+    </TouchableOpacity>
+  );
+
   return (
     <>
       <View style={[styles.container, { minHeight: headerSizes.headerHeight, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
 
-        {/* For RTL: trailing icons render first (physical left = visual right in RTL) */}
-        {isRTL && (
-          <View style={[styles.trailingSlot, styles.trailingSlotRTL]}>
-            <LanguageSwitcher />
-            {showIcons && (
-              <>
-                <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/account')}>
-                  <User size={22} color={colors.textPrimary} strokeWidth={2} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/wishlist')}>
-                  <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                    <Heart size={22} color={wishlistCount > 0 ? '#FF4D6D' : colors.textPrimary} fill={wishlistCount > 0 ? '#FF4D6D' : 'transparent'} strokeWidth={2} />
-                  </Animated.View>
-                  {wishlistCount > 0 && (
-                    <Animated.View style={[styles.badge, styles.wishlistBadge, styles.badgeRTL, { transform: [{ scale: badgeScale }] }]}>
-                      <Text style={styles.badgeText}>{wishlistCount > 99 ? '99+' : wishlistCount}</Text>
-                    </Animated.View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/cart')}>
-                  <ShoppingCart size={22} color={colors.textPrimary} strokeWidth={2} />
-                  {totalItems > 0 && (
-                    <View style={[styles.badge, styles.badgeRTL]}>
-                      <Text style={styles.badgeText}>{totalItems > 99 ? '99+' : totalItems}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
+        {/* Leading slot — always in flow, never absolute */}
+        <View style={styles.leadingSlot}>
+          {isRTL ? (
+            <View style={[styles.trailingSlot, styles.trailingSlotRTL]}>
+              <LanguageSwitcher />
+              {trailingIcons}
+            </View>
+          ) : leadingButton}
+        </View>
 
         {/* Center: logo / title */}
         <TouchableOpacity
@@ -135,54 +156,13 @@ export default function AppHeader({ showBack = false, title }: Props) {
           )}
         </TouchableOpacity>
 
-        {/* For LTR: trailing icons on the right */}
-        {!isRTL && (
-          <View style={styles.trailingSlot}>
-            <LanguageSwitcher />
-            {showIcons && (
-              <>
-                <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/account')}>
-                  <User size={22} color={colors.textPrimary} strokeWidth={2} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/wishlist')}>
-                  <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                    <Heart size={22} color={wishlistCount > 0 ? '#FF4D6D' : colors.textPrimary} fill={wishlistCount > 0 ? '#FF4D6D' : 'transparent'} strokeWidth={2} />
-                  </Animated.View>
-                  {wishlistCount > 0 && (
-                    <Animated.View style={[styles.badge, styles.wishlistBadge, styles.badgeLTR, { transform: [{ scale: badgeScale }] }]}>
-                      <Text style={styles.badgeText}>{wishlistCount > 99 ? '99+' : wishlistCount}</Text>
-                    </Animated.View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/cart')}>
-                  <ShoppingCart size={22} color={colors.textPrimary} strokeWidth={2} />
-                  {totalItems > 0 && (
-                    <View style={[styles.badge, styles.badgeLTR]}>
-                      <Text style={styles.badgeText}>{totalItems > 99 ? '99+' : totalItems}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
-
-        {/* Back button OR hamburger — absolutely positioned on the visual leading edge */}
-        <View style={[styles.backSlot, isRTL ? styles.backSlotRTL : styles.backSlotLTR]}>
-          {showBack ? (
-            <TouchableOpacity
-              onPress={handleBackPress}
-              activeOpacity={1}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Animated.View style={[styles.backBtn, { borderColor: colors.neonBlue + '8C', shadowColor: colors.neonBlue, backgroundColor: colors.background }, { transform: [{ scale: backScale }] }]}>
-                <BackIcon size={20} color={colors.textPrimary} strokeWidth={2.5} />
-              </Animated.View>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => setDrawerOpen(true)}>
-              <Menu size={22} color={colors.textPrimary} strokeWidth={2} />
-            </TouchableOpacity>
+        {/* Trailing slot */}
+        <View style={styles.trailingSlot}>
+          {isRTL ? leadingButton : (
+            <>
+              <LanguageSwitcher />
+              {trailingIcons}
+            </>
           )}
         </View>
       </View>
@@ -196,27 +176,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
     paddingTop: Platform.OS === 'ios' ? 52 : 18,
     paddingBottom: 10,
     backgroundColor: '#050A14',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,191,255,0.12)',
   },
-  // Back/menu button: absolutely positioned so it never pushes or overlaps the center/trailing
-  backSlot: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
+  // Leading slot: fixed-width so logo stays centered against trailing slot
+  leadingSlot: {
+    width: 48,
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    paddingTop: Platform.OS === 'ios' ? 52 : 18,
-  },
-  backSlotLTR: {
-    left: 14,
-  },
-  backSlotRTL: {
-    right: 14,
   },
   // Trailing slot: action icons grouped on the visual trailing edge
   trailingSlot: {
@@ -234,11 +205,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   backBtn: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 24,
+    borderRadius: 22,
     backgroundColor: 'rgba(5,10,20,0.82)',
     borderWidth: 1.5,
     borderColor: 'rgba(0,191,255,0.55)',
@@ -252,8 +223,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    // Reserve space on both sides so title can't slip under the absolute back/menu button
-    paddingHorizontal: 62,
   },
   logoImage: {
     height: 44,
