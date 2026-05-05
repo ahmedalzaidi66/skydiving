@@ -195,9 +195,16 @@ export default function CheckoutScreen() {
     setLoading(true);
 
     try {
-      // Resolve auth identity — never trust the editable email field for logged-in users
-      const { data: authData } = await supabase.auth.getUser();
-      const authUser = authData?.user ?? null;
+      // getSession reads from local storage — this is what Supabase attaches as
+      // the Authorization header on every subsequent request from this client.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      console.log('[SESSION]', session);
+
+      // getUser verifies the token server-side; use session.user for identity
+      // so that resolvedUserId always matches what RLS sees as auth.uid().
+      const authUser = session?.user ?? null;
 
       console.log('[CHECKOUT USER]', authUser);
 
