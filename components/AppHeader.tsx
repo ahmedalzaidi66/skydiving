@@ -167,6 +167,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'stretch',
     paddingHorizontal: 8,
     paddingTop: Platform.OS === 'ios' ? 52 : 18,
     paddingBottom: 10,
@@ -174,9 +175,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,191,255,0.12)',
   },
-  // Leading slot: fixed-width so logo stays centered against trailing slot
+  // Leading slot: fixed-width to reserve space for back/hamburger button
   leadingSlot: {
-    width: 48,
+    width: 56,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
@@ -184,6 +185,7 @@ const styles = StyleSheet.create({
   trailingSlot: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
   },
   trailingSlotRTL: {
     flexDirection: 'row-reverse',
