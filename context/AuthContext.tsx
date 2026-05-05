@@ -73,7 +73,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: email.trim().toLowerCase(),
       password,
     });
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      const msg = error.message ?? '';
+      if (
+        msg.toLowerCase().includes('email not confirmed') ||
+        msg.toLowerCase().includes('not confirmed')
+      ) {
+        return {
+          success: false,
+          error: 'Email confirmation is enabled in Supabase. Disable Confirm email or confirm the user.',
+        };
+      }
+      return { success: false, error: msg };
+    }
     if (data.user) {
       const birthday = await fetchBirthday(data.user.id);
       setUser(buildProfile(data.user, birthday));
@@ -96,6 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
     if (error) return { success: false, error: error.message };
+
+    // If email confirmation is enabled, Supabase returns a user but no session
+    // and identities is empty. Detect this and surface a clear message.
+    if (!data.session && data.user && (!data.user.identities || data.user.identities.length === 0)) {
+      return {
+        success: false,
+        error: 'Email confirmation is enabled in Supabase. Disable Confirm email or confirm the user.',
+      };
+    }
+
     if (data.user) {
       await supabase.from('user_profiles').upsert({
         id: data.user.id,
