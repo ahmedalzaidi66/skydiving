@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Star, Search, X } from 'lucide-react-native';
+import { ChevronRight, Star, Search, X, ShoppingCart, Heart } from 'lucide-react-native';
 import { supabase, Product } from '@/lib/supabase';
 import { useCMS } from '@/context/CMSContext';
 import AppHeader from '@/components/AppHeader';
@@ -29,6 +29,8 @@ import HeroVideo from '@/components/HeroVideo';
 import { fetchProducts, fetchCategories, getProductName, getProductImage, getCategoryName, Category } from '@/lib/supabase';
 import StarRating from '@/components/StarRating';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
+import { useWishlistToast } from '@/context/WishlistToastContext';
 import { AutoScrollRow } from '@/components/AutoScrollRow';
 
 type HomeSection = {
@@ -768,6 +770,9 @@ const catStyles = StyleSheet.create({
 
 function FeaturedSection({ title, products, language, t }: { title: string; products: Product[]; language: string; t: { view: string; seeAll: string } }) {
   const router = useRouter();
+  const { addToCart } = useCart();
+  const { isWishlisted, toggle } = useWishlist();
+  const { showCartToast, showWishlistToast } = useWishlistToast();
 
   const productItems = products.map(product => (
     <FeaturedCard
@@ -775,7 +780,18 @@ function FeaturedSection({ title, products, language, t }: { title: string; prod
       product={product}
       language={language}
       viewLabel={t.view}
+      saved={isWishlisted(product.id)}
       onPress={() => router.push(`/product/${product.id}`)}
+      onAddToCart={(e) => {
+        e.stopPropagation();
+        const result = addToCart(product, 1);
+        showCartToast(result.ok ? 'Added to cart' : `Only ${(result as any).available} in stock`);
+      }}
+      onWishlist={async (e) => {
+        e.stopPropagation();
+        const { added } = await toggle(product);
+        showWishlistToast(added, added ? 'Added to wishlist' : 'Removed from wishlist');
+      }}
     />
   ));
 
@@ -804,9 +820,15 @@ function FeaturedSection({ title, products, language, t }: { title: string; prod
 }
 
 function FeaturedCard({
-  product, language, viewLabel, onPress,
+  product, language, viewLabel, saved, onPress, onAddToCart, onWishlist,
 }: {
-  product: Product; language: string; viewLabel: string; onPress: () => void;
+  product: Product;
+  language: string;
+  viewLabel: string;
+  saved: boolean;
+  onPress: () => void;
+  onAddToCart: (e: any) => void;
+  onWishlist: (e: any) => void;
 }) {
   return (
     <TouchableOpacity
@@ -820,6 +842,19 @@ function FeaturedCard({
           style={[StyleSheet.absoluteFillObject, styles.featuredCardImage]}
           resizeMode="cover"
         />
+        <TouchableOpacity
+          style={styles.featuredHeartBtn}
+          onPress={onWishlist}
+          activeOpacity={0.75}
+          hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+        >
+          <Heart
+            size={11}
+            color={saved ? '#FF4D6D' : 'rgba(255,255,255,0.85)'}
+            fill={saved ? '#FF4D6D' : 'transparent'}
+            strokeWidth={2}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.featuredCardInfo}>
@@ -833,13 +868,22 @@ function FeaturedCard({
           showCount
         />
         <Text style={styles.featuredCardPrice}>${product.price.toLocaleString()}</Text>
-        <TouchableOpacity
-          style={styles.viewBtn}
-          activeOpacity={0.85}
-          onPress={(e) => { e.stopPropagation(); onPress(); }}
-        >
-          <Text style={styles.viewBtnText}>{viewLabel.toUpperCase()}</Text>
-        </TouchableOpacity>
+        <View style={styles.featuredCardActions}>
+          <TouchableOpacity
+            style={styles.featuredCartBtn}
+            activeOpacity={0.85}
+            onPress={onAddToCart}
+          >
+            <ShoppingCart size={10} color={Colors.white} strokeWidth={2} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.viewBtn}
+            activeOpacity={0.85}
+            onPress={(e) => { e.stopPropagation(); onPress(); }}
+          >
+            <Text style={styles.viewBtnText}>{viewLabel.toUpperCase()}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -1070,12 +1114,42 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 1,
   },
+  featuredHeartBtn: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(6,12,24,0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  featuredCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  featuredCartBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,191,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,191,255,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   viewBtn: {
+    flex: 1,
     backgroundColor: Colors.neonBlue,
     borderRadius: Radius.full,
     paddingVertical: 4,
     alignItems: 'center',
-    marginTop: 3,
     shadowColor: '#00BFFF',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,

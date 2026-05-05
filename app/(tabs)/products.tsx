@@ -12,10 +12,12 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ShoppingBag, Search, X } from 'lucide-react-native';
+import { ShoppingBag, Search, X, ShoppingCart, Heart } from 'lucide-react-native';
 import { fetchProducts, fetchCategories, getProductName, getProductImage, getCategoryName, Product, Category } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
+import { useWishlistToast } from '@/context/WishlistToastContext';
 import AppHeader from '@/components/AppHeader';
 import StarRating from '@/components/StarRating';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
@@ -284,7 +286,22 @@ function ProductCard({
   product: Product; cardW: number; language: string; onPress: () => void;
 }) {
   const { addToCart } = useCart();
+  const { isWishlisted, toggle } = useWishlist();
+  const { showCartToast, showWishlistToast } = useWishlistToast();
   const imgH = Math.round(cardW * 0.65);
+  const saved = isWishlisted(product.id);
+
+  const handleAddToCart = useCallback((e: any) => {
+    e.stopPropagation();
+    const result = addToCart(product, 1);
+    showCartToast(result.ok ? 'Added to cart' : `Only ${(result as any).available} in stock`);
+  }, [product, addToCart, showCartToast]);
+
+  const handleWishlist = useCallback(async (e: any) => {
+    e.stopPropagation();
+    const { added } = await toggle(product);
+    showWishlistToast(added, added ? 'Added to wishlist' : 'Removed from wishlist');
+  }, [product, toggle, showWishlistToast]);
 
   return (
     <TouchableOpacity
@@ -303,6 +320,19 @@ function ProductCard({
             <Text style={styles.badgeText}>{product.badge}</Text>
           </View>
         )}
+        <TouchableOpacity
+          style={styles.heartBtn}
+          onPress={handleWishlist}
+          activeOpacity={0.75}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Heart
+            size={13}
+            color={saved ? '#FF4D6D' : 'rgba(255,255,255,0.85)'}
+            fill={saved ? '#FF4D6D' : 'transparent'}
+            strokeWidth={2}
+          />
+        </TouchableOpacity>
       </View>
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={2}>
@@ -311,13 +341,22 @@ function ProductCard({
         <StarRating rating={product.rating} reviewCount={product.review_count} size={8} showCount={false} />
         <View style={styles.cardFooter}>
           <Text style={styles.cardPrice}>${product.price.toLocaleString()}</Text>
-          <TouchableOpacity
-            style={styles.viewBtn}
-            activeOpacity={0.85}
-            onPress={(e) => { e.stopPropagation(); onPress(); }}
-          >
-            <Text style={styles.viewBtnText}>VIEW</Text>
-          </TouchableOpacity>
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={styles.cartBtn}
+              activeOpacity={0.85}
+              onPress={handleAddToCart}
+            >
+              <ShoppingCart size={11} color={Colors.white} strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.viewBtn}
+              activeOpacity={0.85}
+              onPress={(e) => { e.stopPropagation(); onPress(); }}
+            >
+              <Text style={styles.viewBtnText}>VIEW</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -450,6 +489,35 @@ const styles = StyleSheet.create({
     color: Colors.neonBlue,
     fontSize: 12,
     fontWeight: '900',
+  },
+  heartBtn: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(6,12,24,0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cartBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,191,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,191,255,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   viewBtn: {
     backgroundColor: Colors.neonBlue,
