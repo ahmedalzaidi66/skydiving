@@ -125,14 +125,9 @@ export default function AppHeader({ showBack = false, title }: Props) {
     <>
       <View style={[styles.container, { minHeight: headerSizes.headerHeight, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
 
-        {/* Leading slot — always in flow, never absolute */}
+        {/* Leading slot — back/hamburger always on the physical left */}
         <View style={styles.leadingSlot}>
-          {isRTL ? (
-            <View style={[styles.trailingSlot, styles.trailingSlotRTL]}>
-              <LanguageSwitcher />
-              {trailingIcons}
-            </View>
-          ) : leadingButton}
+          {leadingButton}
         </View>
 
         {/* Center: logo / title */}
@@ -156,14 +151,10 @@ export default function AppHeader({ showBack = false, title }: Props) {
           )}
         </TouchableOpacity>
 
-        {/* Trailing slot */}
-        <View style={styles.trailingSlot}>
-          {isRTL ? leadingButton : (
-            <>
-              <LanguageSwitcher />
-              {trailingIcons}
-            </>
-          )}
+        {/* Trailing slot — action icons always on the physical right */}
+        <View style={[styles.trailingSlot, isRTL && styles.trailingSlotRTL]}>
+          <LanguageSwitcher />
+          {trailingIcons}
         </View>
       </View>
 
