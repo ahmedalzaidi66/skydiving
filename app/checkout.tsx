@@ -195,6 +195,21 @@ export default function CheckoutScreen() {
     setLoading(true);
 
     try {
+      // Resolve auth identity — never trust the editable email field for logged-in users
+      const { data: authData } = await supabase.auth.getUser();
+      const authUser = authData?.user ?? null;
+
+      const resolvedEmail: string = authUser?.email
+        ? authUser.email
+        : form.email.trim().toLowerCase();
+      const resolvedUserId: string | null = authUser?.id ?? null;
+
+      if (!authUser && (!resolvedEmail || !resolvedEmail.includes('@'))) {
+        setErrors({ email: 'A valid email address is required for guest checkout.' });
+        setLoading(false);
+        return;
+      }
+
       for (const i of items) {
         if (i.product.unlimited_stock) continue;
 
@@ -237,29 +252,35 @@ export default function CheckoutScreen() {
         }
       }
 
+      const orderPayload = {
+        user_id:             resolvedUserId,
+        customer_email:      resolvedEmail.slice(0, 254),
+        customer_first_name: form.firstName.trim().slice(0, 60),
+        customer_last_name:  form.lastName.trim().slice(0, 60),
+        customer_phone:      form.phone.trim().slice(0, 20),
+        street:              form.street.trim().slice(0, 200),
+        city:                form.city.trim().slice(0, 100),
+        state:               form.state.trim().slice(0, 100),
+        zip:                 form.zip.trim().slice(0, 10),
+        country:             form.country.trim().slice(0, 100),
+        payment_method:      PAYMENT_METHOD_IDS.includes(form.paymentMethod) ? form.paymentMethod : 'card',
+        subtotal,
+        shipping,
+        tax,
+        total,
+        status: 'confirmed',
+      };
+
+      console.log('[checkout] order payload:', JSON.stringify(orderPayload, null, 2));
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          customer_email:      form.email.trim().toLowerCase().slice(0, 254),
-          customer_first_name: form.firstName.trim().slice(0, 60),
-          customer_last_name:  form.lastName.trim().slice(0, 60),
-          customer_phone:      form.phone.trim().slice(0, 20),
-          street:              form.street.trim().slice(0, 200),
-          city:                form.city.trim().slice(0, 100),
-          state:               form.state.trim().slice(0, 100),
-          zip:                 form.zip.trim().slice(0, 10),
-          country:             form.country.trim().slice(0, 100),
-          payment_method:      PAYMENT_METHOD_IDS.includes(form.paymentMethod) ? form.paymentMethod : 'card',
-          subtotal,
-          shipping,
-          tax,
-          total,
-          status: 'confirmed',
-        })
+        .insert(orderPayload)
         .select()
         .maybeSingle();
 
       if (orderError || !order) {
+        console.error('[checkout] order insert error:', orderError);
         setErrors({ email: orderError?.message ?? 'Failed to place order. Please try again.' });
         return;
       }
@@ -276,7 +297,8 @@ export default function CheckoutScreen() {
 
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) {
-        setErrors({ email: 'Failed to save order items. Please try again.' });
+        console.error('[checkout] order_items insert error:', itemsError);
+        setErrors({ email: itemsError.message });
         return;
       }
 
