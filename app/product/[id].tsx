@@ -15,7 +15,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowLeft, ShoppingCart, Package, Shield, Star,
+  ShoppingCart, Package, Shield, Star,
   ChevronRight, X, ChevronLeft, Tag, Zap,
 } from 'lucide-react-native';
 import {
@@ -261,11 +261,7 @@ export default function ProductDetailScreen() {
   if (loading || !product) {
     return (
       <View style={styles.container}>
-        <View style={[styles.imageWrapper, { backgroundColor: Colors.backgroundCard }]}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.6}>
-            <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
-        </View>
+        <View style={[styles.imageWrapper, { backgroundColor: Colors.backgroundCard }]} />
         <View style={styles.skeletonContent}>
           <SkeletonLine width="70%" height={28} />
           <SkeletonLine width="40%" height={18} />
@@ -329,15 +325,6 @@ export default function ProductDetailScreen() {
           </TouchableOpacity>
 
           <View style={styles.imageOverlay} pointerEvents="box-none">
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={() => router.back()}
-              activeOpacity={0.6}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
-            </TouchableOpacity>
-
             {/* Discount badge */}
             {hasDiscount && (
               <View style={styles.discountBadge}>
@@ -651,25 +638,6 @@ const styles = StyleSheet.create({
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
-  },
-  backBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 24,
-    left: Spacing.md,
-    width: 44,
-    height: 44,
-    backgroundColor: 'rgba(5,10,20,0.82)',
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,191,255,0.55)',
-    zIndex: 20,
-    shadowColor: '#00BFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
   },
   badge: {
     position: 'absolute',
