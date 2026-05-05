@@ -328,6 +328,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState('');
 
   const handleRegister = async () => {
+    if (loading) return;
     if (!firstName.trim()) { setError(t.firstNameRequired); return; }
     if (!lastName.trim()) { setError(t.lastNameRequired); return; }
     if (!email.trim() || !email.includes('@')) { setError(t.validEmailRequired); return; }
@@ -337,10 +338,21 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
     if (bdError) { setError(bdError); return; }
     setLoading(true);
     setError('');
-    const result = await register(firstName, lastName, email, password, toBirthdayISO(bdDay, bdMonth, bdYear));
-    setLoading(false);
-    if (!result.success) { setError(result.error ?? t.validEmailRequired); return; }
-    onSuccess();
+    try {
+      const result = await register(firstName, lastName, email, password, toBirthdayISO(bdDay, bdMonth, bdYear));
+      if (!result.success) {
+        const msg = result.error ?? t.validEmailRequired;
+        setError(
+          msg.toLowerCase().includes('rate limit')
+            ? 'Please wait a minute before trying again.'
+            : msg
+        );
+        return;
+      }
+      onSuccess();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -391,6 +403,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         title={t.createAccount}
         onPress={handleRegister}
         loading={loading}
+        disabled={loading}
         fullWidth
         size="lg"
         style={{ marginTop: Spacing.sm }}
