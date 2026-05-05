@@ -88,17 +88,18 @@ function buildCMSMap(row: CMSRow): CMSContent {
 }
 
 async function fetchHomepageContentMap(lang: string): Promise<CMSContent> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('homepage_content')
-    .select('section, key, value, background_image_url')
+    .select('section, key, value')
     .eq('language', lang);
+  if (error) {
+    console.error('[CMSContext] fetchHomepageContentMap error', { message: error.message, code: (error as any).code, hint: (error as any).hint });
+  }
   const map: CMSContent = {};
-  for (const row of (data ?? []) as { section: string; key: string; value: string; background_image_url: string | null }[]) {
+  for (const row of (data ?? []) as { section: string; key: string; value: string }[]) {
     if (!map[row.section]) map[row.section] = {};
-    // Use value; if empty for image_url key, fall back to background_image_url column
-    const effective = (row.value || (row.key === 'image_url' && row.background_image_url) || row.value) ?? '';
-    if (effective !== null && effective !== undefined) {
-      map[row.section][row.key] = effective;
+    if (row.value !== null && row.value !== undefined) {
+      map[row.section][row.key] = row.value;
     }
   }
   return map;

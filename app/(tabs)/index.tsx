@@ -235,20 +235,19 @@ export default function ShopScreen() {
   const cmsCanopy = content.canopy ?? {};
   const cmsTestimonials = content.testimonials ?? {};
 
+  const HERO_FALLBACK_IMAGE = 'https://images.pexels.com/photos/1271375/pexels-photo-1271375.jpeg?auto=compress&cs=tinysrgb&w=800';
+
   const heroContent = heroBlock
     ? { ...heroBlock.content }
     : {
-        // Media — homepage_content (via content.hero) is the authoritative source for video_url/media_type
-        media_type:    cmsHero.media_type  || 'image',
-        image_url:     cmsHero.image_url   || cmsRow?.hero_image || 'https://images.pexels.com/photos/1271375/pexels-photo-1271375.jpeg?auto=compress&cs=tinysrgb&w=800',
-        video_url:     cmsHero.video_url   || '',
-        // Text
-        title:         cmsHero.title       || cmsRow?.hero_title       || t.heroDefault.title,
-        subtitle:      cmsHero.subtitle    || cmsRow?.hero_subtitle     || t.heroDefault.subtitle,
-        badge_text:    cmsHero.badge_text  || t.heroDefault.badge,
-        cta_primary:   cmsHero.cta_primary || cmsRow?.hero_button_text  || t.shop,
+        media_type:    cmsHero.media_type    || 'image',
+        image_url:     cmsHero.image_url     || HERO_FALLBACK_IMAGE,
+        video_url:     cmsHero.video_url     || '',
+        title:         cmsHero.title         || cmsRow?.hero_title      || t.heroDefault.title,
+        subtitle:      cmsHero.subtitle      || cmsRow?.hero_subtitle   || t.heroDefault.subtitle,
+        badge_text:    cmsHero.badge_text    || t.heroDefault.badge,
+        cta_primary:   cmsHero.cta_primary   || cmsRow?.hero_button_text || t.shop,
         cta_secondary: cmsHero.cta_secondary || '',
-        // Overlay
         overlay_color: cmsHero.overlay_color || 'rgba(5,10,20,0.55)',
       };
 
