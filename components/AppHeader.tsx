@@ -17,7 +17,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import NavigationDrawer from '@/components/NavigationDrawer';
-import { Colors, Spacing, FontSize } from '@/constants/theme';
+import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 import { useUISize } from '@/context/UISizeContext';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -171,9 +171,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: Platform.OS === 'ios' ? 52 : 18,
     paddingBottom: 10,
-    backgroundColor: '#050A14',
+    backgroundColor: Colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,191,255,0.12)',
+    borderBottomColor: Colors.border,
   },
   // Leading slot: fixed-width to reserve space for back/hamburger button
   leadingSlot: {
@@ -202,11 +202,11 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 22,
-    backgroundColor: 'rgba(5,10,20,0.82)',
+    borderRadius: Radius.full,
+    backgroundColor: Colors.background,
     borderWidth: 1.5,
-    borderColor: 'rgba(0,191,255,0.55)',
-    shadowColor: '#00BFFF',
+    borderColor: Colors.neonBlueBorder,
+    shadowColor: Colors.neonBlue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
@@ -249,8 +249,8 @@ const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
     top: 2,
-    backgroundColor: '#FF4444',
-    borderRadius: 999,
+    backgroundColor: Colors.error,
+    borderRadius: Radius.full,
     minWidth: 18,
     height: 18,
     justifyContent: 'center',

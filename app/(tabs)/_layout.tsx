@@ -16,6 +16,7 @@ import { useGearWishlist } from '@/context/GearWishlistContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
+import { Colors } from '@/constants/theme';
 
 const LOGO = require('../../assets/images/logo.png');
 
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   },
   barBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#060C18',
+    backgroundColor: Colors.background,
   },
   barTopBorder: {
     position: 'absolute',
@@ -318,9 +319,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(0,191,255,0.55)',
-    // Glow effect via shadow (iOS/web)
-    shadowColor: '#00BFFF',
+    backgroundColor: Colors.neonBlue,
+    shadowColor: Colors.neonBlue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 8,
@@ -349,14 +349,14 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#3D6880',
+    color: Colors.textMuted,
     letterSpacing: 0.3,
     textAlign: 'center',
     includeFontPadding: false,
     lineHeight: 12,
   },
   tabLabelActive: {
-    color: '#00BFFF',
+    color: Colors.neonBlue,
     fontWeight: '700',
   },
   activeDot: {
@@ -367,8 +367,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   activeDotVisible: {
-    backgroundColor: '#00BFFF',
-    shadowColor: '#00BFFF',
+    backgroundColor: Colors.neonBlue,
+    shadowColor: Colors.neonBlue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
     shadowRadius: 4,
@@ -386,10 +386,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 3,
     borderWidth: 1.5,
-    borderColor: '#060C18',
+    borderColor: Colors.background,
   },
   tabBadgeText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 9,
     fontWeight: '800',
     lineHeight: 11,
@@ -410,9 +410,9 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 35,
     borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.5)',
-    backgroundColor: 'rgba(0,191,255,0.06)',
-    shadowColor: '#00BFFF',
+    borderColor: Colors.neonBlueBorder,
+    backgroundColor: Colors.neonBlueGlow,
+    shadowColor: Colors.neonBlue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.7,
     shadowRadius: 14,
@@ -422,21 +422,21 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#060C18',
+    backgroundColor: Colors.background,
     borderWidth: 2,
-    borderColor: 'rgba(0,191,255,0.35)',
+    borderColor: Colors.neonBlueBorder,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     marginTop: -18,
-    shadowColor: '#00BFFF',
+    shadowColor: Colors.neonBlue,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
   },
   centerButtonActive: {
-    borderColor: '#00BFFF',
+    borderColor: Colors.neonBlue,
     shadowOpacity: 0.75,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   centerLabel: {
     fontSize: 8,
     fontWeight: '700',
-    color: '#3D6880',
+    color: Colors.textMuted,
     letterSpacing: 1,
     textAlign: 'center',
     marginTop: 2,
@@ -456,8 +456,8 @@ const styles = StyleSheet.create({
     lineHeight: 11,
   },
   centerLabelActive: {
-    color: '#00BFFF',
-    shadowColor: '#00BFFF',
+    color: Colors.neonBlue,
+    shadowColor: Colors.neonBlue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 6,

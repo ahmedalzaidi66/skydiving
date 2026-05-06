@@ -332,7 +332,7 @@ export default function ListingDetailScreen() {
         >
           <Heart
             size={20}
-            color={wishlisted ? Colors.error : '#FFFFFF'}
+            color={wishlisted ? Colors.error : Colors.white}
             fill={wishlisted ? Colors.error : 'transparent'}
             strokeWidth={2}
           />
@@ -345,7 +345,7 @@ export default function ListingDetailScreen() {
           {/* Boosted banner */}
           {boosted && (
             <View style={styles.boostBanner}>
-              <Zap size={12} color="#FFD700" strokeWidth={2.5} fill="#FFD700" />
+              <Zap size={12} color={Colors.gold} strokeWidth={2.5} fill={Colors.gold} />
               <Text style={styles.boostBannerText}>FEATURED LISTING</Text>
             </View>
           )}
@@ -401,7 +401,7 @@ export default function ListingDetailScreen() {
           {/* View count */}
           {views > 0 && (
             <View style={styles.viewCountChip}>
-              <Eye size={12} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+              <Eye size={12} color={Colors.textSecondary} strokeWidth={2} />
               <Text style={styles.viewCountText}>{views} views</Text>
             </View>
           )}
@@ -743,7 +743,7 @@ export default function ListingDetailScreen() {
             ) : (
               <View style={modalStyles.boostBody}>
                 <View style={modalStyles.boostHighlight}>
-                  <Zap size={28} color="#FFD700" strokeWidth={2} fill="#FFD700" />
+                  <Zap size={28} color={Colors.gold} strokeWidth={2} fill={Colors.gold} />
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={modalStyles.boostHighlightTitle}>Featured placement</Text>
                     <Text style={modalStyles.boostHighlightDesc}>
@@ -803,7 +803,7 @@ function BoostCTA({
   if (boosted) {
     return (
       <View style={boostCtaStyles.active}>
-        <Zap size={16} color="#FFD700" strokeWidth={2.5} fill="#FFD700" />
+        <Zap size={16} color={Colors.gold} strokeWidth={2.5} fill={Colors.gold} />
         <Text style={boostCtaStyles.activeText}>Listing is currently featured</Text>
       </View>
     );
@@ -818,7 +818,7 @@ function BoostCTA({
   }
   return (
     <TouchableOpacity style={boostCtaStyles.btn} onPress={onPress} activeOpacity={0.85}>
-      <Zap size={16} color="#FFD700" strokeWidth={2.5} />
+      <Zap size={16} color={Colors.gold} strokeWidth={2.5} />
       <View style={{ flex: 1 }}>
         <Text style={boostCtaStyles.btnTitle}>Boost this listing</Text>
         <Text style={boostCtaStyles.btnSub}>
@@ -834,19 +834,19 @@ const boostCtaStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: 'rgba(255,215,0,0.08)',
+    backgroundColor: Colors.gold + '14',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.35)',
+    borderColor: Colors.gold + '59',
     padding: Spacing.md,
   },
   btnTitle: {
-    color: '#FFD700',
+    color: Colors.gold,
     fontSize: FontSize.sm,
     fontWeight: '800',
   },
   btnSub: {
-    color: 'rgba(255,215,0,0.6)',
+    color: Colors.gold + '99',
     fontSize: FontSize.xs,
     fontWeight: '500',
     marginTop: 2,
@@ -855,14 +855,14 @@ const boostCtaStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: 'rgba(255,215,0,0.1)',
+    backgroundColor: Colors.gold + '1A',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.4)',
+    borderColor: Colors.gold + '66',
     padding: Spacing.md,
   },
   activeText: {
-    color: '#FFD700',
+    color: Colors.gold,
     fontSize: FontSize.sm,
     fontWeight: '700',
   },
@@ -870,10 +870,10 @@ const boostCtaStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: 'rgba(255,179,0,0.08)',
+    backgroundColor: Colors.warning + '14',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,179,0,0.3)',
+    borderColor: Colors.warning + '4D',
     padding: Spacing.md,
   },
   pendingText: {
@@ -935,7 +935,7 @@ const modalStyles = StyleSheet.create({
   },
   reasonChipActive: {
     borderColor: Colors.error,
-    backgroundColor: 'rgba(255,68,68,0.1)',
+    backgroundColor: Colors.errorDim,
   },
   reasonChipText: {
     color: Colors.textMuted,
@@ -1012,14 +1012,14 @@ const modalStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    backgroundColor: 'rgba(255,215,0,0.08)',
+    backgroundColor: Colors.gold + '14',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.3)',
+    borderColor: Colors.gold + '4D',
     padding: Spacing.md,
   },
   boostHighlightTitle: {
-    color: '#FFD700',
+    color: Colors.gold,
     fontSize: FontSize.md,
     fontWeight: '800',
   },
@@ -1054,10 +1054,10 @@ const modalStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: 'rgba(255,179,0,0.07)',
+    backgroundColor: Colors.warning + '12',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,179,0,0.2)',
+    borderColor: Colors.warning + '33',
     padding: Spacing.sm,
   },
   boostPaymentNoteText: {
@@ -1104,7 +1104,7 @@ const cardStyles = StyleSheet.create({
     textTransform: 'uppercase',
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
-    backgroundColor: 'rgba(0,191,255,0.05)',
+    backgroundColor: Colors.neonBlueGlow,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
@@ -1139,7 +1139,7 @@ const rowStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,191,255,0.07)',
+    borderBottomColor: Colors.borderLight,
   },
   label: {
     color: Colors.textMuted,
@@ -1197,9 +1197,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(5,10,20,0.82)',
+    backgroundColor: Colors.background + 'D1',
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: Colors.white + '2E',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 20,
@@ -1221,13 +1221,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,215,0,0.18)',
+    backgroundColor: Colors.gold + '2E',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,215,0,0.35)',
+    borderBottomColor: Colors.gold + '59',
   },
   boostBannerText: {
-    color: '#FFD700',
+    color: Colors.gold,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 2,
@@ -1244,9 +1244,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(5,10,20,0.7)',
+    backgroundColor: Colors.background + 'B3',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: Colors.white + '33',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1265,7 +1265,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: Colors.white + '4D',
   },
   dotActive: {
     backgroundColor: Colors.neonBlue,
@@ -1280,7 +1280,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: 'rgba(5,10,20,0.8)',
+    backgroundColor: Colors.background + 'CC',
   },
   condBadgeText: {
     fontSize: FontSize.xs,
@@ -1293,13 +1293,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(5,10,20,0.65)',
+    backgroundColor: Colors.background + 'A6',
     borderRadius: Radius.full,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   viewCountText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: Colors.textSecondary,
     fontSize: FontSize.xs,
     fontWeight: '600',
   },
@@ -1332,7 +1332,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successDim,
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(0,230,118,0.3)',
+    borderColor: Colors.success + '4D',
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -1360,10 +1360,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: 'rgba(255,179,0,0.08)',
+    backgroundColor: Colors.warning + '14',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,179,0,0.25)',
+    borderColor: Colors.warning + '40',
     padding: Spacing.sm,
   },
   safetyText: {
@@ -1504,10 +1504,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(0,230,118,0.06)',
+    backgroundColor: Colors.success + '0F',
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(0,230,118,0.2)',
+    borderColor: Colors.success + '33',
     paddingHorizontal: Spacing.sm,
     paddingVertical: 8,
   },
@@ -1533,7 +1533,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   whatsappBtnText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: FontSize.lg,
     fontWeight: '800',
   },
