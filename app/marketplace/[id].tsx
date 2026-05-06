@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ArrowLeft,
   Phone,
   MessageCircle,
   TriangleAlert as AlertTriangle,
@@ -302,15 +301,6 @@ export default function ListingDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.backBtn}
-        onPress={() => router.back()}
-        activeOpacity={0.7}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
-      </TouchableOpacity>
-
       {!isOwner && (
         <TouchableOpacity
           style={styles.heartBtn}
@@ -1177,25 +1167,6 @@ const styles = StyleSheet.create({
   notFoundText: {
     color: Colors.textMuted,
     fontSize: FontSize.md,
-  },
-  backBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 24,
-    left: Spacing.md,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(5,10,20,0.82)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,191,255,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 20,
-    shadowColor: '#00BFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
   },
   heartBtn: {
     position: 'absolute',
