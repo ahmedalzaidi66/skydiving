@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Star } from 'lucide-react-native';
-import { Colors, FontSize } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
 
 type Props = {
   rating: number;
@@ -10,12 +10,9 @@ type Props = {
   showCount?: boolean;
 };
 
-export default function StarRating({
-  rating,
-  reviewCount,
-  size = 14,
-  showCount = true,
-}: Props) {
+export default function StarRating({ rating, reviewCount, size = 14, showCount = true }: Props) {
+  const Colors = useThemeColors();
+
   return (
     <View style={styles.row}>
       {[1, 2, 3, 4, 5].map((star) => (
@@ -28,11 +25,11 @@ export default function StarRating({
           style={{ marginRight: 1 }}
         />
       ))}
-      <Text style={[styles.score, { fontSize: size - 1 }]}>
+      <Text style={{ color: Colors.gold, fontWeight: '600', marginLeft: 4, fontSize: size - 1 }}>
         {rating.toFixed(1)}
       </Text>
       {showCount && reviewCount !== undefined && (
-        <Text style={[styles.count, { fontSize: size - 1 }]}>
+        <Text style={{ color: Colors.textMuted, marginLeft: 2, fontSize: size - 1 }}>
           ({reviewCount})
         </Text>
       )}
@@ -45,14 +42,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-  },
-  score: {
-    color: Colors.gold,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  count: {
-    color: Colors.textMuted,
-    marginLeft: 2,
   },
 });

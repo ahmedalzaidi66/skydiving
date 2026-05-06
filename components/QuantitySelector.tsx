@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Minus, Plus } from 'lucide-react-native';
-import { Colors, Radius, FontSize } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
+import { Radius, FontSize } from '@/constants/theme';
 
 type Props = {
   value: number;
@@ -11,15 +12,11 @@ type Props = {
   max?: number;
 };
 
-export default function QuantitySelector({
-  value,
-  onDecrement,
-  onIncrement,
-  min = 1,
-  max = 99,
-}: Props) {
+export default function QuantitySelector({ value, onDecrement, onIncrement, min = 1, max = 99 }: Props) {
+  const Colors = useThemeColors();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.base, { backgroundColor: Colors.backgroundCard, borderColor: Colors.border }]}>
       <TouchableOpacity
         onPress={onDecrement}
         disabled={value <= min}
@@ -28,7 +25,7 @@ export default function QuantitySelector({
       >
         <Minus size={16} color={value <= min ? Colors.textMuted : Colors.neonBlue} strokeWidth={2.5} />
       </TouchableOpacity>
-      <Text style={styles.value}>{value}</Text>
+      <Text style={[styles.value, { color: Colors.textPrimary }]}>{value}</Text>
       <TouchableOpacity
         onPress={onIncrement}
         disabled={value >= max}
@@ -42,13 +39,11 @@ export default function QuantitySelector({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  base: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundCard,
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Colors.border,
     overflow: 'hidden',
   },
   btn: {
@@ -61,7 +56,6 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   value: {
-    color: Colors.textPrimary,
     fontSize: FontSize.lg,
     fontWeight: '700',
     minWidth: 36,

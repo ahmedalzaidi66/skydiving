@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Search, X } from 'lucide-react-native';
-import { Colors, Radius, Spacing, FontSize } from '@/constants/theme';
+import { Radius, Spacing, FontSize } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
 import { useUISize } from '@/context/UISizeContext';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -11,25 +12,30 @@ type Props = {
   placeholder?: string;
 };
 
-export default function SearchBar({
-  value,
-  onChangeText,
-  placeholder,
-}: Props) {
+export default function SearchBar({ value, onChangeText, placeholder }: Props) {
+  const Colors = useThemeColors();
   const { searchSizes } = useUISize();
   const { t } = useLanguage();
   const resolvedPlaceholder = placeholder ?? t.searchGear;
 
   return (
-    <View style={[styles.container, {
-      height: searchSizes.barHeight,
+    <View style={[{
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      backgroundColor: Colors.backgroundInput,
       borderRadius: searchSizes.borderRadius,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm + 2,
+      gap: Spacing.sm,
+      height: searchSizes.barHeight,
       marginTop: searchSizes.marginTop,
       marginBottom: searchSizes.marginBottom,
     }]}>
       <Search size={searchSizes.iconSize} color={Colors.textMuted} strokeWidth={2} />
       <TextInput
-        style={[styles.input, { fontSize: searchSizes.fontSize }]}
+        style={{ flex: 1, color: Colors.textPrimary, fontSize: searchSizes.fontSize, padding: 0, margin: 0 }}
         value={value}
         onChangeText={onChangeText}
         placeholder={resolvedPlaceholder}
@@ -46,24 +52,3 @@ export default function SearchBar({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    gap: Spacing.sm,
-  },
-  input: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    padding: 0,
-    margin: 0,
-  },
-});

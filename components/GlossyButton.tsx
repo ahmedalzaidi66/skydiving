@@ -1,14 +1,8 @@
 import React from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Radius, FontSize, Shadow } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
+import { Radius, FontSize, Shadow } from '@/constants/theme';
 
 type Props = {
   title: string;
@@ -23,20 +17,14 @@ type Props = {
 };
 
 export default function GlossyButton({
-  title,
-  onPress,
-  loading = false,
-  disabled = false,
-  variant = 'primary',
-  size = 'md',
-  style,
-  textStyle,
-  fullWidth = false,
+  title, onPress, loading = false, disabled = false,
+  variant = 'primary', size = 'md', style, textStyle, fullWidth = false,
 }: Props) {
+  const Colors = useThemeColors();
   const heights = { sm: 40, md: 50, lg: 58 };
   const fontSizes = { sm: FontSize.sm, md: FontSize.md, lg: FontSize.lg };
-
   const isDisabled = disabled || loading;
+  const fullW: ViewStyle = fullWidth ? { width: '100%' } : {};
 
   if (variant === 'primary') {
     return (
@@ -44,40 +32,18 @@ export default function GlossyButton({
         onPress={onPress}
         disabled={isDisabled}
         activeOpacity={0.8}
-        style={[
-          styles.wrapper,
-          fullWidth && styles.fullWidth,
-          isDisabled && styles.disabled,
-          style,
-        ]}
+        style={[styles.wrapper, fullW, isDisabled ? styles.disabled : {}, style]}
       >
         <LinearGradient
-          colors={
-            isDisabled
-              ? ['#1A3050', '#0F2040']
-              : ['#00BFFF', '#007ACC']
-          }
+          colors={isDisabled ? [Colors.navy, Colors.backgroundSecondary] : ['#00BFFF', '#007ACC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[
-            styles.gradient,
-            { height: heights[size] },
-            !isDisabled && Shadow.neonBlue,
-          ]}
+          style={[styles.gradient, { height: heights[size] }, !isDisabled && Shadow.neonBlue]}
         >
-          {loading ? (
-            <ActivityIndicator color={Colors.white} size="small" />
-          ) : (
-            <Text
-              style={[
-                styles.text,
-                { fontSize: fontSizes[size] },
-                textStyle,
-              ]}
-            >
-              {title}
-            </Text>
-          )}
+          {loading
+            ? <ActivityIndicator color={Colors.white} size="small" />
+            : <Text style={[{ color: Colors.white, fontWeight: '700', letterSpacing: 0.5, fontSize: fontSizes[size] }, textStyle]}>{title}</Text>
+          }
         </LinearGradient>
       </TouchableOpacity>
     );
@@ -89,27 +55,21 @@ export default function GlossyButton({
         onPress={onPress}
         disabled={isDisabled}
         activeOpacity={0.8}
-        style={[
-          styles.outlineWrapper,
-          { height: heights[size] },
-          fullWidth && styles.fullWidth,
-          isDisabled && styles.disabled,
-          style,
-        ]}
+        style={[{
+          borderRadius: Radius.full,
+          borderWidth: 1.5,
+          borderColor: Colors.neonBlue,
+          justifyContent: 'center' as const,
+          alignItems: 'center' as const,
+          paddingHorizontal: 24,
+          backgroundColor: Colors.neonBlueGlow,
+          height: heights[size],
+        }, fullW, isDisabled ? styles.disabled : {}, style]}
       >
-        {loading ? (
-          <ActivityIndicator color={Colors.neonBlue} size="small" />
-        ) : (
-          <Text
-            style={[
-              styles.outlineText,
-              { fontSize: fontSizes[size] },
-              textStyle,
-            ]}
-          >
-            {title}
-          </Text>
-        )}
+        {loading
+          ? <ActivityIndicator color={Colors.neonBlue} size="small" />
+          : <Text style={[{ color: Colors.neonBlue, fontWeight: '700', letterSpacing: 0.5, fontSize: fontSizes[size] }, textStyle]}>{title}</Text>
+        }
       </TouchableOpacity>
     );
   }
@@ -119,26 +79,12 @@ export default function GlossyButton({
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.7}
-      style={[
-        { height: heights[size], justifyContent: 'center', alignItems: 'center' },
-        fullWidth && styles.fullWidth,
-        isDisabled && styles.disabled,
-        style,
-      ]}
+      style={[{ height: heights[size], justifyContent: 'center' as const, alignItems: 'center' as const }, fullW, isDisabled ? styles.disabled : {}, style]}
     >
-      {loading ? (
-        <ActivityIndicator color={Colors.neonBlue} size="small" />
-      ) : (
-        <Text
-          style={[
-            styles.ghostText,
-            { fontSize: fontSizes[size] },
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
-      )}
+      {loading
+        ? <ActivityIndicator color={Colors.neonBlue} size="small" />
+        : <Text style={[{ color: Colors.neonBlue, fontWeight: '600', fontSize: fontSizes[size] }, textStyle]}>{title}</Text>
+      }
     </TouchableOpacity>
   );
 }
@@ -148,37 +94,11 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     overflow: 'hidden',
   },
-  fullWidth: {
-    width: '100%',
-  },
   gradient: {
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
     borderRadius: Radius.full,
-  },
-  text: {
-    color: Colors.white,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  outlineWrapper: {
-    borderRadius: Radius.full,
-    borderWidth: 1.5,
-    borderColor: Colors.neonBlue,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    backgroundColor: Colors.neonBlueGlow,
-  },
-  outlineText: {
-    color: Colors.neonBlue,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  ghostText: {
-    color: Colors.neonBlue,
-    fontWeight: '600',
   },
   disabled: {
     opacity: 0.5,

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, StyleSheet, View, Platform } from 'react-native';
 import { Heart, HeartOff, ShoppingCart } from 'lucide-react-native';
-import { Colors, FontSize, Radius, Spacing } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
+import { FontSize, Radius, Spacing } from '@/constants/theme';
 
 type Props = {
   visible: boolean;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function WishlistToast({ visible, added, message, variant = 'wishlist' }: Props) {
+  const Colors = useThemeColors();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
@@ -33,64 +35,51 @@ export default function WishlistToast({ visible, added, message, variant = 'wish
 
   const isCart = variant === 'cart';
   const accentColor = isCart ? Colors.neonBlue : (added ? '#FF4D6D' : Colors.textMuted);
-  const iconBg = isCart
-    ? Colors.neonBlueGlow
-    : (added ? 'rgba(255,77,109,0.15)' : 'rgba(255,255,255,0.08)');
+  const iconBg = isCart ? Colors.neonBlueGlow : (added ? 'rgba(255,77,109,0.15)' : Colors.borderLight);
 
   return (
     <Animated.View
       pointerEvents="none"
-      style={[
-        styles.toast,
-        { opacity, transform: [{ translateY }, { scale }] },
-      ]}
+      style={[{
+        position: 'absolute',
+        bottom: Platform.OS === 'web' ? 100 : 90,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        backgroundColor: Colors.overlay,
+        borderRadius: Radius.full,
+        paddingVertical: 10,
+        paddingHorizontal: Spacing.lg,
+        borderWidth: 1,
+        borderColor: Colors.borderLight,
+        zIndex: 9999,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 10,
+      }, { opacity, transform: [{ translateY }, { scale }] }]}
     >
       <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-        {isCart ? (
-          <ShoppingCart size={14} color={accentColor} strokeWidth={2} />
-        ) : added ? (
-          <Heart size={14} color={accentColor} fill={accentColor} strokeWidth={2} />
-        ) : (
-          <HeartOff size={14} color={accentColor} strokeWidth={2} />
-        )}
+        {isCart
+          ? <ShoppingCart size={14} color={accentColor} strokeWidth={2} />
+          : added
+            ? <Heart size={14} color={accentColor} fill={accentColor} strokeWidth={2} />
+            : <HeartOff size={14} color={accentColor} strokeWidth={2} />
+        }
       </View>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={{ color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '600' }}>{message}</Text>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  toast: {
-    position: 'absolute',
-    bottom: Platform.OS === 'web' ? 100 : 90,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(10,20,40,0.92)',
-    borderRadius: Radius.full,
-    paddingVertical: 10,
-    paddingHorizontal: Spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    zIndex: 9999,
-    // Shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
-  },
   iconWrap: {
     width: 24,
     height: 24,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  message: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
   },
 });

@@ -1,19 +1,14 @@
 import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ShoppingCart } from 'lucide-react-native';
 import { Product, getProductName, getProductImage } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useThemeColors } from '@/context/ThemeContext';
 import StarRating from './StarRating';
 import WishlistHeart from './WishlistHeart';
-import { Colors, Radius, Spacing, FontSize, Shadow } from '@/constants/theme';
+import { Radius, Shadow } from '@/constants/theme';
 import { useUISize } from '@/context/UISizeContext';
 import { useWishlistToast } from '@/context/WishlistToastContext';
 
@@ -24,6 +19,7 @@ type Props = {
 
 export default function ProductCard({ product, onWishlistLoginRequired }: Props) {
   const router = useRouter();
+  const Colors = useThemeColors();
   const { addToCart } = useCart();
   const { language, isRTL } = useLanguage();
   const { productCardSizes, globalSizes } = useUISize();
@@ -43,61 +39,45 @@ export default function ProductCard({ product, onWishlistLoginRequired }: Props)
   return (
     <TouchableOpacity
       activeOpacity={0.85}
-      style={[styles.card, { borderRadius: cardR }]}
+      style={[{ flex: 1, backgroundColor: Colors.backgroundCard, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', borderRadius: cardR, ...Shadow.card }]}
       onPress={() => router.push(`/product/${product.id}`)}
     >
-      <View style={[styles.imageContainer, { height: imageH, borderTopLeftRadius: cardR, borderTopRightRadius: cardR }]}>
+      <View style={{ height: imageH, width: '100%', backgroundColor: Colors.backgroundSecondary, position: 'relative', overflow: 'hidden', borderTopLeftRadius: cardR, borderTopRightRadius: cardR }}>
         <Image
           source={{ uri: getProductImage(product) }}
-          style={[StyleSheet.absoluteFillObject, styles.image]}
+          style={[StyleSheet.absoluteFillObject]}
           resizeMode="cover"
         />
         {product.badge && (
-          <View style={[styles.badge, isRTL ? styles.badgeRTL : styles.badgeLTR]}>
-            <Text style={[styles.badgeText, { fontSize: Math.max(9, productCardSizes.titleFontSize - 3) }]}>
+          <View style={[{ position: 'absolute', top: 6, backgroundColor: Colors.neonBlue, borderRadius: Radius.sm, paddingHorizontal: 5, paddingVertical: 2 }, isRTL ? { right: 8 } : { left: 8 }]}>
+            <Text style={{ color: Colors.white, fontWeight: '800', letterSpacing: 0.5, fontSize: Math.max(9, productCardSizes.titleFontSize - 3) }}>
               {product.badge}
             </Text>
           </View>
         )}
-        <WishlistHeart
-          product={product}
-          size={14}
-          variant="card"
-          onLoginRequired={onWishlistLoginRequired}
-        />
+        <WishlistHeart product={product} size={14} variant="card" onLoginRequired={onWishlistLoginRequired} />
       </View>
 
-      <View style={[styles.info, { padding: pad }]}>
-        <Text
-          style={[styles.name, {
-            fontSize: productCardSizes.titleFontSize,
-            textAlign: isRTL ? 'right' : 'left',
-          }]}
-          numberOfLines={2}
-        >
+      <View style={{ padding: pad, gap: 2 }}>
+        <Text style={{ color: Colors.textPrimary, fontWeight: '600', lineHeight: 15, fontSize: productCardSizes.titleFontSize, textAlign: isRTL ? 'right' : 'left' }} numberOfLines={2}>
           {getProductName(product, language)}
         </Text>
-        <View style={[styles.ratingRow, isRTL && styles.ratingRowRTL]}>
-          <StarRating
-            rating={product.rating}
-            reviewCount={product.review_count}
-            size={Math.max(8, productCardSizes.ratingFontSize - 1)}
-            showCount={false}
-          />
+        <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+          <StarRating rating={product.rating} reviewCount={product.review_count} size={Math.max(8, productCardSizes.ratingFontSize - 1)} showCount={false} />
         </View>
-        <View style={[styles.priceRow, isRTL && styles.priceRowRTL]}>
-          <View style={[styles.priceGroup, isRTL && styles.priceGroupRTL]}>
-            <Text style={[styles.price, { fontSize: productCardSizes.priceFontSize }]}>
+        <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'baseline', gap: 4 }}>
+            <Text style={{ color: Colors.neonBlue, fontWeight: '800', fontSize: productCardSizes.priceFontSize }}>
               ${product.price.toLocaleString()}
             </Text>
             {product.compare_price != null && product.compare_price > product.price && (
-              <Text style={[styles.comparePrice, { fontSize: Math.max(9, productCardSizes.priceFontSize - 3) }]}>
+              <Text style={{ color: Colors.textMuted, fontWeight: '500', textDecorationLine: 'line-through', fontSize: Math.max(9, productCardSizes.priceFontSize - 3) }}>
                 ${product.compare_price.toLocaleString()}
               </Text>
             )}
           </View>
           <TouchableOpacity
-            style={[styles.addBtn, { borderRadius: btnR }]}
+            style={{ backgroundColor: Colors.neonBlueDim, width: 26, height: 26, justifyContent: 'center', alignItems: 'center', borderRadius: btnR, ...Shadow.neonBlueSubtle }}
             onPress={handleAddToCart}
             activeOpacity={0.8}
           >
@@ -108,78 +88,3 @@ export default function ProductCard({ product, onWishlistLoginRequired }: Props)
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: Colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-    ...Shadow.card,
-  },
-  imageContainer: {
-    width: '100%',
-    backgroundColor: Colors.backgroundSecondary,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  image: {
-    objectFit: 'cover',
-  } as any,
-  badge: {
-    position: 'absolute',
-    top: 6,
-    backgroundColor: Colors.neonBlue,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  badgeLTR: { left: 8 },
-  badgeRTL: { right: 8 },
-  badgeText: {
-    color: Colors.white,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  info: {
-    gap: 2,
-  },
-  name: {
-    color: Colors.textPrimary,
-    fontWeight: '600',
-    lineHeight: 15,
-  },
-  ratingRow: { flexDirection: 'row' },
-  ratingRowRTL: { flexDirection: 'row-reverse' },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  priceRowRTL: { flexDirection: 'row-reverse' },
-  priceGroup: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  priceGroupRTL: { flexDirection: 'row-reverse' },
-  price: {
-    color: Colors.neonBlue,
-    fontWeight: '800',
-  },
-  comparePrice: {
-    color: Colors.textMuted,
-    fontWeight: '500',
-    textDecorationLine: 'line-through',
-  },
-  addBtn: {
-    backgroundColor: Colors.neonBlueDim,
-    width: 26,
-    height: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadow.neonBlueSubtle,
-  },
-});

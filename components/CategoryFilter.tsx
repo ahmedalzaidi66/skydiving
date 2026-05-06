@@ -1,11 +1,7 @@
 import React from 'react';
-import {
-  ScrollView,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-} from 'react-native';
-import { Colors, Radius, Spacing, FontSize } from '@/constants/theme';
+import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Spacing } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
 import { Category, getCategoryName } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useUISize } from '@/context/UISizeContext';
@@ -25,22 +21,16 @@ export const CATEGORIES = [
 ];
 
 export default function CategoryFilter({ selected, onSelect, categories }: Props) {
+  const Colors = useThemeColors();
   const { language } = useLanguage();
   const { filterSizes } = useUISize();
 
   const items = categories && categories.length > 0
-    ? [{ id: 'all', label: 'All' }, ...categories.map(c => ({
-        id: c.slug,
-        label: getCategoryName(c, language),
-      }))]
+    ? [{ id: 'all', label: 'All' }, ...categories.map(c => ({ id: c.slug, label: getCategoryName(c, language) }))]
     : CATEGORIES;
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-    >
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.container}>
       {items.map((cat) => {
         const active = cat.id === selected;
         return (
@@ -48,14 +38,19 @@ export default function CategoryFilter({ selected, onSelect, categories }: Props
             key={cat.id}
             onPress={() => onSelect(cat.id)}
             activeOpacity={0.8}
-            style={[styles.chip, active && styles.chipActive, {
+            style={[{
+              backgroundColor: active ? Colors.neonBlueGlow : Colors.backgroundCard,
+              borderWidth: 1,
+              borderColor: active ? Colors.neonBlue : Colors.border,
+              justifyContent: 'center' as const,
+              alignItems: 'center' as const,
               height: filterSizes.buttonHeight,
               paddingHorizontal: filterSizes.paddingH,
               paddingVertical: filterSizes.paddingV,
               borderRadius: filterSizes.borderRadius,
             }]}
           >
-            <Text style={[styles.label, active && styles.labelActive, { fontSize: filterSizes.fontSize }]}>
+            <Text style={{ color: active ? Colors.neonBlue : Colors.textSecondary, fontSize: filterSizes.fontSize, fontWeight: '600' }}>
               {cat.label}
             </Text>
           </TouchableOpacity>
@@ -71,24 +66,5 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  chip: {
-    backgroundColor: Colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chipActive: {
-    backgroundColor: Colors.neonBlueGlow,
-    borderColor: Colors.neonBlue,
-  },
-  label: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  labelActive: {
-    color: Colors.neonBlue,
   },
 });
