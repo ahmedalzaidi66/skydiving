@@ -210,9 +210,17 @@ export default function ProductDetailScreen() {
   // Footer add-to-cart success fade animation
   const successOpacity = useRef(new Animated.Value(0)).current;
 
+  // Track latest fetch to prevent stale state on fast navigation
+  const fetchId = useRef(0);
+
   useEffect(() => {
     if (!id) return;
+
+    const thisFetch = ++fetchId.current;
+
+    // Reset to initial state immediately for fast navigation feel
     setLoading(true);
+    setProduct(null);
     setRelated([]);
     setActiveImageIndex(0);
     setColorVariants([]);
@@ -222,33 +230,48 @@ export default function ProductDetailScreen() {
     setReviewRating(0);
     setReviewBody('');
     setReviewName('');
+
+    // Phase 1: Fetch main product — render as soon as it arrives
     fetchProductById(id, language)
-      .then(async (data) => {
-        if (data) {
-          setProduct(data);
-          getRelatedProducts(data, language, 4).then(setRelated).catch(() => {});
-          const { data: variants } = await supabase
+      .then((data) => {
+        if (thisFetch !== fetchId.current) return; // navigated away
+        setProduct(data);
+        setLoading(false);
+
+        if (!data) return;
+
+        // Phase 2: Lazy-load secondary data in parallel — don't block render
+        Promise.all([
+          supabase
             .from('product_color_variants')
-            .select('*')
+            .select('id, name, hex, image_url, is_default, sort_order, stock')
             .eq('product_id', data.id)
-            .order('sort_order', { ascending: true });
-          if (variants && variants.length > 0) {
-            setColorVariants(variants as ColorVariant[]);
-            const def = (variants as ColorVariant[]).find((v) => v.is_default) ?? variants[0] as ColorVariant;
-            setSelectedColor(def);
-          }
-          const { data: reviews } = await supabase
+            .order('sort_order', { ascending: true }),
+          supabase
             .from('reviews')
             .select('id, customer_name, rating, body, created_at')
             .eq('product_id', data.id)
             .eq('status', 'approved')
             .order('created_at', { ascending: false })
-            .limit(10);
-          setApprovedReviews(reviews ?? []);
-        }
-        setLoading(false);
+            .limit(8),
+          getRelatedProducts(data, language, 4),
+        ]).then(([variantRes, reviewRes, relatedData]) => {
+          if (thisFetch !== fetchId.current) return;
+
+          const variants = variantRes.data as ColorVariant[] | null;
+          if (variants && variants.length > 0) {
+            setColorVariants(variants);
+            setSelectedColor(variants.find((v) => v.is_default) ?? variants[0]);
+          }
+
+          setApprovedReviews(reviewRes.data ?? []);
+          setRelated(relatedData);
+        }).catch(() => {});
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        if (thisFetch !== fetchId.current) return;
+        setLoading(false);
+      });
   }, [id, language]);
 
   const handleAddToCart = () => {

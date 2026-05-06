@@ -346,7 +346,13 @@ export async function fetchProductById(id: string, language = 'en'): Promise<Pro
   const { data, error } = await supabase
     .from('products')
     .select(`
-      *,
+      id, name, slug, price, compare_price, category, category_id,
+      rating, review_count, image_url, main_image, images, stock,
+      unlimited_stock, low_stock_threshold, badge, is_featured, featured,
+      status, sku, specifications,
+      name_ar, name_es, name_de,
+      description, description_ar, description_es, description_de,
+      created_at, updated_at,
       translation:product_translations!left(id, product_id, language, name, short_description, full_description, meta_title, meta_description),
       product_images(id, url, is_main, sort_order)
     `)
@@ -628,19 +634,26 @@ export async function getRelatedProducts(
   language = 'en',
   limit = 4
 ): Promise<Product[]> {
-  // Fetch a broad pool: same category first, then fill with active products
+  // Fetch a tight pool — same category first, DB-ordered by relevance signals
   const { data: pool, error } = await supabase
     .from('products')
     .select(`
-      *,
+      id, name, slug, price, compare_price, category, category_id,
+      rating, review_count, image_url, main_image, images, stock,
+      unlimited_stock, low_stock_threshold, badge, is_featured, featured,
+      status, sku, specifications,
+      name_ar, name_es, name_de,
+      description, description_ar, description_es, description_de,
+      created_at, updated_at,
       translation:product_translations!left(id, product_id, language, name, short_description, full_description, meta_title, meta_description),
       product_images(id, url, is_main, sort_order)
     `)
     .eq('status', 'active')
+    .eq('category', product.category)
     .neq('id', product.id)
     .order('is_featured', { ascending: false })
     .order('review_count', { ascending: false })
-    .limit(40);
+    .limit(12);
 
   if (error || !pool) return [];
 

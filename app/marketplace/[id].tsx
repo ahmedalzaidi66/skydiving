@@ -106,17 +106,31 @@ export default function ListingDetailScreen() {
   const [boostDone, setBoostDone] = useState(false);
   const [existingBoostStatus, setExistingBoostStatus] = useState<string | null>(null);
 
-  // View tracking — once per session
+  // View tracking — once per listing session
   const viewTracked = useRef(false);
+  // Prevent stale state on fast navigation
+  const fetchId = useRef(0);
 
   useEffect(() => {
     if (!id) return;
-    loadAll();
-  }, [id]);
 
-  const loadAll = async () => {
-    const [{ data: listingData }, { data: ratingData }] = await Promise.all([
-      supabase.from('used_gear_listings').select('*').eq('id', id).maybeSingle(),
+    const thisFetch = ++fetchId.current;
+    viewTracked.current = false;
+
+    setLoading(true);
+    setListing(null);
+    setSeller(null);
+    setMyRating(0);
+    setExistingRating(null);
+    setExistingBoostStatus(null);
+
+    // Phase 1: Fetch listing + user's existing rating in parallel — render immediately
+    Promise.all([
+      supabase
+        .from('used_gear_listings')
+        .select('id, title, price, description, condition, category, location, contact, status, user_id, images, main_image_url, shipping_included, seller_verified, boost_status, boost_expires_at, view_count, created_at, make, model, size, color, dom, serial_number, total_jumps, main_make, main_model, main_size, main_dom, main_jumps, main_serial, reserve_make, reserve_model, reserve_size, reserve_dom, reserve_repacks, reserve_serial, aad_make, aad_model, aad_dom, aad_eol, aad_jumps, aad_needs_service, aad_serial')
+        .eq('id', id)
+        .maybeSingle(),
       user
         ? supabase
             .from('seller_ratings')
@@ -124,61 +138,69 @@ export default function ListingDetailScreen() {
             .eq('listing_id', id)
             .eq('rater_id', user.id)
             .maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+        : Promise.resolve({ data: null, error: null }),
+    ]).then(([{ data: listingData }, { data: ratingData }]) => {
+      if (thisFetch !== fetchId.current) return;
 
-    const l = listingData as UsedGearListing | null;
-    setListing(l);
-    if (l?.boost_status) setExistingBoostStatus(l.boost_status);
+      const l = listingData as UsedGearListing | null;
+      setListing(l);
+      setLoading(false);
 
-    if (ratingData) {
-      setExistingRating((ratingData as any).stars);
-      setMyRating((ratingData as any).stars);
-    }
+      if (ratingData) {
+        setExistingRating((ratingData as any).stars);
+        setMyRating((ratingData as any).stars);
+      }
 
-    if (l?.user_id) {
-      const { data: sellerData } = await supabase
-        .from('seller_profiles')
-        .select('*')
-        .eq('user_id', l.user_id)
-        .maybeSingle();
-      setSeller(sellerData as SellerProfile | null);
-    }
+      if (l?.boost_status) setExistingBoostStatus(l.boost_status);
 
-    setLoading(false);
-  };
+      if (!l) return;
 
-  // Track view after listing loaded
-  useEffect(() => {
-    if (!listing || viewTracked.current) return;
-    viewTracked.current = true;
+      // Phase 2: Lazy-load seller profile + boost settings in parallel after render
+      const secondary: Promise<any>[] = [];
 
-    const viewerKey = user?.id
-      ? `user_${user.id}`
-      : `anon_${Platform.OS}_${Date.now().toString(36).slice(-6)}`;
+      if (l.user_id) {
+        secondary.push(
+          supabase
+            .from('seller_profiles')
+            .select('user_id, is_verified, total_listings, join_date, avg_rating, rating_count')
+            .eq('user_id', l.user_id)
+            .maybeSingle()
+            .then(({ data }) => {
+              if (thisFetch !== fetchId.current) return;
+              setSeller(data as SellerProfile | null);
+            })
+        );
+      }
 
-    supabase.from('listing_views').insert({
-      listing_id: listing.id,
-      viewer_key: viewerKey,
-    }).then(() => {});
-  }, [listing]);
+      secondary.push(
+        supabase
+          .from('site_settings')
+          .select('key, value')
+          .in('key', ['boost_price_usd', 'boost_duration_days'])
+          .then(({ data }) => {
+            if (!data || thisFetch !== fetchId.current) return;
+            const map: Record<string, string> = {};
+            for (const r of data as { key: string; value: string }[]) map[r.key] = r.value;
+            setBoostSettings({
+              price: parseFloat(map['boost_price_usd'] ?? '9.99'),
+              durationDays: parseInt(map['boost_duration_days'] ?? '7', 10),
+            });
+          })
+      );
 
-  // Load boost settings from site_settings
-  useEffect(() => {
-    supabase
-      .from('site_settings')
-      .select('key, value')
-      .in('key', ['boost_price_usd', 'boost_duration_days'])
-      .then(({ data }) => {
-        if (!data) return;
-        const map: Record<string, string> = {};
-        for (const r of data as { key: string; value: string }[]) map[r.key] = r.value;
-        setBoostSettings({
-          price: parseFloat(map['boost_price_usd'] ?? '9.99'),
-          durationDays: parseInt(map['boost_duration_days'] ?? '7', 10),
-        });
-      });
-  }, []);
+      Promise.all(secondary).catch(() => {});
+
+      // Fire-and-forget view tracking
+      const viewerKey = user?.id
+        ? `user_${user.id}`
+        : `anon_${Platform.OS}_${Date.now().toString(36).slice(-6)}`;
+      supabase.from('listing_views').insert({ listing_id: l.id, viewer_key: viewerKey }).then(() => {});
+      viewTracked.current = true;
+    }).catch(() => {
+      if (thisFetch !== fetchId.current) return;
+      setLoading(false);
+    });
+  }, [id]);
 
   const handleRate = async (stars: number) => {
     if (!user) { setRatingMsg(t.signInToRate); return; }
@@ -209,7 +231,7 @@ export default function ListingDetailScreen() {
       if (listing.user_id) {
         const { data } = await supabase
           .from('seller_profiles')
-          .select('*')
+          .select('user_id, is_verified, total_listings, join_date, avg_rating, rating_count')
           .eq('user_id', listing.user_id)
           .maybeSingle();
         setSeller(data as SellerProfile | null);
