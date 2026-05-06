@@ -5,7 +5,9 @@ import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 
-// Screens where the back button should NOT appear
+// Screens where the back button should NOT appear.
+// Includes both the full group path (native) and the bare path (web, where Expo Router
+// strips route group prefixes from the URL).
 const TAB_ROOTS = [
   '/',
   '/(tabs)',
@@ -18,6 +20,14 @@ const TAB_ROOTS = [
   '/(tabs)/wishlist',
   '/(tabs)/canopy',
   '/(tabs)/products',
+  // bare paths used by Expo Router on web
+  '/cart',
+  '/about',
+  '/marketplace',
+  '/account',
+  '/wishlist',
+  '/canopy',
+  '/products',
 ];
 
 function isTabRoot(pathname: string): boolean {
