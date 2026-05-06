@@ -168,6 +168,11 @@ function ReviewsScreen() {
               <View style={{ flex: 2 }}>
                 <Text style={styles.customerName} numberOfLines={1}>{review.customer_name}</Text>
                 <Text style={styles.customerEmail} numberOfLines={1}>{review.customer_email}</Text>
+                {(review as any).review_type === 'gear' && (
+                  <View style={styles.typeBadge}>
+                    <Text style={styles.typeBadgeText}>GEAR</Text>
+                  </View>
+                )}
               </View>
               <View style={[styles.ratingRow, { flex: 1 }]}>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -246,6 +251,12 @@ function ReviewsScreen() {
                     ))}
                   </View>
                 </View>
+
+                {(selectedReview as any).review_type === 'gear' && (
+                  <View style={[styles.typeBadge, { marginBottom: Spacing.sm }]}>
+                    <Text style={styles.typeBadgeText}>GEAR LISTING REVIEW</Text>
+                  </View>
+                )}
 
                 <Text style={styles.reviewBody}>{selectedReview.body}</Text>
 
@@ -364,4 +375,6 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 1, height: 46, borderRadius: Radius.md, backgroundColor: Colors.neonBlue, justifyContent: 'center', alignItems: 'center' },
   saveBtnText: { color: Colors.background, fontSize: FontSize.md, fontWeight: '800' },
   errorText: { color: Colors.error, fontSize: FontSize.sm, marginBottom: Spacing.sm },
+  typeBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,179,0,0.12)', borderRadius: Radius.sm, borderWidth: 1, borderColor: 'rgba(255,179,0,0.3)', paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 },
+  typeBadgeText: { color: Colors.warning, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
 });

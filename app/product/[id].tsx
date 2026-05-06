@@ -11,6 +11,8 @@ import {
   Modal,
   PanResponder,
   Animated,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +26,7 @@ import {
   getProductImages, supabase,
 } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 
 export type ColorVariant = {
   id: string;
@@ -183,6 +186,7 @@ export default function ProductDetailScreen() {
   const router = useRouter();
   const { addToCart, items } = useCart();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -194,6 +198,15 @@ export default function ProductDetailScreen() {
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([]);
   const [selectedColor, setSelectedColor] = useState<ColorVariant | null>(null);
 
+  // Review form
+  const [approvedReviews, setApprovedReviews] = useState<Array<{ id: string; customer_name: string; rating: number; body: string; created_at: string }>>([]);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewBody, setReviewBody] = useState('');
+  const [reviewName, setReviewName] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+
   // Footer add-to-cart success fade animation
   const successOpacity = useRef(new Animated.Value(0)).current;
 
@@ -204,6 +217,11 @@ export default function ProductDetailScreen() {
     setActiveImageIndex(0);
     setColorVariants([]);
     setSelectedColor(null);
+    setApprovedReviews([]);
+    setReviewSubmitted(false);
+    setReviewRating(0);
+    setReviewBody('');
+    setReviewName('');
     fetchProductById(id, language)
       .then(async (data) => {
         if (data) {
@@ -219,6 +237,14 @@ export default function ProductDetailScreen() {
             const def = (variants as ColorVariant[]).find((v) => v.is_default) ?? variants[0] as ColorVariant;
             setSelectedColor(def);
           }
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select('id, customer_name, rating, body, created_at')
+            .eq('product_id', data.id)
+            .eq('status', 'approved')
+            .order('created_at', { ascending: false })
+            .limit(10);
+          setApprovedReviews(reviews ?? []);
         }
         setLoading(false);
       })
@@ -244,6 +270,33 @@ export default function ProductDetailScreen() {
       Animated.delay(1400),
       Animated.timing(successOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
     ]).start(() => setAddedFeedback(false));
+  };
+
+  const handleSubmitReview = async () => {
+    if (reviewRating === 0) { setReviewError('Please select a star rating.'); return; }
+    const name = reviewName.trim() || (user?.email?.split('@')[0] ?? 'Anonymous');
+    if (reviewBody.trim().length < 10) { setReviewError('Review must be at least 10 characters.'); return; }
+    setReviewError('');
+    setReviewSubmitting(true);
+    const { error } = await supabase.from('reviews').insert({
+      product_id: id,
+      user_id: user?.id ?? null,
+      customer_name: name,
+      customer_email: user?.email ?? '',
+      rating: reviewRating,
+      body: reviewBody.trim(),
+      status: 'pending',
+      review_type: 'product',
+    });
+    setReviewSubmitting(false);
+    if (error) {
+      setReviewError('Failed to submit review. Please try again.');
+    } else {
+      setReviewSubmitted(true);
+      setReviewRating(0);
+      setReviewBody('');
+      setReviewName('');
+    }
   };
 
   const cartItem = items.find((i) => i.product.id === id);
@@ -525,6 +578,133 @@ export default function ProductDetailScreen() {
           </View>
 
           <View style={{ height: Spacing.xl }} />
+        </View>
+
+        {/* ── Customer Reviews ── */}
+        <View style={styles.reviewsSection}>
+          <View style={styles.reviewsSectionHeader}>
+            <View style={styles.relatedAccent} />
+            <Text style={styles.relatedTitle}>Customer Reviews</Text>
+            {product.review_count > 0 && (
+              <View style={styles.reviewsCountBadge}>
+                <Text style={styles.reviewsCountText}>{product.review_count}</Text>
+              </View>
+            )}
+          </View>
+
+          {approvedReviews.length > 0 && (
+            <View style={styles.reviewsList}>
+              {approvedReviews.map((rv) => (
+                <View key={rv.id} style={styles.reviewCard}>
+                  <View style={styles.reviewCardHeader}>
+                    <View style={styles.reviewAvatar}>
+                      <Text style={styles.reviewAvatarText}>{rv.customer_name?.[0]?.toUpperCase() ?? '?'}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.reviewAuthor}>{rv.customer_name}</Text>
+                      <Text style={styles.reviewDate}>
+                        {new Date(rv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    </View>
+                    <View style={styles.reviewStars}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={12}
+                          color={i < rv.rating ? Colors.gold : Colors.border}
+                          fill={i < rv.rating ? Colors.gold : 'transparent'}
+                          strokeWidth={1.5}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                  <Text style={styles.reviewBodyText}>{rv.body}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {approvedReviews.length === 0 && (
+            <Text style={styles.noReviewsText}>No reviews yet. Be the first to review this product.</Text>
+          )}
+
+          {/* Submit review form */}
+          <View style={styles.reviewForm}>
+            <Text style={styles.reviewFormTitle}>
+              {reviewSubmitted ? 'Review Submitted!' : 'Write a Review'}
+            </Text>
+            {reviewSubmitted ? (
+              <View style={styles.reviewSuccessBox}>
+                <Text style={styles.reviewSuccessText}>
+                  Thank you! Your review is pending admin approval and will appear once approved.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* Star picker */}
+                <Text style={styles.reviewFieldLabel}>Rating *</Text>
+                <View style={styles.reviewStarPicker}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <TouchableOpacity
+                      key={s}
+                      onPress={() => { setReviewRating(s); setReviewError(''); }}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Star
+                        size={32}
+                        color={s <= reviewRating ? Colors.gold : Colors.textMuted}
+                        fill={s <= reviewRating ? Colors.gold : 'transparent'}
+                        strokeWidth={1.5}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {!user && (
+                  <>
+                    <Text style={styles.reviewFieldLabel}>Your Name</Text>
+                    <TextInput
+                      style={styles.reviewInput}
+                      value={reviewName}
+                      onChangeText={setReviewName}
+                      placeholder="Enter your name"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+                  </>
+                )}
+
+                <Text style={styles.reviewFieldLabel}>Review *</Text>
+                <TextInput
+                  style={[styles.reviewInput, styles.reviewTextArea]}
+                  value={reviewBody}
+                  onChangeText={setReviewBody}
+                  placeholder="Share your experience with this product..."
+                  placeholderTextColor={Colors.textMuted}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+
+                {reviewError !== '' && (
+                  <Text style={styles.reviewErrorText}>{reviewError}</Text>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.reviewSubmitBtn, reviewSubmitting && { opacity: 0.5 }]}
+                  onPress={handleSubmitReview}
+                  activeOpacity={0.8}
+                  disabled={reviewSubmitting}
+                >
+                  {reviewSubmitting ? (
+                    <ActivityIndicator size="small" color={Colors.background} />
+                  ) : (
+                    <Text style={styles.reviewSubmitBtnText}>Submit Review</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
 
         {/* ── Related products ── */}
@@ -1142,5 +1322,158 @@ const styles = StyleSheet.create({
   },
   relatedCard: {
     width: 160,
+  },
+  reviewsSection: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
+  },
+  reviewsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: Spacing.md,
+  },
+  reviewsCountBadge: {
+    backgroundColor: Colors.neonBlueGlow,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.neonBlueBorder,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 4,
+  },
+  reviewsCountText: {
+    color: Colors.neonBlue,
+    fontSize: FontSize.xs,
+    fontWeight: '800',
+  },
+  reviewsList: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  reviewCard: {
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: 8,
+  },
+  reviewCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  reviewAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.neonBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  reviewAvatarText: {
+    color: Colors.background,
+    fontSize: FontSize.sm,
+    fontWeight: '800',
+  },
+  reviewAuthor: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  reviewDate: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+  },
+  reviewStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewBodyText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+  },
+  noReviewsText: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+    marginBottom: Spacing.md,
+  },
+  reviewForm: {
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  reviewFormTitle: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.md,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  reviewSuccessBox: {
+    backgroundColor: 'rgba(0,230,118,0.08)',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0,230,118,0.25)',
+    padding: Spacing.md,
+  },
+  reviewSuccessText: {
+    color: Colors.success,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  reviewFieldLabel: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  reviewStarPicker: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  reviewInput: {
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    color: Colors.textPrimary,
+    fontSize: FontSize.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+  },
+  reviewTextArea: {
+    minHeight: 88,
+    textAlignVertical: 'top',
+  },
+  reviewErrorText: {
+    color: Colors.error,
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+  },
+  reviewSubmitBtn: {
+    backgroundColor: Colors.neonBlue,
+    borderRadius: Radius.full,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  reviewSubmitBtnText: {
+    color: Colors.background,
+    fontSize: FontSize.md,
+    fontWeight: '800',
   },
 });

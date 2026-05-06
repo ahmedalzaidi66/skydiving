@@ -231,11 +231,14 @@ export type HomepageContent = {
 export type Review = {
   id: string;
   product_id: string | null;
+  gear_listing_id: string | null;
+  user_id: string | null;
   customer_name: string;
   customer_email: string;
   rating: number;
   body: string;
   status: 'pending' | 'approved' | 'rejected';
+  review_type: 'product' | 'gear';
   created_at: string;
 };
 
