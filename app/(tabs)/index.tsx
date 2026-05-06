@@ -23,8 +23,8 @@ import AppHeader from '@/components/AppHeader';
 import { useLanguage } from '@/context/LanguageContext';
 import { PageBlock } from '@/context/PageBuilderContext';
 import { useLayout, SectionId, SpacingBreakpoint } from '@/context/LayoutContext';
-import { Colors, Radius } from '@/constants/theme';
-import { useTheme } from '@/context/ThemeContext';
+import { Radius } from '@/constants/theme';
+import { useTheme, useThemeColors } from '@/context/ThemeContext';
 import HeroVideo from '@/components/HeroVideo';
 import { fetchProducts, fetchCategories, getProductName, getProductImage, getCategoryName, Category } from '@/lib/supabase';
 import StarRating from '@/components/StarRating';
@@ -293,7 +293,7 @@ export default function ShopScreen() {
               fetchAll(language);
               refreshCMS(language);
             }}
-            tintColor={Colors.neonBlue}
+            tintColor={colors.neonBlue}
           />
         }
       >
@@ -586,12 +586,11 @@ const resultsStyles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     left: 5,
-    backgroundColor: Colors.neonBlue,
     borderRadius: 3,
     paddingHorizontal: 4,
     paddingVertical: 1,
   },
-  badgeText: { color: '#050A14', fontSize: 8, fontWeight: '800' },
+  badgeText: { fontSize: 8, fontWeight: '800' },
   cardBody: { padding: 7, gap: 2 },
   cardName: {
     color: '#E8F4FD',
@@ -600,7 +599,6 @@ const resultsStyles = StyleSheet.create({
     lineHeight: 14,
   },
   cardPrice: {
-    color: Colors.neonBlue,
     fontSize: 12,
     fontWeight: '900',
   },
@@ -612,7 +610,7 @@ const resultsStyles = StyleSheet.create({
     paddingBottom: 6,
   },
   recentLabel: { color: 'rgba(150,190,220,0.55)', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  clearBtn: { color: Colors.neonBlue, fontSize: 11, fontWeight: '700' },
+  clearBtn: { fontSize: 11, fontWeight: '700' },
   recentItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -644,6 +642,7 @@ function ShopByCategorySection({
   t: { shopByCategory?: string };
 }) {
   const router = useRouter();
+  const colors = useThemeColors();
 
   const navigateToCategory = (slug: string) => {
     router.push(`/(tabs)/products?category=${slug}` as any);
@@ -667,7 +666,7 @@ function ShopByCategorySection({
             />
           ) : (
             <View style={catStyles.circlePlaceholder}>
-              <Text style={catStyles.circlePlaceholderText}>
+              <Text style={[catStyles.circlePlaceholderText, { color: colors.neonBlue }]}>
                 {name.slice(0, 2).toUpperCase()}
               </Text>
             </View>
@@ -744,7 +743,6 @@ const catStyles = StyleSheet.create({
     backgroundColor: '#0D1E35',
   },
   circlePlaceholderText: {
-    color: Colors.neonBlue,
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 1,
@@ -770,6 +768,7 @@ const catStyles = StyleSheet.create({
 
 function FeaturedSection({ title, products, language, t }: { title: string; products: Product[]; language: string; t: { view: string; seeAll: string } }) {
   const router = useRouter();
+  const colors = useThemeColors();
   const { addToCart } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { showCartToast, showWishlistToast } = useWishlistToast();
@@ -801,9 +800,9 @@ function FeaturedSection({ title, products, language, t }: { title: string; prod
         <Text style={styles.sectionTitle}>{title.toUpperCase()}</Text>
         <TouchableOpacity style={styles.seeAllBtn} onPress={() => router.push('/(tabs)/products' as any)} activeOpacity={0.7}>
           <View style={styles.seeAllDots}>
-            {[0, 1, 2].map(i => <View key={i} style={styles.seeAllDot} />)}
+            {[0, 1, 2].map(i => <View key={i} style={[styles.seeAllDot, { backgroundColor: colors.neonBlue }]} />)}
           </View>
-          <ChevronRight size={13} color={Colors.neonBlue} strokeWidth={2.5} />
+          <ChevronRight size={13} color={colors.neonBlue} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
       <AutoScrollRow
@@ -830,6 +829,7 @@ function FeaturedCard({
   onAddToCart: (e: any) => void;
   onWishlist: (e: any) => void;
 }) {
+  const colors = useThemeColors();
   return (
     <TouchableOpacity
       style={styles.featuredCard}
@@ -867,17 +867,17 @@ function FeaturedCard({
           size={9}
           showCount
         />
-        <Text style={styles.featuredCardPrice}>${product.price.toLocaleString()}</Text>
+        <Text style={[styles.featuredCardPrice, { color: colors.neonBlue }]}>${product.price.toLocaleString()}</Text>
         <View style={styles.featuredCardActions}>
           <TouchableOpacity
             style={styles.featuredCartBtn}
             activeOpacity={0.85}
             onPress={onAddToCart}
           >
-            <ShoppingCart size={10} color={Colors.white} strokeWidth={2} />
+            <ShoppingCart size={10} color={colors.white} strokeWidth={2} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.viewBtn}
+            style={[styles.viewBtn, { backgroundColor: colors.neonBlue, shadowColor: colors.neonBlue }]}
             activeOpacity={0.85}
             onPress={(e) => { e.stopPropagation(); onPress(); }}
           >
@@ -893,6 +893,7 @@ function FeaturedCard({
 
 function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: string; t: { canopyWeightQuestion: string; canopyJumpsQuestion: string } }) {
   const router = useRouter();
+  const colors = useThemeColors();
   const [weight, setWeight] = useState('175');
   const [jumps, setJumps] = useState('150');
 
@@ -910,7 +911,7 @@ function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: st
         {/* Title row: parachute icon + title */}
         <View style={styles.canopyTitleRow}>
           <Image source={LOGO} style={styles.canopyIcon} resizeMode="contain" />
-          <Text style={styles.canopyTitle}>{title.toUpperCase()}</Text>
+          <Text style={[styles.canopyTitle, { color: colors.neonBlue, textShadowColor: colors.neonBlue + '99', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }]}>{title.toUpperCase()}</Text>
         </View>
 
         {/* Weight field */}
@@ -922,7 +923,7 @@ function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: st
               value={weight}
               onChangeText={setWeight}
               keyboardType="numeric"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               selectTextOnFocus
             />
             <Text style={styles.canopyValueUnit}> lbs</Text>
@@ -940,14 +941,14 @@ function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: st
             value={jumps}
             onChangeText={setJumps}
             keyboardType="numeric"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             selectTextOnFocus
           />
         </View>
 
         {/* CTA */}
         <TouchableOpacity
-          style={styles.canopyBtn}
+          style={[styles.canopyBtn, { backgroundColor: colors.neonBlue, shadowColor: colors.neonBlue }]}
           activeOpacity={0.85}
           onPress={() => router.push('/(tabs)/canopy')}
         >
@@ -968,6 +969,7 @@ const GALLERY_IMAGES = [
 
 function GallerySection({ title, reviews }: { title: string; reviews: Review[] }) {
   const { width } = useWindowDimensions();
+  const colors = useThemeColors();
   const gap = 6;
   const imgW = (width - gap * 2) / 3;
   const imgH = Math.round(imgW * 0.68);
@@ -1001,8 +1003,8 @@ function GallerySection({ title, reviews }: { title: string; reviews: Review[] }
           <Star
             key={i}
             size={16}
-            color={Colors.gold}
-            fill={i < avgRating ? Colors.gold : 'transparent'}
+            color={colors.gold}
+            fill={i < avgRating ? colors.gold : 'transparent'}
             strokeWidth={1}
           />
         ))}
@@ -1026,7 +1028,7 @@ function GallerySection({ title, reviews }: { title: string; reviews: Review[] }
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1 },
   scrollContent: { paddingBottom: 8 },
 
   // ── Featured Section ──────────────────────────────────────────────────────
@@ -1061,7 +1063,6 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: Colors.neonBlue,
   },
   featuredGrid: {
     flexDirection: 'row',
@@ -1109,7 +1110,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   featuredCardPrice: {
-    color: Colors.neonBlue,
     fontSize: 12,
     fontWeight: '900',
     marginTop: 1,
@@ -1146,11 +1146,9 @@ const styles = StyleSheet.create({
   },
   viewBtn: {
     flex: 1,
-    backgroundColor: Colors.neonBlue,
     borderRadius: Radius.full,
     paddingVertical: 4,
     alignItems: 'center',
-    shadowColor: '#00BFFF',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 5,
@@ -1189,14 +1187,10 @@ const styles = StyleSheet.create({
     height: 34,
   },
   canopyTitle: {
-    color: Colors.neonBlue,
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 2,
     fontStyle: 'italic',
-    textShadowColor: 'rgba(0,191,255,0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
   },
   canopyFieldRow: {
     flexDirection: 'row',
@@ -1232,12 +1226,10 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   canopyBtn: {
-    backgroundColor: Colors.neonBlue,
     borderRadius: Radius.full,
     paddingVertical: 11,
     alignItems: 'center',
     marginTop: 4,
-    shadowColor: '#00BFFF',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.55,
     shadowRadius: 10,
