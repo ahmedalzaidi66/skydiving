@@ -13,7 +13,7 @@ import {
   Image,
   Modal,
 } from 'react-native';
-import { User, Mail, Lock, LogOut, Package, Eye, EyeOff, ShieldCheck, Heart, ChevronDown, ChevronUp, Trash2, Plus, Minus, TriangleAlert as AlertTriangle, Tag, Pencil, Zap, X, MessageCircle, Calendar, KeyRound } from 'lucide-react-native';
+import { User, Mail, Lock, LogOut, Package, Eye, EyeOff, ShieldCheck, Heart, ChevronDown, ChevronUp, Trash2, Plus, Minus, TriangleAlert as AlertTriangle, Tag, Pencil, Zap, X, MessageCircle, Calendar, KeyRound, MailCheck } from 'lucide-react-native';
 import { useWishlist } from '@/context/WishlistContext';
 import { useRouter } from 'expo-router';
 import { openWhatsApp } from '@/components/WhatsAppButton';
@@ -39,10 +39,120 @@ export default function AccountScreen() {
   return <ProfileView />;
 }
 
+function SignupConfirmation({ email, onGoToLogin }: { email: string; onGoToLogin: () => void }) {
+  return (
+    <View style={scStyles.container}>
+      <View style={scStyles.iconWrap}>
+        <MailCheck size={52} color={Colors.neonBlue} strokeWidth={1.5} />
+      </View>
+      <Text style={scStyles.title}>Account created successfully!</Text>
+      <Text style={scStyles.body}>
+        We sent a confirmation email to{'\n'}
+        <Text style={scStyles.emailHighlight}>{email}</Text>
+      </Text>
+      <Text style={scStyles.body}>
+        Please verify your email before signing in.
+      </Text>
+      <View style={scStyles.warnBox}>
+        <AlertTriangle size={15} color="#F59E0B" strokeWidth={2} />
+        <Text style={scStyles.warnText}>
+          If you don't see the email, check your Spam / Junk folder.
+        </Text>
+      </View>
+      <GlossyButton
+        title="Go to Sign In"
+        onPress={onGoToLogin}
+        fullWidth
+        size="lg"
+        style={{ marginTop: Spacing.sm }}
+      />
+    </View>
+  );
+}
+
+const scStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.lg,
+  },
+  iconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(0,191,255,0.08)',
+    borderWidth: 1.5,
+    borderColor: Colors.neonBlueBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  title: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  body: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emailHighlight: {
+    color: Colors.neonBlue,
+    fontWeight: '700',
+  },
+  warnBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.xs,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    width: '100%',
+  },
+  warnText: {
+    flex: 1,
+    color: '#F59E0B',
+    fontSize: FontSize.xs,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+});
+
 function AuthView() {
   const [tab, setTab] = useState<'login' | 'register'>('login');
+  const [confirmedEmail, setConfirmedEmail] = useState<string | null>(null);
   const { t } = useLanguage();
   const router = useRouter();
+
+  if (confirmedEmail) {
+    return (
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <AppHeader title={t.account} />
+        <ScrollView
+          contentContainerStyle={styles.authContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <SignupConfirmation
+            email={confirmedEmail}
+            onGoToLogin={() => {
+              setConfirmedEmail(null);
+              setTab('login');
+            }}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -84,7 +194,11 @@ function AuthView() {
           </TouchableOpacity>
         </View>
 
-        {tab === 'login' ? <LoginForm /> : <RegisterForm onSuccess={() => setTab('login')} />}
+        {tab === 'login' ? (
+          <LoginForm />
+        ) : (
+          <RegisterForm onSuccess={(email) => setConfirmedEmail(email)} />
+        )}
 
         <TouchableOpacity
           style={styles.adminLinkBtn}
@@ -454,7 +568,7 @@ const bdInputStyles = StyleSheet.create({
   },
 });
 
-function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
+function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
   const { register } = useAuth();
   const { t } = useLanguage();
   const [firstName, setFirstName] = useState('');
@@ -491,7 +605,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         );
         return;
       }
-      onSuccess();
+      onSuccess(email.trim().toLowerCase());
     } finally {
       setLoading(false);
     }
