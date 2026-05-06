@@ -30,6 +30,7 @@ function AppShell() {
         <Stack.Screen name="admin" options={{ headerShown: false }} />
         <Stack.Screen name="marketplace/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="marketplace/create" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="reset-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="light" />

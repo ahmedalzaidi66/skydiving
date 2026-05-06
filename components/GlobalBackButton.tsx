@@ -28,6 +28,7 @@ const TAB_ROOTS = [
   '/wishlist',
   '/canopy',
   '/products',
+  '/reset-password',
 ];
 
 function isTabRoot(pathname: string): boolean {

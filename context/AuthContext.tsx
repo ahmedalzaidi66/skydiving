@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
 export type UserProfile = {
@@ -6,16 +7,20 @@ export type UserProfile = {
   email: string;
   firstName: string;
   lastName: string;
-  birthday: string | null; // ISO date string YYYY-MM-DD
+  birthday: string | null;
 };
 
 type AuthContextType = {
   user: UserProfile | null;
+  session: Session | null;
+  loading: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (firstName: string, lastName: string, email: string, password: string, birthday: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (updates: { birthday?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  isAuthenticated: boolean;
+  forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,21 +47,28 @@ async function fetchBirthday(userId: string): Promise<string | null> {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Restore session on mount
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session?.user) {
         const birthday = await fetchBirthday(data.session.user.id);
+        setSession(data.session);
         setUser(buildProfile(data.session.user, birthday));
       }
+      setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       (async () => {
-        if (session?.user) {
-          const birthday = await fetchBirthday(session.user.id);
-          setUser(buildProfile(session.user, birthday));
+        if (newSession?.user) {
+          const birthday = await fetchBirthday(newSession.user.id);
+          setSession(newSession);
+          setUser(buildProfile(newSession.user, birthday));
         } else {
+          setSession(null);
           setUser(null);
         }
       })();
@@ -67,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (
     email: string,
-    password: string
+    password: string,
   ): Promise<{ success: boolean; error?: string }> => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
@@ -75,19 +87,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (error) {
       const msg = error.message ?? '';
-      if (
-        msg.toLowerCase().includes('email not confirmed') ||
-        msg.toLowerCase().includes('not confirmed')
-      ) {
-        return {
-          success: false,
-          error: 'Email confirmation is enabled in Supabase. Disable Confirm email or confirm the user.',
-        };
+      if (msg.toLowerCase().includes('email not confirmed') || msg.toLowerCase().includes('not confirmed')) {
+        return { success: false, error: 'Please confirm your email address before signing in.' };
       }
       return { success: false, error: msg };
     }
     if (data.user) {
       const birthday = await fetchBirthday(data.user.id);
+      setSession(data.session);
       setUser(buildProfile(data.user, birthday));
     }
     return { success: true };
@@ -103,25 +110,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: {
-        data: { first_name: firstName, last_name: lastName },
-      },
+      options: { data: { first_name: firstName, last_name: lastName } },
     });
     if (error) return { success: false, error: error.message };
 
-    if (data.user) {
+    // data.user is set even when email confirmation is required, but the
+    // session will be null in that case. Only upsert the profile row when
+    // the user is immediately active (no email confirmation required).
+    if (data.user && data.session) {
       await supabase.from('user_profiles').upsert({
         id: data.user.id,
         birthday,
         updated_at: new Date().toISOString(),
       });
+      setSession(data.session);
       setUser(buildProfile(data.user, birthday));
     }
     return { success: true };
   }, []);
 
   const updateProfile = useCallback(async (
-    updates: { birthday?: string }
+    updates: { birthday?: string },
   ): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'Not authenticated' };
     const { error } = await supabase.from('user_profiles').upsert({
@@ -136,11 +145,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
+    setSession(null);
     setUser(null);
   }, []);
 
+  const forgotPassword = useCallback(async (
+    email: string,
+  ): Promise<{ success: boolean; error?: string }> => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const redirectTo = origin ? `${origin}/reset-password` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      ...(redirectTo ? { redirectTo } : {}),
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }, []);
+
+  const resetPassword = useCallback(async (
+    newPassword: string,
+  ): Promise<{ success: boolean; error?: string }> => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, login, register, updateProfile, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{
+      user, session, loading, isAuthenticated: !!user,
+      login, register, updateProfile, logout, forgotPassword, resetPassword,
+    }}>
       {children}
     </AuthContext.Provider>
   );

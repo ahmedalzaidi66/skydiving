@@ -13,7 +13,7 @@ import {
   Image,
   Modal,
 } from 'react-native';
-import { User, Mail, Lock, LogOut, Package, Eye, EyeOff, ShieldCheck, Heart, ChevronDown, ChevronUp, Trash2, Plus, Minus, TriangleAlert as AlertTriangle, Tag, Pencil, Zap, X, MessageCircle, Calendar } from 'lucide-react-native';
+import { User, Mail, Lock, LogOut, Package, Eye, EyeOff, ShieldCheck, Heart, ChevronDown, ChevronUp, Trash2, Plus, Minus, TriangleAlert as AlertTriangle, Tag, Pencil, Zap, X, MessageCircle, Calendar, KeyRound } from 'lucide-react-native';
 import { useWishlist } from '@/context/WishlistContext';
 import { useRouter } from 'expo-router';
 import { openWhatsApp } from '@/components/WhatsAppButton';
@@ -99,6 +99,137 @@ function AuthView() {
   );
 }
 
+function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { forgotPassword } = useAuth();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSend = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const result = await forgotPassword(email);
+    setLoading(false);
+    if (!result.success) {
+      setError(result.error ?? 'Failed to send reset email.');
+      return;
+    }
+    setSent(true);
+  };
+
+  const handleClose = () => {
+    setEmail('');
+    setError('');
+    setSent(false);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <View style={fpStyles.overlay}>
+        <View style={fpStyles.modal}>
+          <View style={fpStyles.header}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <KeyRound size={18} color={Colors.neonBlue} strokeWidth={2} />
+              <Text style={fpStyles.title}>Reset Password</Text>
+            </View>
+            <TouchableOpacity onPress={handleClose} activeOpacity={0.8}>
+              <X size={20} color={Colors.textMuted} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+          {sent ? (
+            <View style={fpStyles.sentWrap}>
+              <Text style={fpStyles.sentText}>
+                A password reset link has been sent to{'\n'}
+                <Text style={{ color: Colors.neonBlue }}>{email}</Text>
+              </Text>
+              <Text style={fpStyles.sentHint}>Check your inbox and follow the link to set a new password.</Text>
+              <GlossyButton title="Done" onPress={handleClose} fullWidth size="md" />
+            </View>
+          ) : (
+            <>
+              {error ? <ErrorBanner message={error} /> : null}
+              <Text style={fpStyles.desc}>Enter your account email and we'll send you a reset link.</Text>
+              <AuthField
+                label="Email"
+                value={email}
+                onChange={setEmail}
+                icon={<Mail size={16} color={Colors.textMuted} />}
+                keyboardType="email-address"
+                placeholder="your@email.com"
+              />
+              <GlossyButton
+                title={loading ? 'Sending…' : 'Send Reset Link'}
+                onPress={handleSend}
+                loading={loading}
+                disabled={loading}
+                fullWidth
+                size="lg"
+                style={{ marginTop: Spacing.sm }}
+              />
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const fpStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.lg,
+  },
+  modal: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.neonBlueBorder,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  title: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  desc: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+  },
+  sentWrap: {
+    gap: Spacing.md,
+  },
+  sentText: {
+    color: Colors.textPrimary,
+    fontSize: FontSize.sm,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  sentHint: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+});
+
 function LoginForm() {
   const { login } = useAuth();
   const { t } = useLanguage();
@@ -107,8 +238,10 @@ function LoginForm() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [forgotVisible, setForgotVisible] = useState(false);
 
   const handleLogin = async () => {
+    if (loading) return;
     if (!email.trim() || !email.includes('@')) {
       setError(t.invalidEmail);
       return;
@@ -126,6 +259,7 @@ function LoginForm() {
 
   return (
     <View style={styles.form}>
+      <ForgotPasswordModal visible={forgotVisible} onClose={() => setForgotVisible(false)} />
       {error ? <ErrorBanner message={error} /> : null}
       <AuthField
         label={t.email}
@@ -152,10 +286,18 @@ function LoginForm() {
           </TouchableOpacity>
         }
       />
+      <TouchableOpacity
+        onPress={() => setForgotVisible(true)}
+        activeOpacity={0.7}
+        style={styles.forgotBtn}
+      >
+        <Text style={styles.forgotBtnText}>Forgot password?</Text>
+      </TouchableOpacity>
       <GlossyButton
         title={t.signIn}
         onPress={handleLogin}
         loading={loading}
+        disabled={loading}
         fullWidth
         size="lg"
         style={{ marginTop: Spacing.sm }}
@@ -1968,6 +2110,15 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.5,
+  },
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    paddingVertical: 2,
+  },
+  forgotBtnText: {
+    color: Colors.neonBlue,
+    fontSize: FontSize.xs,
+    fontWeight: '600',
   },
   adminLinkBtn: {
     flexDirection: 'row',
