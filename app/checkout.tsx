@@ -279,7 +279,7 @@ export default function CheckoutScreen() {
         shipping,
         tax,
         total,
-        status: 'confirmed',
+        status: 'pending',
       };
 
       console.log('[CHECKOUT ORDER PAYLOAD]', orderPayload);
@@ -964,9 +964,9 @@ function OrderSuccessScreen({ orderId, onContinue }: { orderId: string; onContin
 
       {/* What's next */}
       <View style={styles.successNextSteps}>
-        <SuccessStep icon="📦" text="Your order is being confirmed" />
-        <SuccessStep icon="📧" text="You'll receive a confirmation email" />
-        <SuccessStep icon="🚚" text="We'll notify you when it ships" />
+        <SuccessStep icon="⏳" text="Your order is pending admin approval" />
+        <SuccessStep icon="📧" text="You'll be notified once it's confirmed" />
+        <SuccessStep icon="🚚" text="Shipping details will follow after approval" />
       </View>
 
       <View style={{ width: '85%', marginTop: Spacing.md }}>

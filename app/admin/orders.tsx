@@ -9,7 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, X, ChevronRight } from 'lucide-react-native';
+import { Search, X, ChevronRight, CircleCheck, CircleX } from 'lucide-react-native';
 import { useAdmin } from '@/context/AdminContext';
 import { useLanguage } from '@/context/LanguageContext';
 import AdminWebDashboard from '@/components/admin/AdminWebDashboard';
@@ -31,16 +31,18 @@ type Order = {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: Colors.warning,
+  confirmed: Colors.success,
   processing: Colors.neonBlue,
   shipped: '#7C83FF',
   delivered: Colors.success,
   cancelled: Colors.error,
+  rejected: Colors.error,
   refunded: Colors.textMuted,
 };
 
-const STOCK_RESTORE_STATUSES = ['cancelled', 'refunded'];
+const STOCK_RESTORE_STATUSES = ['cancelled', 'rejected', 'refunded'];
 
-const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+const ORDER_STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'rejected', 'refunded'];
 
 function statusColor(s: string) {
   return STATUS_COLORS[s] ?? Colors.textMuted;
@@ -134,6 +136,29 @@ function OrdersContent() {
             {new Date(selectedOrder.created_at).toLocaleDateString()}
           </Text>
         </View>
+
+        {selectedOrder.status === 'pending' && (
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={[styles.quickActionBtn, styles.quickActionApprove]}
+              onPress={() => updateStatus(selectedOrder.id, 'confirmed')}
+              activeOpacity={0.8}
+              disabled={updatingStatus}
+            >
+              <CircleCheck size={18} color={Colors.success} strokeWidth={2} />
+              <Text style={[styles.quickActionText, { color: Colors.success }]}>Approve Order</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.quickActionBtn, styles.quickActionReject]}
+              onPress={() => updateStatus(selectedOrder.id, 'rejected')}
+              activeOpacity={0.8}
+              disabled={updatingStatus}
+            >
+              <CircleX size={18} color={Colors.error} strokeWidth={2} />
+              <Text style={[styles.quickActionText, { color: Colors.error }]}>Reject Order</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <Text style={styles.subTitle}>{t.updateStatusTitle}</Text>
         <View style={styles.statusButtons}>
@@ -543,5 +568,32 @@ const styles = StyleSheet.create({
     color: Colors.neonBlue,
     fontSize: FontSize.sm,
     fontWeight: '700',
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  quickActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+  },
+  quickActionApprove: {
+    backgroundColor: Colors.success + '15',
+    borderColor: Colors.success + '55',
+  },
+  quickActionReject: {
+    backgroundColor: Colors.error + '15',
+    borderColor: Colors.error + '55',
+  },
+  quickActionText: {
+    fontSize: FontSize.sm,
+    fontWeight: '800',
   },
 });
