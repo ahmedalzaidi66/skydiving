@@ -114,17 +114,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (error) return { success: false, error: error.message };
 
-    // data.user is set even when email confirmation is required, but the
-    // session will be null in that case. Only upsert the profile row when
-    // the user is immediately active (no email confirmation required).
-    if (data.user && data.session) {
-      await supabase.from('user_profiles').upsert({
+    // Save birthday whenever a user row was created — even when email
+    // confirmation is required (data.session will be null in that case, but
+    // data.user is always present on a successful signUp).
+    if (data.user) {
+      const { error: profileError } = await supabase.from('user_profiles').upsert({
         id: data.user.id,
         birthday,
         updated_at: new Date().toISOString(),
       });
-      setSession(data.session);
-      setUser(buildProfile(data.user, birthday));
+      if (profileError) return { success: false, error: profileError.message };
+
+      if (data.session) {
+        setSession(data.session);
+        setUser(buildProfile(data.user, birthday));
+      }
     }
     return { success: true };
   }, []);
