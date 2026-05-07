@@ -84,6 +84,7 @@ export default function ListingDetailScreen() {
   const [listing, setListing] = useState<UsedGearListing | null>(null);
   const [seller, setSeller] = useState<SellerProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
   const [myRating, setMyRating] = useState<number>(0);
   const [existingRating, setExistingRating] = useState<number | null>(null);
@@ -118,48 +119,66 @@ export default function ListingDetailScreen() {
     viewTracked.current = false;
 
     setLoading(true);
+    setFetchError(null);
     setListing(null);
     setSeller(null);
     setMyRating(0);
     setExistingRating(null);
     setExistingBoostStatus(null);
 
-    // Phase 1: Fetch listing + user's existing rating in parallel — render immediately
-    Promise.all([
-      supabase
-        .from('used_gear_listings')
-        .select('id, title, price, description, condition, category, location, contact, status, user_id, images, main_image_url, shipping_included, seller_verified, boost_status, boost_expires_at, view_count, created_at, make, model, size, color, dom, serial_number, total_jumps, main_make, main_model, main_size, main_dom, main_jumps, main_serial, reserve_make, reserve_model, reserve_size, reserve_dom, reserve_repacks, reserve_serial, aad_make, aad_model, aad_dom, aad_eol, aad_jumps, aad_needs_service, aad_serial')
-        .eq('id', id)
-        .maybeSingle(),
-      user
-        ? supabase
+    // 8s timeout — prevents infinite spinner on slow/hung connections
+    const timeoutId = setTimeout(() => {
+      if (thisFetch !== fetchId.current) return;
+      console.warn('[marketplace/[id]] fetch timed out after 8s');
+      setFetchError('Request timed out. Please check your connection and try again.');
+      setLoading(false);
+    }, 8000);
+
+    // Phase 1: Fetch listing only — render immediately, do not wait for rating
+    supabase
+      .from('used_gear_listings')
+      .select('id, title, price, description, condition, category, location, contact, status, user_id, images, main_image_url, shipping_included, seller_verified, boost_status, boost_expires_at, view_count, created_at, make, model, size, color, dom, serial_number, total_jumps, main_make, main_model, main_size, main_dom, main_jumps, main_serial, reserve_make, reserve_model, reserve_size, reserve_dom, reserve_repacks, reserve_serial, aad_make, aad_model, aad_dom, aad_eol, aad_jumps, aad_needs_service, aad_serial')
+      .eq('id', id)
+      .maybeSingle()
+      .then(({ data: listingData, error: listingError }) => {
+        if (thisFetch !== fetchId.current) return;
+        clearTimeout(timeoutId);
+
+        if (listingError) {
+          console.error('[marketplace/[id]] listing fetch error:', listingError.message, listingError);
+          setFetchError(listingError.message);
+          setLoading(false);
+          return;
+        }
+
+        const l = listingData as UsedGearListing | null;
+        setListing(l);
+        setLoading(false);
+
+        if (!l) return;
+
+        if (l.boost_status) setExistingBoostStatus(l.boost_status);
+
+        // Lazy: user's existing rating (independent, non-blocking)
+        if (user) {
+          supabase
             .from('seller_ratings')
             .select('stars')
             .eq('listing_id', id)
             .eq('rater_id', user.id)
             .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
-    ]).then(([{ data: listingData }, { data: ratingData }]) => {
-      if (thisFetch !== fetchId.current) return;
+            .then(({ data: ratingData }) => {
+              if (thisFetch !== fetchId.current) return;
+              if (ratingData) {
+                setExistingRating((ratingData as any).stars);
+                setMyRating((ratingData as any).stars);
+              }
+            })
+            .catch(() => {});
+        }
 
-      const l = listingData as UsedGearListing | null;
-      setListing(l);
-      setLoading(false);
-
-      if (ratingData) {
-        setExistingRating((ratingData as any).stars);
-        setMyRating((ratingData as any).stars);
-      }
-
-      if (l?.boost_status) setExistingBoostStatus(l.boost_status);
-
-      if (!l) return;
-
-      // Phase 2: Lazy-load seller profile + boost settings in parallel after render
-      const secondary: Promise<any>[] = [];
-
-      if (l.user_id) {
-        secondary.push(
+        // Lazy: seller profile
+        if (l.user_id) {
           supabase
             .from('seller_profiles')
             .select('user_id, is_verified, total_listings, join_date, avg_rating, rating_count')
@@ -169,10 +188,10 @@ export default function ListingDetailScreen() {
               if (thisFetch !== fetchId.current) return;
               setSeller(data as SellerProfile | null);
             })
-        );
-      }
+            .catch(() => {});
+        }
 
-      secondary.push(
+        // Lazy: boost settings
         supabase
           .from('site_settings')
           .select('key, value')
@@ -186,20 +205,23 @@ export default function ListingDetailScreen() {
               durationDays: parseInt(map['boost_duration_days'] ?? '7', 10),
             });
           })
-      );
+          .catch(() => {});
 
-      Promise.all(secondary).catch(() => {});
-
-      // Fire-and-forget view tracking
-      const viewerKey = user?.id
-        ? `user_${user.id}`
-        : `anon_${Platform.OS}_${Date.now().toString(36).slice(-6)}`;
-      supabase.from('listing_views').insert({ listing_id: l.id, viewer_key: viewerKey }).then(() => {});
-      viewTracked.current = true;
-    }).catch(() => {
-      if (thisFetch !== fetchId.current) return;
-      setLoading(false);
-    });
+        // Fire-and-forget view tracking
+        const viewerKey = user?.id
+          ? `user_${user.id}`
+          : `anon_${Platform.OS}_${Date.now().toString(36).slice(-6)}`;
+        supabase.from('listing_views').insert({ listing_id: l.id, viewer_key: viewerKey }).then(() => {});
+        viewTracked.current = true;
+      })
+      .catch((err: any) => {
+        if (thisFetch !== fetchId.current) return;
+        clearTimeout(timeoutId);
+        const msg = err?.message ?? 'Failed to load listing';
+        console.error('[marketplace/[id]] fetch error:', msg, err);
+        setFetchError(msg);
+        setLoading(false);
+      });
   }, [id]);
 
   const handleRate = async (stars: number) => {
@@ -287,10 +309,15 @@ export default function ListingDetailScreen() {
     );
   }
 
-  if (!listing) {
+  if (fetchError || !listing) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.notFoundText}>Listing not found</Text>
+        <Text style={[styles.notFoundText, fetchError ? { color: Colors.error } : {}]}>
+          {fetchError ?? 'Listing not found'}
+        </Text>
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75} style={{ marginTop: 12 }}>
+          <Text style={{ color: Colors.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }

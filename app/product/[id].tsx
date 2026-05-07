@@ -21,7 +21,7 @@ import {
   ChevronRight, X, ChevronLeft, Tag, Zap,
 } from 'lucide-react-native';
 import {
-  fetchProductById, getRelatedProducts, Product,
+  fetchProductById, Product,
   getProductName, getProductDescription, getProductImage,
   getProductImages, supabase,
 } from '@/lib/supabase';
@@ -189,6 +189,7 @@ export default function ProductDetailScreen() {
   const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [addedFeedback, setAddedFeedback] = useState(false);
   const [stockMsg, setStockMsg] = useState('');
@@ -220,6 +221,7 @@ export default function ProductDetailScreen() {
 
     // Reset to initial state immediately for fast navigation feel
     setLoading(true);
+    setFetchError(null);
     setProduct(null);
     setRelated([]);
     setActiveImageIndex(0);
@@ -231,10 +233,19 @@ export default function ProductDetailScreen() {
     setReviewBody('');
     setReviewName('');
 
+    // 8s timeout — prevents infinite skeleton on slow/hung connections
+    const timeoutId = setTimeout(() => {
+      if (thisFetch !== fetchId.current) return;
+      console.warn('[product/[id]] fetch timed out after 8s');
+      setFetchError('Request timed out. Please check your connection and try again.');
+      setLoading(false);
+    }, 8000);
+
     // Phase 1: Fetch main product — render as soon as it arrives
     fetchProductById(id, language)
       .then((data) => {
-        if (thisFetch !== fetchId.current) return; // navigated away
+        if (thisFetch !== fetchId.current) return;
+        clearTimeout(timeoutId);
         setProduct(data);
         setLoading(false);
 
@@ -270,15 +281,14 @@ export default function ProductDetailScreen() {
           })
           .catch(() => {});
 
-        getRelatedProducts(data, language, 4)
-          .then((relatedData) => {
-            if (thisFetch !== fetchId.current) return;
-            setRelated(relatedData);
-          })
-          .catch(() => {});
+        // Related products disabled — use getRelatedProducts(data, language, 4) to re-enable
       })
-      .catch(() => {
+      .catch((err: any) => {
         if (thisFetch !== fetchId.current) return;
+        clearTimeout(timeoutId);
+        const msg = err?.message ?? 'Failed to load product';
+        console.error('[product/[id]] fetch error:', msg, err);
+        setFetchError(msg);
         setLoading(false);
       });
   }, [id, language]);
@@ -343,7 +353,7 @@ export default function ProductDetailScreen() {
   const lowThreshold = product?.low_stock_threshold ?? 5;
   const isOutOfStock = !product?.unlimited_stock && effectiveStock === 0;
 
-  if (loading || !product) {
+  if (loading) {
     return (
       <View style={styles.container}>
         <View style={[styles.imageWrapper, { backgroundColor: Colors.backgroundCard }]} />
@@ -356,6 +366,19 @@ export default function ProductDetailScreen() {
           <SkeletonLine width="90%" height={14} />
           <SkeletonLine width="75%" height={14} />
         </View>
+      </View>
+    );
+  }
+
+  if (fetchError || !product) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: Spacing.lg }]}>
+        <Text style={{ color: Colors.error, fontSize: FontSize.md, fontWeight: '700', textAlign: 'center', marginBottom: Spacing.sm }}>
+          {fetchError ?? 'Product not found'}
+        </Text>
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75}>
+          <Text style={{ color: Colors.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
