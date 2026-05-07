@@ -328,14 +328,16 @@ export function PageBuilderProvider({ children }: { children: React.ReactNode })
   const createDefaultLayout = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    const db = adminSupabase();
     const { data: existing } = await supabase
       .from('page_layouts').select('id').eq('page', 'home').maybeSingle();
     let layoutId = existing?.id;
     if (!layoutId) {
-      const { data: created, error } = await supabase
+      const { data: created, error } = await db
         .from('page_layouts').insert({ page: 'home' }).select().maybeSingle();
       if (error || !created) {
-        setLoadError('Failed to create default layout');
+        console.error('[PageBuilder] Failed to insert page_layouts row:', error?.message);
+        setLoadError('Failed to create default layout: ' + (error?.message ?? 'no data returned'));
         setLoading(false);
         return;
       }
@@ -348,9 +350,14 @@ export function PageBuilderProvider({ children }: { children: React.ReactNode })
       visible: b.visible,
       content: b.content,
     }));
-    const db = adminSupabase();
     await db.from('page_blocks').delete().eq('layout_id', layoutId);
-    await db.from('page_blocks').insert(rows);
+    const { error: blocksError } = await db.from('page_blocks').insert(rows);
+    if (blocksError) {
+      console.error('[PageBuilder] Failed to insert page_blocks rows:', blocksError.message);
+      setLoadError('Failed to create default blocks: ' + blocksError.message);
+      setLoading(false);
+      return;
+    }
     await refresh();
   }, [refresh]);
 
