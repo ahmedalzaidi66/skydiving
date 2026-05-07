@@ -240,33 +240,42 @@ export default function ProductDetailScreen() {
 
         if (!data) return;
 
-        // Phase 2: Lazy-load secondary data in parallel — don't block render
-        Promise.all([
-          supabase
-            .from('product_color_variants')
-            .select('id, name, hex, image_url, is_default, sort_order, stock')
-            .eq('product_id', data.id)
-            .order('sort_order', { ascending: true }),
-          supabase
-            .from('reviews')
-            .select('id, customer_name, rating, body, created_at')
-            .eq('product_id', data.id)
-            .eq('status', 'approved')
-            .order('created_at', { ascending: false })
-            .limit(8),
-          getRelatedProducts(data, language, 4),
-        ]).then(([variantRes, reviewRes, relatedData]) => {
-          if (thisFetch !== fetchId.current) return;
+        // Phase 2: Lazy-load secondary data — each call is independent so a
+        // failure in one does not block the others from resolving.
+        supabase
+          .from('product_color_variants')
+          .select('id, name, hex, image_url, is_default, sort_order, stock')
+          .eq('product_id', data.id)
+          .order('sort_order', { ascending: true })
+          .then(({ data: variants }) => {
+            if (thisFetch !== fetchId.current) return;
+            const v = variants as ColorVariant[] | null;
+            if (v && v.length > 0) {
+              setColorVariants(v);
+              setSelectedColor(v.find((c) => c.is_default) ?? v[0]);
+            }
+          })
+          .catch(() => {});
 
-          const variants = variantRes.data as ColorVariant[] | null;
-          if (variants && variants.length > 0) {
-            setColorVariants(variants);
-            setSelectedColor(variants.find((v) => v.is_default) ?? variants[0]);
-          }
+        supabase
+          .from('reviews')
+          .select('id, customer_name, rating, body, created_at')
+          .eq('product_id', data.id)
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
+          .limit(8)
+          .then(({ data: reviewData }) => {
+            if (thisFetch !== fetchId.current) return;
+            setApprovedReviews(reviewData ?? []);
+          })
+          .catch(() => {});
 
-          setApprovedReviews(reviewRes.data ?? []);
-          setRelated(relatedData);
-        }).catch(() => {});
+        getRelatedProducts(data, language, 4)
+          .then((relatedData) => {
+            if (thisFetch !== fetchId.current) return;
+            setRelated(relatedData);
+          })
+          .catch(() => {});
       })
       .catch(() => {
         if (thisFetch !== fetchId.current) return;

@@ -637,17 +637,7 @@ export async function getRelatedProducts(
   // Fetch a tight pool — same category first, DB-ordered by relevance signals
   const { data: pool, error } = await supabase
     .from('products')
-    .select(`
-      id, name, slug, price, compare_price, category, category_id,
-      rating, review_count, image_url, main_image, images, stock,
-      unlimited_stock, low_stock_threshold, badge, is_featured, featured,
-      status, sku, specifications,
-      name_ar, name_es, name_de,
-      description, description_ar, description_es, description_de,
-      created_at, updated_at,
-      translation:product_translations!left(id, product_id, language, name, short_description, full_description, meta_title, meta_description),
-      product_images(id, url, is_main, sort_order)
-    `)
+    .select('id, name, slug, price, compare_price, category, category_id, rating, review_count, image_url, main_image, stock, badge, is_featured, featured, status, specifications')
     .eq('status', 'active')
     .eq('category', product.category)
     .neq('id', product.id)
