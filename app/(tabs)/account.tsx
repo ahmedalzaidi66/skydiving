@@ -92,7 +92,9 @@ function SignupConfirmationScreen({ email, onDone }: { email: string; onDone: ()
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <SignupConfirmation email={email} onGoToLogin={onDone} />
+        <View style={styles.authInner}>
+          <SignupConfirmation email={email} onGoToLogin={onDone} />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -168,69 +170,71 @@ function AuthView({ onSignupSuccess }: { onSignupSuccess: (email: string) => voi
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.authHeader}>
-          <User size={56} color={Colors.neonBlue} strokeWidth={1.5} />
-          <Text style={styles.authTitle}>
-            {tab === 'login' ? t.welcomeBack : t.createAccount}
-          </Text>
-          <Text style={styles.authSubtitle}>
-            {tab === 'login' ? t.signInSubtitle : t.registerSubtitle}
-          </Text>
-        </View>
+        <View style={styles.authInner}>
+          <View style={styles.authHeader}>
+            <User size={40} color={Colors.neonBlue} strokeWidth={1.5} />
+            <Text style={styles.authTitle}>
+              {tab === 'login' ? t.welcomeBack : t.createAccount}
+            </Text>
+            <Text style={styles.authSubtitle}>
+              {tab === 'login' ? t.signInSubtitle : t.registerSubtitle}
+            </Text>
+          </View>
 
-        <View style={styles.tabRow}>
+          <View style={styles.tabRow}>
+            <TouchableOpacity
+              style={styles.authTab}
+              onPress={() => setTab('login')}
+              activeOpacity={0.8}
+            >
+              {tab === 'login' && (
+                <LinearGradient
+                  colors={['#0099CC', '#00BFFF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
+                />
+              )}
+              <Text style={tab === 'login' ? styles.authTabTextActive : styles.authTabText}>
+                {t.login}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.authTab}
+              onPress={() => setTab('register')}
+              activeOpacity={0.8}
+            >
+              {tab === 'register' && (
+                <LinearGradient
+                  colors={['#0099CC', '#00BFFF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
+                />
+              )}
+              <Text style={tab === 'register' ? styles.authTabTextActive : styles.authTabText}>
+                {t.register}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {tab === 'login' ? (
+            <LoginForm />
+          ) : (
+            <RegisterForm onSuccess={onSignupSuccess} />
+          )}
+
           <TouchableOpacity
-            style={styles.authTab}
-            onPress={() => setTab('login')}
+            style={styles.adminLinkBtn}
+            onPress={() => router.push('/admin')}
             activeOpacity={0.8}
           >
-            {tab === 'login' && (
-              <LinearGradient
-                colors={['#0099CC', '#00BFFF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-            )}
-            <Text style={tab === 'login' ? styles.authTabTextActive : styles.authTabText}>
-              {t.login}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.authTab}
-            onPress={() => setTab('register')}
-            activeOpacity={0.8}
-          >
-            {tab === 'register' && (
-              <LinearGradient
-                colors={['#0099CC', '#00BFFF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-            )}
-            <Text style={tab === 'register' ? styles.authTabTextActive : styles.authTabText}>
-              {t.register}
-            </Text>
+            <ShieldCheck size={14} color={Colors.textMuted} strokeWidth={2} />
+            <Text style={styles.adminLinkBtnText}>Admin Panel</Text>
           </TouchableOpacity>
         </View>
-
-        {tab === 'login' ? (
-          <LoginForm />
-        ) : (
-          <RegisterForm onSuccess={onSignupSuccess} />
-        )}
-
-        <TouchableOpacity
-          style={styles.adminLinkBtn}
-          onPress={() => router.push('/admin')}
-          activeOpacity={0.8}
-        >
-          <ShieldCheck size={14} color={Colors.textMuted} strokeWidth={2} />
-          <Text style={styles.adminLinkBtnText}>Admin Panel</Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -437,7 +441,8 @@ function LoginForm() {
         disabled={loading}
         fullWidth
         size="lg"
-        style={{ marginTop: Spacing.sm }}
+        style={{ marginTop: 4, height: 46, borderRadius: 16 }}
+        textStyle={{ fontSize: 15 }}
       />
     </View>
   );
@@ -574,20 +579,22 @@ const bdInputStyles = StyleSheet.create({
   },
   input: {
     backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.sm,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: Colors.border,
     paddingHorizontal: Spacing.xs,
-    paddingVertical: Spacing.sm + 2,
+    paddingVertical: Spacing.sm,
     color: Colors.textPrimary,
-    fontSize: FontSize.md,
+    fontSize: 13,
     fontWeight: '600',
+    height: 38,
+    textAlignVertical: 'center',
   },
   sep: {
     color: Colors.textMuted,
-    fontSize: FontSize.xl,
+    fontSize: FontSize.lg,
     fontWeight: '300',
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
 });
 
@@ -688,7 +695,8 @@ function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
         disabled={loading}
         fullWidth
         size="lg"
-        style={{ marginTop: Spacing.sm }}
+        style={{ marginTop: 4, height: 46, borderRadius: 16 }}
+        textStyle={{ fontSize: 15 }}
       />
     </View>
   );
@@ -1777,68 +1785,75 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   authContent: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
+    padding: Spacing.md,
+    gap: 8,
+    alignItems: 'center',
+  },
+  authInner: {
+    width: '100%',
+    maxWidth: 300,
+    gap: 8,
   },
   authHeader: {
     alignItems: 'center',
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
+    gap: 4,
+    paddingVertical: 6,
   },
   authTitle: {
     color: Colors.textPrimary,
-    fontSize: FontSize.xxl,
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
   },
   authSubtitle: {
     color: Colors.textMuted,
-    fontSize: FontSize.md,
+    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 18,
   },
   tabRow: {
     flexDirection: 'row',
     backgroundColor: Colors.backgroundSecondary,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    padding: 3,
-    gap: 3,
-    height: 42,
+    padding: 2,
+    gap: 2,
+    height: 36,
   },
   authTab: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 11,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   authTabText: {
     color: Colors.textMuted,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
   authTabTextActive: {
     color: Colors.white,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
   form: {
-    gap: Spacing.sm,
+    gap: 6,
+    width: '100%',
   },
   nameRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: 6,
   },
   fieldWrapper: {
-    gap: 4,
+    gap: 3,
   },
   fieldLabel: {
     color: Colors.textMuted,
-    fontSize: FontSize.xs,
+    fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
@@ -1847,16 +1862,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.md,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
+    paddingHorizontal: 10,
+    height: 42,
   },
   fieldInput: {
     flex: 1,
     color: Colors.textPrimary,
-    fontSize: FontSize.md,
+    fontSize: 13,
     padding: 0,
   },
   errorBanner: {
@@ -2261,7 +2276,7 @@ const styles = StyleSheet.create({
   },
   forgotBtnText: {
     color: Colors.neonBlue,
-    fontSize: FontSize.xs,
+    fontSize: 11,
     fontWeight: '600',
   },
   adminLinkBtn: {
@@ -2269,7 +2284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.md,
     paddingVertical: Spacing.sm,
   },
   adminLinkBtnText: {

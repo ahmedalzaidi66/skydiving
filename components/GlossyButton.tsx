@@ -27,6 +27,8 @@ export default function GlossyButton({
   const fullW: ViewStyle = fullWidth ? { width: '100%' } : {};
 
   if (variant === 'primary') {
+    const overrideRadius = (style as any)?.borderRadius;
+    const overrideHeight = (style as any)?.height;
     return (
       <TouchableOpacity
         onPress={onPress}
@@ -38,7 +40,12 @@ export default function GlossyButton({
           colors={isDisabled ? [Colors.navy, Colors.backgroundSecondary] : ['#00BFFF', '#007ACC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.gradient, { height: heights[size] }, !isDisabled && Shadow.neonBlue]}
+          style={[
+            styles.gradient,
+            { height: overrideHeight ?? heights[size] },
+            overrideRadius != null ? { borderRadius: overrideRadius } : {},
+            !isDisabled && Shadow.neonBlue,
+          ]}
         >
           {loading
             ? <ActivityIndicator color={Colors.white} size="small" />
