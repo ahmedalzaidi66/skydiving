@@ -42,7 +42,7 @@ function getTabs(
       route: '/(tabs)/',
       label: t.navHome,
       icon: (active) => (
-        <House size={19} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
+        <House size={17} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
       ),
     },
     {
@@ -50,7 +50,7 @@ function getTabs(
       route: '/(tabs)/cart',
       label: t.navShop,
       icon: (active) => (
-        <ShoppingBag size={19} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
+        <ShoppingBag size={17} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
       ),
     },
     {
@@ -64,7 +64,7 @@ function getTabs(
       route: '/(tabs)/marketplace',
       label: t.navUsedGear,
       icon: (active) => (
-        <Tag size={19} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
+        <Tag size={17} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
       ),
     },
     {
@@ -72,7 +72,7 @@ function getTabs(
       route: '/(tabs)/account',
       label: t.navAccount,
       icon: (active) => (
-        <User size={19} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
+        <User size={17} color={active ? accent : inactive} strokeWidth={active ? 2.5 : 1.8} />
       ),
     },
   ];
@@ -338,16 +338,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: 3,
-    minHeight: 48,
+    minHeight: 44,
   },
   tabContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingTop: 4,
+    gap: 1,
+    paddingTop: 3,
   },
   tabLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     color: Colors.textMuted,
     letterSpacing: 0.3,
@@ -401,14 +401,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: 3,
-    minHeight: 60,
+    minHeight: 52,
   },
   centerGlowRing: {
     position: 'absolute',
-    top: -14,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    top: -12,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     borderWidth: 1,
     borderColor: Colors.neonBlueBorder,
     backgroundColor: Colors.neonBlueGlow,
@@ -419,16 +419,16 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   centerButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: Colors.background,
     borderWidth: 2,
     borderColor: Colors.neonBlueBorder,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    marginTop: -18,
+    marginTop: -15,
     shadowColor: Colors.neonBlue,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -442,8 +442,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   centerImage: {
-    width: 46,
-    height: 46,
+    width: 40,
+    height: 40,
   },
   centerLabel: {
     fontSize: 8,

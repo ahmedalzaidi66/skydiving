@@ -82,11 +82,11 @@ export default function AppHeader({ showBack = false, title }: Props) {
   const trailingIcons = showIcons ? (
     <>
       <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/account')}>
-        <User size={22} color={colors.textPrimary} strokeWidth={2} />
+        <User size={20} color={colors.textPrimary} strokeWidth={2} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/wishlist')}>
         <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-          <Heart size={22} color={wishlistCount > 0 ? '#FF4D6D' : colors.textPrimary} fill={wishlistCount > 0 ? '#FF4D6D' : 'transparent'} strokeWidth={2} />
+          <Heart size={20} color={wishlistCount > 0 ? '#FF4D6D' : colors.textPrimary} fill={wishlistCount > 0 ? '#FF4D6D' : 'transparent'} strokeWidth={2} />
         </Animated.View>
         {wishlistCount > 0 && (
           <Animated.View style={[styles.badge, styles.wishlistBadge, isRTL ? styles.badgeRTL : styles.badgeLTR, { transform: [{ scale: badgeScale }] }]}>
@@ -95,7 +95,7 @@ export default function AppHeader({ showBack = false, title }: Props) {
         )}
       </TouchableOpacity>
       <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/cart')}>
-        <ShoppingCart size={22} color={colors.textPrimary} strokeWidth={2} />
+        <ShoppingCart size={20} color={colors.textPrimary} strokeWidth={2} />
         {totalItems > 0 && (
           <View style={[styles.badge, isRTL ? styles.badgeRTL : styles.badgeLTR]}>
             <Text style={styles.badgeText}>{totalItems > 99 ? '99+' : totalItems}</Text>
@@ -112,12 +112,12 @@ export default function AppHeader({ showBack = false, title }: Props) {
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
     >
       <Animated.View style={[styles.backBtn, { borderColor: colors.neonBlue + '8C', shadowColor: colors.neonBlue, backgroundColor: colors.background }, { transform: [{ scale: backScale }] }]}>
-        <BackIcon size={20} color={colors.textPrimary} strokeWidth={2.5} />
+        <BackIcon size={18} color={colors.textPrimary} strokeWidth={2.5} />
       </Animated.View>
     </TouchableOpacity>
   ) : (
     <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => setDrawerOpen(true)}>
-      <Menu size={22} color={colors.textPrimary} strokeWidth={2} />
+      <Menu size={20} color={colors.textPrimary} strokeWidth={2} />
     </TouchableOpacity>
   );
 
@@ -169,15 +169,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'stretch',
     paddingHorizontal: 8,
-    paddingTop: Platform.OS === 'ios' ? 52 : 18,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
+    paddingBottom: 8,
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   // Leading slot: fixed-width to reserve space for back/hamburger button
   leadingSlot: {
-    width: 56,
+    width: 48,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
@@ -191,15 +191,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
   },
   iconBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
   backBtn: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: Radius.full,
@@ -218,8 +218,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoImage: {
-    height: 44,
-    width: 120,
+    height: 34,
+    width: 100,
   },
   pageTitle: {
     color: Colors.textPrimary,

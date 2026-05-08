@@ -15,7 +15,7 @@ export default function HeroVideo({ heroContent }: Props) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const heroHeight = isMobile ? 320 : 420;
+  const heroHeight = isMobile ? 252 : 380;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoFailed, setVideoFailed] = useState(false);
@@ -139,44 +139,44 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 20,
-    paddingBottom: 28,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
     alignItems: 'center',
   },
   badge: {
     borderWidth: 1,
     borderColor: 'rgba(0,191,255,0.45)',
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginBottom: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginBottom: 8,
     backgroundColor: 'rgba(0,191,255,0.08)',
   },
   badgeText: {
     color: '#00BFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
-    letterSpacing: 2.5,
+    letterSpacing: 2,
   },
   heroTitle: {
     color: '#FFFFFF',
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: '900',
     fontStyle: 'italic',
     textAlign: 'center',
-    lineHeight: 40,
+    lineHeight: 32,
     letterSpacing: 0.2,
-    marginBottom: 10,
+    marginBottom: 6,
     textShadowColor: 'rgba(0,0,0,0.95)',
     textShadowOffset: { width: 1, height: 2 },
     textShadowRadius: 12,
   },
   heroSubtitle: {
     color: 'rgba(255,255,255,0.75)',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '400',
     textAlign: 'center',
-    marginBottom: 18,
+    marginBottom: 12,
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
@@ -184,19 +184,19 @@ const styles = StyleSheet.create({
   heroCtaBtn: {
     backgroundColor: '#00BFFF',
     borderRadius: Radius.full,
-    paddingHorizontal: 52,
-    paddingVertical: 14,
+    paddingHorizontal: 32,
+    paddingVertical: 10,
     alignItems: 'center',
     shadowColor: '#00BFFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.75,
-    shadowRadius: 18,
+    shadowRadius: 14,
     elevation: 10,
   },
   heroCtaText: {
     color: '#050A14',
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 3,
+    letterSpacing: 2.5,
   },
 });

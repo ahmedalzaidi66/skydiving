@@ -423,29 +423,29 @@ const searchBarStyles = StyleSheet.create({
   wrapper: {
     backgroundColor: '#050A14',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,191,255,0.1)',
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
     backgroundColor: 'rgba(10,22,40,0.92)',
-    borderRadius: 22,
+    borderRadius: 18,
     borderWidth: 1.5,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 7 : 6,
     shadowColor: '#00BFFF',
     shadowOffset: { width: 0, height: 0 },
-    shadowRadius: 10,
+    shadowRadius: 8,
     elevation: 4,
   },
   barRTL: { flexDirection: 'row-reverse' },
   input: {
     flex: 1,
     color: '#E8F4FD',
-    fontSize: 13,
+    fontSize: 12,
     padding: 0,
     margin: 0,
   },
@@ -688,8 +688,8 @@ function ShopByCategorySection({
         </Text>
       </View>
       <AutoScrollRow
-        itemWidth={60}
-        gap={6}
+        itemWidth={52}
+        gap={5}
         visibleCount={6}
         paddingHorizontal={10}
         speed={30}
@@ -702,26 +702,26 @@ function ShopByCategorySection({
 
 const catStyles = StyleSheet.create({
   section: {
-    paddingTop: 14,
-    paddingBottom: 4,
+    paddingTop: 10,
+    paddingBottom: 2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingHorizontal: 10,
     paddingBottom: 4,
-    gap: 6,
+    gap: 5,
   },
   item: {
-    width: 60,
+    width: 52,
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     flexShrink: 0,
   },
   circle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1.5,
@@ -729,8 +729,8 @@ const catStyles = StyleSheet.create({
     backgroundColor: '#0A1628',
     shadowColor: '#00BFFF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.28,
+    shadowRadius: 5,
     elevation: 3,
   },
   circleImage: {
@@ -743,24 +743,24 @@ const catStyles = StyleSheet.create({
     backgroundColor: '#0D1E35',
   },
   circlePlaceholderText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '900',
     letterSpacing: 1,
   },
   circleRing: {
     position: 'absolute',
     inset: 0,
-    borderRadius: 26,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(0,191,255,0.18)',
   },
   label: {
     color: '#C8DFF0',
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 12,
-    width: 60,
+    lineHeight: 11,
+    width: 52,
   },
 });
 
