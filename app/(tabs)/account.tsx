@@ -31,10 +31,18 @@ const SHIPPING_THRESHOLD = 500;
 const SHIPPING_FEE = 29.99;
 
 export default function AccountScreen() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
+  // confirmedEmail is lifted here so SignupConfirmation survives even if
+  // Supabase auto-confirms the session (email confirmation disabled) and
+  // isAuthenticated flips to true before the user dismisses the screen.
+  const [pendingConfirmEmail, setPendingConfirmEmail] = useState<string | null>(null);
+
+  if (pendingConfirmEmail) {
+    return <SignupConfirmationScreen email={pendingConfirmEmail} onDone={() => setPendingConfirmEmail(null)} />;
+  }
 
   if (!isAuthenticated) {
-    return <AuthView />;
+    return <AuthView onSignupSuccess={(email) => setPendingConfirmEmail(email)} />;
   }
 
   return <ProfileView />;
@@ -68,6 +76,25 @@ function SignupConfirmation({ email, onGoToLogin }: { email: string; onGoToLogin
         style={{ marginTop: Spacing.sm }}
       />
     </View>
+  );
+}
+
+function SignupConfirmationScreen({ email, onDone }: { email: string; onDone: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <AppHeader title={t.account} />
+      <ScrollView
+        contentContainerStyle={styles.authContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <SignupConfirmation email={email} onGoToLogin={onDone} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -125,35 +152,10 @@ const scStyles = StyleSheet.create({
   },
 });
 
-function AuthView() {
+function AuthView({ onSignupSuccess }: { onSignupSuccess: (email: string) => void }) {
   const [tab, setTab] = useState<'login' | 'register'>('login');
-  const [confirmedEmail, setConfirmedEmail] = useState<string | null>(null);
   const { t } = useLanguage();
   const router = useRouter();
-
-  if (confirmedEmail) {
-    return (
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <AppHeader title={t.account} />
-        <ScrollView
-          contentContainerStyle={styles.authContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <SignupConfirmation
-            email={confirmedEmail}
-            onGoToLogin={() => {
-              setConfirmedEmail(null);
-              setTab('login');
-            }}
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    );
-  }
 
   return (
     <KeyboardAvoidingView
@@ -218,7 +220,7 @@ function AuthView() {
         {tab === 'login' ? (
           <LoginForm />
         ) : (
-          <RegisterForm onSuccess={(email) => setConfirmedEmail(email)} />
+          <RegisterForm onSuccess={onSignupSuccess} />
         )}
 
         <TouchableOpacity
