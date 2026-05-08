@@ -64,6 +64,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       (async () => {
         if (newSession?.user) {
+          // On first sign-in after email confirmation, ensure the profile row exists.
+          // birthday may have been stored in user_metadata during signUp.
+          if (event === 'SIGNED_IN') {
+            const meta = newSession.user.user_metadata ?? {};
+            const birthdayMeta: string | undefined = meta.birthday;
+            await supabase.from('user_profiles').upsert({
+              id: newSession.user.id,
+              ...(birthdayMeta ? { birthday: birthdayMeta } : {}),
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id', ignoreDuplicates: true });
+          }
           const birthday = await fetchBirthday(newSession.user.id);
           setSession(newSession);
           setUser(buildProfile(newSession.user, birthday));
@@ -110,26 +121,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
-      options: { data: { first_name: firstName, last_name: lastName } },
+      options: { data: { first_name: firstName, last_name: lastName, birthday } },
     });
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      console.error('[register] supabase.auth.signUp error:', error.message, error);
+      return { success: false, error: error.message };
+    }
 
-    // Save birthday whenever a user row was created — even when email
-    // confirmation is required (data.session will be null in that case, but
-    // data.user is always present on a successful signUp).
-    if (data.user) {
+    // When email confirmation is required, data.session is null and auth.uid()
+    // is null — the user_profiles RLS INSERT policy (auth.uid() = id) would
+    // block the upsert. Only write the profile row when we have a live session.
+    if (data.user && data.session) {
       const { error: profileError } = await supabase.from('user_profiles').upsert({
         id: data.user.id,
         birthday,
         updated_at: new Date().toISOString(),
       });
-      if (profileError) return { success: false, error: profileError.message };
-
-      if (data.session) {
-        setSession(data.session);
-        setUser(buildProfile(data.user, birthday));
+      if (profileError) {
+        console.warn('[register] profile upsert error (non-fatal):', profileError.message);
       }
+      setSession(data.session);
+      setUser(buildProfile(data.user, birthday));
     }
+
+    // signUp itself succeeded — user will confirm email before first login
     return { success: true };
   }, []);
 

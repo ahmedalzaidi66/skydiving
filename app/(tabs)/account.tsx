@@ -618,10 +618,13 @@ function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
     try {
       const result = await register(firstName, lastName, email, password, toBirthdayISO(bdDay, bdMonth, bdYear));
       if (!result.success) {
-        const msg = result.error ?? t.validEmailRequired;
+        const msg = result.error ?? 'Registration failed. Please try again.';
+        console.error('[RegisterForm] register failed:', msg);
         setError(
           msg.toLowerCase().includes('rate limit')
             ? 'Please wait a minute before trying again.'
+            : msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')
+            ? 'An account with this email already exists. Try signing in.'
             : msg
         );
         return;
