@@ -23,6 +23,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import AppHeader from '@/components/AppHeader';
 import GlossyButton from '@/components/GlossyButton';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
 import { UsedGearListing } from '@/app/(tabs)/marketplace';
 
@@ -177,20 +178,40 @@ function AuthView() {
 
         <View style={styles.tabRow}>
           <TouchableOpacity
-            style={[styles.authTab, tab === 'login' && styles.authTabActive]}
+            style={styles.authTab}
             onPress={() => setTab('login')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.authTabText, tab === 'login' && styles.authTabTextActive]}>
-              {t.login}
-            </Text>
+            {tab === 'login' ? (
+              <LinearGradient
+                colors={['#0099CC', '#00BFFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.authTabActivePill}
+              >
+                <Text style={styles.authTabTextActive}>{t.login}</Text>
+              </LinearGradient>
+            ) : (
+              <Text style={styles.authTabText}>{t.login}</Text>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.authTab, tab === 'register' && styles.authTabActive]}
+            style={styles.authTab}
             onPress={() => setTab('register')}
+            activeOpacity={0.8}
           >
-            <Text style={[styles.authTabText, tab === 'register' && styles.authTabTextActive]}>
-              {t.register}
-            </Text>
+            {tab === 'register' ? (
+              <LinearGradient
+                colors={['#0099CC', '#00BFFF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.authTabActivePill}
+              >
+                <Text style={styles.authTabTextActive}>{t.register}</Text>
+              </LinearGradient>
+            ) : (
+              <Text style={styles.authTabText}>{t.register}</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -1773,28 +1794,43 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.full,
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 4,
+    borderColor: Colors.borderLight,
+    padding: 3,
+    gap: 3,
+    height: 42,
   },
   authTab: {
     flex: 1,
-    paddingVertical: Spacing.sm,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: Radius.full,
+    borderRadius: 12,
   },
-  authTabActive: {
-    backgroundColor: Colors.neonBlue,
+  authTabActivePill: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 11,
+    shadowColor: '#00BFFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
   authTabText: {
     color: Colors.textMuted,
-    fontSize: FontSize.md,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
   authTabTextActive: {
     color: Colors.white,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
   form: {
     gap: Spacing.sm,
