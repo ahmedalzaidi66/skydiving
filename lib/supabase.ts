@@ -99,7 +99,6 @@ export type Product = {
   description_es: string | null;
   description_de: string | null;
   created_at: string;
-  updated_at: string | null;
   // Joined translation (populated when queried with language)
   translation?: ProductTranslation | null;
 };
@@ -352,7 +351,7 @@ export async function fetchProductById(id: string, language = 'en'): Promise<Pro
       status, sku, specifications,
       name_ar, name_es, name_de,
       description, description_ar, description_es, description_de,
-      created_at, updated_at,
+      created_at,
       translation:product_translations!left(id, product_id, language, name, short_description, full_description, meta_title, meta_description),
       product_images(id, url, is_main, sort_order)
     `)

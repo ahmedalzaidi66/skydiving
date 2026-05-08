@@ -66,12 +66,8 @@ const REPORT_REASONS = [
   'Other',
 ];
 
-function isBoosted(listing: UsedGearListing): boolean {
-  return (
-    listing.boost_status === 'boosted' &&
-    !!listing.boost_expires_at &&
-    new Date(listing.boost_expires_at).getTime() > Date.now()
-  );
+function isBoosted(_listing: UsedGearListing): boolean {
+  return false;
 }
 
 export default function ListingDetailScreen() {
@@ -137,7 +133,7 @@ export default function ListingDetailScreen() {
     // Phase 1: Fetch listing only — render immediately, do not wait for rating
     supabase
       .from('used_gear_listings')
-      .select('id, title, price, description, condition, category, location, contact, status, user_id, images, main_image_url, shipping_included, seller_verified, boost_status, boost_expires_at, view_count, created_at, make, model, size, color, dom, serial_number, total_jumps, main_make, main_model, main_size, main_dom, main_jumps, main_serial, reserve_make, reserve_model, reserve_size, reserve_dom, reserve_repacks, reserve_serial, aad_make, aad_model, aad_dom, aad_eol, aad_jumps, aad_needs_service, aad_serial')
+      .select('id, title, price, description, condition, category, location, contact, status, user_id, images, main_image_url, shipping_included, seller_verified, created_at, make, model, size, color, dom, serial_number, total_jumps, main_make, main_model, main_size, main_dom, main_jumps, main_serial, reserve_make, reserve_model, reserve_size, reserve_dom, reserve_repacks, reserve_serial, aad_make, aad_model, aad_dom, aad_eol, aad_jumps, aad_needs_service, aad_serial')
       .eq('id', id)
       .maybeSingle()
       .then(({ data: listingData, error: listingError }) => {
@@ -156,8 +152,6 @@ export default function ListingDetailScreen() {
         setLoading(false);
 
         if (!l) return;
-
-        if (l.boost_status) setExistingBoostStatus(l.boost_status);
 
         // Lazy: user's existing rating (independent, non-blocking)
         if (user) {
@@ -331,7 +325,7 @@ export default function ListingDetailScreen() {
   const isRig = RIG_CATEGORIES.includes(listing.category);
   const boosted = isBoosted(listing);
   const isOwner = user?.id === listing.user_id;
-  const views = listing.view_count ?? 0;
+  const views = 0;
 
   const contactRaw = listing.contact?.replace(/\s/g, '') ?? '';
   const isPhone = contactRaw.startsWith('+') || /^\d{6,}/.test(contactRaw);

@@ -36,9 +36,6 @@ export type UsedGearListing = {
   admin_note: string;
   created_at: string;
   seller_verified: boolean;
-  view_count: number;
-  boost_status: string | null;
-  boost_expires_at: string | null;
   make: string;
   model: string;
   color: string;
@@ -91,12 +88,8 @@ type AvailFilter = 'all' | 'available';
 
 const PAGE_SIZE = 10;
 
-function isBoosted(listing: UsedGearListing): boolean {
-  return (
-    listing.boost_status === 'boosted' &&
-    !!listing.boost_expires_at &&
-    new Date(listing.boost_expires_at).getTime() > Date.now()
-  );
+function isBoosted(_listing: UsedGearListing): boolean {
+  return false;
 }
 
 export default function MarketplaceScreen() {
