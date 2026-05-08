@@ -182,36 +182,36 @@ function AuthView() {
             onPress={() => setTab('login')}
             activeOpacity={0.8}
           >
-            {tab === 'login' ? (
+            {tab === 'login' && (
               <LinearGradient
                 colors={['#0099CC', '#00BFFF']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.authTabActivePill}
-              >
-                <Text style={styles.authTabTextActive}>{t.login}</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={styles.authTabText}>{t.login}</Text>
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
             )}
+            <Text style={tab === 'login' ? styles.authTabTextActive : styles.authTabText}>
+              {t.login}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.authTab}
             onPress={() => setTab('register')}
             activeOpacity={0.8}
           >
-            {tab === 'register' ? (
+            {tab === 'register' && (
               <LinearGradient
                 colors={['#0099CC', '#00BFFF']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.authTabActivePill}
-              >
-                <Text style={styles.authTabTextActive}>{t.register}</Text>
-              </LinearGradient>
-            ) : (
-              <Text style={styles.authTabText}>{t.register}</Text>
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
             )}
+            <Text style={tab === 'register' ? styles.authTabTextActive : styles.authTabText}>
+              {t.register}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -1809,19 +1809,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
-  },
-  authTabActivePill: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
     borderRadius: 11,
-    shadowColor: '#00BFFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    overflow: 'hidden',
   },
   authTabText: {
     color: Colors.textMuted,
