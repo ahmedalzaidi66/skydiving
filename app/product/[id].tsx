@@ -13,12 +13,14 @@ import {
   Animated,
   TextInput,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ShoppingCart, Package, Shield, Star,
   ChevronRight, X, ChevronLeft, Tag, Zap,
+  Share2,
 } from 'lucide-react-native';
 import {
   fetchProductById, Product,
@@ -407,11 +409,50 @@ export default function ProductDetailScreen() {
     ? t.onlyLeft.replace('{{n}}', String(effectiveStock))
     : t.outOfStock;
 
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async () => {
+    const slug = product.slug || product.id;
+    const url = `${(typeof window !== 'undefined' && window?.location?.origin) ? window.location.origin : 'https://skydiverstore.com'}/product/${slug}`;
+    const title = getProductName(product, language);
+    const message = `Check this out on Skydiver Man Gear: ${title}`;
+    if (Platform.OS !== 'web') {
+      try {
+        await Share.share({ title, message: `${message}\n${url}`, url });
+      } catch {}
+      return;
+    }
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title, text: message, url });
+      } catch {}
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {}
+  };
+
   return (
     <View style={styles.container}>
       {lightboxIndex !== null && (
         <Lightbox images={images} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
       )}
+
+      {/* Share button — absolute top-left */}
+      <TouchableOpacity
+        style={styles.shareBtn}
+        onPress={handleShare}
+        activeOpacity={0.8}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        {shareCopied
+          ? <Text style={styles.shareCopiedText}>Copied!</Text>
+          : <Share2 size={18} color={Colors.white} strokeWidth={2} />
+        }
+      </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false} bounces>
         {/* ── Hero image ── */}
@@ -873,6 +914,27 @@ const styles = StyleSheet.create({
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
+  },
+  shareBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 52 : 24,
+    left: Spacing.md,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(5,10,20,0.72)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+    elevation: 8,
+  },
+  shareCopiedText: {
+    color: Colors.neonBlue,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   badge: {
     position: 'absolute',
