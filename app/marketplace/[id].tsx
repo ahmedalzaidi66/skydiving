@@ -1253,7 +1253,7 @@ const styles = StyleSheet.create({
   heartBtn: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 52 : 24,
-    right: Spacing.md,
+    right: Spacing.md + 44 + 8,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -1268,7 +1268,7 @@ const styles = StyleSheet.create({
   shareBtn: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 52 : 24,
-    left: Spacing.md,
+    right: Spacing.md,
     width: 44,
     height: 44,
     borderRadius: 22,

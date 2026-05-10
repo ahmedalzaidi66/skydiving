@@ -919,7 +919,7 @@ const styles = StyleSheet.create({
   shareBtn: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 52 : 24,
-    left: Spacing.md,
+    right: Spacing.md,
     width: 44,
     height: 44,
     borderRadius: 22,
