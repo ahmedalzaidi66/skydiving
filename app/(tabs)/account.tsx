@@ -26,6 +26,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
 import { useThemeColors, useTheme, ThemeColors, UserThemeChoice } from '@/context/ThemeContext';
+import { useAdmin } from '@/context/AdminContext';
 import { UsedGearListing } from '@/app/(tabs)/marketplace';
 
 const SHIPPING_THRESHOLD = 500;
@@ -831,7 +832,7 @@ function ThemeSelector() {
   const styles = makeStyles(C);
   return (
     <View style={styles.themeSelectorRow}>
-      <Text style={styles.langLabel}>Theme</Text>
+      <Text style={styles.settingsRowLabel}>Theme</Text>
       <View style={styles.themeOptions}>
         {THEME_OPTIONS.map(({ value, label, Icon }) => {
           const active = userChoice === value;
@@ -860,6 +861,7 @@ function ProfileView() {
   const styles = makeStyles(C);
   const { count: wishlistCount } = useWishlist();
   const router = useRouter();
+  const { admin } = useAdmin();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [editBdVisible, setEditBdVisible] = useState(false);
@@ -881,11 +883,14 @@ function ProfileView() {
   }, [user]);
 
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
+  const isAdmin = !!admin;
 
   return (
     <View style={styles.container}>
       <AppHeader title={t.account} />
       <ScrollView contentContainerStyle={styles.profileContent} showsVerticalScrollIndicator={false}>
+
+        {/* ── Profile card ─────────────────────────────── */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials || 'SG'}</Text>
@@ -896,12 +901,12 @@ function ProfileView() {
             </Text>
             <Text style={styles.profileEmail}>{user?.email}</Text>
           </View>
-          <TouchableOpacity onPress={() => { logout(); }} style={styles.logoutBtn} activeOpacity={0.8}>
+          <TouchableOpacity onPress={() => logout()} style={styles.logoutBtn} activeOpacity={0.8}>
             <LogOut size={18} color={C.error} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
-        {/* Birthday row */}
+        {/* ── Birthday ─────────────────────────────────── */}
         <TouchableOpacity
           style={bdStyles.row}
           onPress={() => setEditBdVisible(true)}
@@ -921,48 +926,80 @@ function ProfileView() {
           <Pencil size={14} color={C.textMuted} strokeWidth={2} />
         </TouchableOpacity>
 
-        <View style={styles.statsRow}>
-          <StatCard label={t.jumps} value="0+" />
-          <StatCard label={t.orders} value={String(orders.length)} />
-          <StatCard label={t.level} value="Pro" />
-        </View>
-
-        <TouchableOpacity
-          style={styles.wishlistBtn}
-          onPress={() => router.push('/(tabs)/wishlist' as any)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.wishlistBtnLeft}>
-            <Heart size={18} color="#FF4D6D" fill="#FF4D6D" strokeWidth={2} />
-            <Text style={styles.wishlistBtnText}>{t.myWishlist ?? 'My Wishlist'}</Text>
-          </View>
-          {wishlistCount > 0 && (
-            <View style={styles.wishlistBtnBadge}>
-              <Text style={styles.wishlistBtnBadgeText}>{wishlistCount}</Text>
+        {/* ── Quick links ──────────────────────────────── */}
+        <View style={styles.quickLinks}>
+          <TouchableOpacity
+            style={styles.quickLinkBtn}
+            onPress={() => router.push('/(tabs)/wishlist' as any)}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickLinkIcon, { backgroundColor: 'rgba(255,77,109,0.10)', borderColor: 'rgba(255,77,109,0.25)' }]}>
+              <Heart size={18} color="#FF4D6D" fill="#FF4D6D" strokeWidth={2} />
             </View>
-          )}
-        </TouchableOpacity>
+            <Text style={styles.quickLinkLabel}>{t.myWishlist ?? 'Wishlist'}</Text>
+            {wishlistCount > 0 && (
+              <View style={styles.quickLinkBadge}>
+                <Text style={styles.quickLinkBadgeText}>{wishlistCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
-        <View style={styles.langRow}>
-          <Text style={styles.langLabel}>{t.language}</Text>
-          <LanguageSwitcher />
+          <TouchableOpacity
+            style={styles.quickLinkBtn}
+            onPress={() => {
+              const el = document?.getElementById?.('orders-section');
+              el?.scrollIntoView?.({ behavior: 'smooth' });
+            }}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickLinkIcon, { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder }]}>
+              <Package size={18} color={C.neonBlue} strokeWidth={2} />
+            </View>
+            <Text style={styles.quickLinkLabel}>{t.orders ?? 'Orders'}</Text>
+            {orders.length > 0 && (
+              <View style={[styles.quickLinkBadge, { backgroundColor: C.neonBlue }]}>
+                <Text style={styles.quickLinkBadgeText}>{orders.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
-        <ThemeSelector />
+        {/* ── Preferences group ────────────────────────── */}
+        <View style={styles.settingsGroup}>
+          <Text style={styles.settingsGroupLabel}>Preferences</Text>
 
-        <TouchableOpacity
-          style={styles.adminPanelBtn}
-          onPress={() => router.push('/admin')}
-          activeOpacity={0.8}
-        >
-          <ShieldCheck size={18} color={C.neonBlue} strokeWidth={2} />
-          <Text style={styles.adminPanelBtnText}>Admin Panel</Text>
-        </TouchableOpacity>
+          <View style={styles.settingsRow}>
+            <Text style={styles.settingsRowLabel}>{t.language}</Text>
+            <LanguageSwitcher />
+          </View>
 
+          <View style={styles.settingsDivider} />
+
+          <ThemeSelector />
+        </View>
+
+        {/* ── Admin Panel (admins only) ─────────────────── */}
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.adminPanelBtn}
+            onPress={() => router.push('/admin')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.quickLinkIcon, { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder }]}>
+              <ShieldCheck size={18} color={C.neonBlue} strokeWidth={2} />
+            </View>
+            <Text style={styles.adminPanelBtnText}>Admin Panel</Text>
+            <Text style={styles.adminPanelArrow}>›</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Support ──────────────────────────────────── */}
         <WhatsAppContactCard />
 
+        {/* ── My Gear Listings ─────────────────────────── */}
         <MyGearListings />
 
+        {/* ── Order History ────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <Package size={18} color={C.neonBlue} strokeWidth={2} />
           <Text style={styles.sectionTitle}>{t.orderHistory}</Text>
@@ -970,6 +1007,7 @@ function ProfileView() {
 
         {loadingOrders ? (
           <View style={styles.loadingOrders}>
+            <ActivityIndicator size="small" color={C.neonBlue} />
             <Text style={styles.loadingText}>{t.loadingOrders}</Text>
           </View>
         ) : orders.length === 0 ? (
@@ -993,6 +1031,16 @@ function ProfileView() {
             ))}
           </View>
         )}
+
+        {/* ── Sign Out ─────────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.signOutBtn}
+          onPress={() => logout()}
+          activeOpacity={0.8}
+        >
+          <LogOut size={16} color={C.error} strokeWidth={2} />
+          <Text style={styles.signOutBtnText}>Sign Out</Text>
+        </TouchableOpacity>
 
         <View style={{ height: Spacing.xxl }} />
       </ScrollView>
@@ -2042,6 +2090,87 @@ function makeStyles(C: ThemeColors) {
     fontWeight: '600',
     letterSpacing: 0.5,
   },
+  // Quick links row (wishlist + orders)
+  quickLinks: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  quickLinkBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: C.backgroundCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: C.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 14,
+  },
+  quickLinkIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickLinkLabel: {
+    flex: 1,
+    color: C.textPrimary,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  quickLinkBadge: {
+    backgroundColor: '#FF4D6D',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+  },
+  quickLinkBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  // Preferences grouped card
+  settingsGroup: {
+    backgroundColor: C.backgroundCard,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: C.border,
+    overflow: 'hidden',
+  },
+  settingsGroupLabel: {
+    color: C.textMuted,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.md,
+    paddingBottom: 8,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  settingsRowLabel: {
+    color: C.textSecondary,
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  settingsDivider: {
+    height: 1,
+    backgroundColor: C.border,
+    marginHorizontal: Spacing.md,
+  },
+  // ThemeSelector row — rendered inside settingsGroup
   langRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2062,13 +2191,8 @@ function makeStyles(C: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: C.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: C.border,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    marginTop: Spacing.xs,
   },
   themeOptions: {
     flexDirection: 'row',
@@ -2137,18 +2261,39 @@ function makeStyles(C: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: C.neonBlueGlow,
-    borderRadius: Radius.lg,
+    backgroundColor: C.backgroundCard,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: C.neonBlueBorder,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingVertical: 14,
   },
   adminPanelBtnText: {
     color: C.neonBlue,
     fontSize: FontSize.md,
     fontWeight: '700',
     flex: 1,
+  },
+  adminPanelArrow: {
+    color: C.neonBlue,
+    fontSize: 20,
+    fontWeight: '300',
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    backgroundColor: C.errorDim,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: C.error + '55',
+    paddingVertical: 14,
+  },
+  signOutBtnText: {
+    color: C.error,
+    fontSize: FontSize.md,
+    fontWeight: '700',
   },
   sectionHeader: {
     flexDirection: 'row',
