@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 import { useCMS } from '@/context/CMSContext';
 
 export type ThemeColors = {
@@ -93,9 +93,11 @@ export const THEME_PRESETS: Record<string, ThemeColors> = {
   'midnight-blue': DARK,
 };
 
+export type UserThemeChoice = 'light' | 'dark' | 'system';
+
 const STORAGE_KEY = 'app_theme_preset';
 
-function readCachedPreset(): string | null {
+function readCachedChoice(): string | null {
   if (Platform.OS === 'web') {
     try {
       return typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
@@ -106,37 +108,63 @@ function readCachedPreset(): string | null {
   return null;
 }
 
-function writeCachedPreset(preset: string): void {
+function writeCachedChoice(choice: string): void {
   if (Platform.OS === 'web') {
     try {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, preset);
+      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, choice);
     } catch {}
   } else {
     import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
-      AsyncStorage.setItem(STORAGE_KEY, preset).catch(() => {});
+      AsyncStorage.setItem(STORAGE_KEY, choice).catch(() => {});
     });
   }
 }
 
+// Resolve 'system' to an actual preset using a device scheme hint.
+function resolvePreset(choice: string, systemScheme: 'light' | 'dark'): string {
+  if (choice === 'system') return systemScheme;
+  if (THEME_PRESETS[choice]) return choice;
+  return 'dark';
+}
+
+// Read the system color scheme synchronously on web.
+function readSystemScheme(): 'light' | 'dark' {
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: light)').matches) {
+        return 'light';
+      }
+    } catch {}
+  }
+  return 'dark';
+}
+
 type ThemeContextType = {
   colors: ThemeColors;
+  /** Resolved preset: always 'light' or 'dark' — never 'system'. Use for color lookups. */
   preset: string;
+  /** What the user actually chose: 'light', 'dark', or 'system'. */
+  userChoice: UserThemeChoice;
   setThemePreset: (preset: string) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType>({
   colors: DARK,
   preset: 'dark',
+  userChoice: 'dark',
   setThemePreset: () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme } = useCMS();
+  const deviceScheme = useColorScheme() ?? 'dark';
 
-  // Initialise synchronously from localStorage on web so there is no flash-of-wrong-theme.
-  const [preset, setPreset] = useState<string>(() => {
-    const cached = readCachedPreset();
-    if (cached && THEME_PRESETS[cached]) return cached;
+  // Stored choice: 'light' | 'dark' | 'system' — persisted to storage.
+  const [userChoice, setUserChoice] = useState<UserThemeChoice>(() => {
+    const cached = readCachedChoice();
+    if (cached === 'light' || cached === 'dark' || cached === 'system') return cached;
+    // Legacy: stored value was 'midnight-blue' or other DB preset name
+    if (cached && THEME_PRESETS[cached]) return cached === 'light' ? 'light' : 'dark';
     return 'dark';
   });
 
@@ -145,7 +173,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (Platform.OS !== 'web') {
       import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
         AsyncStorage.getItem(STORAGE_KEY).then((cached) => {
-          if (cached && THEME_PRESETS[cached]) setPreset(cached);
+          if (cached === 'light' || cached === 'dark' || cached === 'system') {
+            setUserChoice(cached);
+          } else if (cached && THEME_PRESETS[cached]) {
+            setUserChoice(cached === 'light' ? 'light' : 'dark');
+          }
         }).catch(() => {});
       });
     }
@@ -153,28 +185,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // When the DB value arrives, only apply it if the user has no locally saved preference.
-  // localStorage is the authoritative source of truth — the DB value seeds first-time users only.
   useEffect(() => {
     if (!theme?.active_preset) return;
     const normalized = theme.active_preset === 'midnight-blue' ? 'dark' : theme.active_preset;
     if (!THEME_PRESETS[normalized]) return;
-    const cached = readCachedPreset();
-    if (cached && THEME_PRESETS[cached]) return; // user has a saved preference — never override it
-    setPreset(normalized);
-    writeCachedPreset(normalized);
+    const cached = readCachedChoice();
+    if (cached) return; // user has a saved preference — never override it
+    const choice = normalized === 'light' ? 'light' : 'dark';
+    setUserChoice(choice as UserThemeChoice);
+    writeCachedChoice(choice);
   }, [theme?.active_preset]);
 
   const setThemePreset = useCallback((newPreset: string) => {
     const normalized = newPreset === 'midnight-blue' ? 'dark' : newPreset;
-    if (!THEME_PRESETS[normalized]) return;
-    setPreset(normalized);
-    writeCachedPreset(normalized);
+    if (normalized !== 'light' && normalized !== 'dark' && normalized !== 'system') return;
+    setUserChoice(normalized as UserThemeChoice);
+    writeCachedChoice(normalized);
   }, []);
+
+  // Resolve the actual preset to use for colors.
+  const preset = useMemo(
+    () => resolvePreset(userChoice, deviceScheme as 'light' | 'dark'),
+    [userChoice, deviceScheme],
+  );
 
   const colors = useMemo(() => THEME_PRESETS[preset] ?? DARK, [preset]);
 
   return (
-    <ThemeContext.Provider value={{ colors, preset, setThemePreset }}>
+    <ThemeContext.Provider value={{ colors, preset, userChoice, setThemePreset }}>
       {children}
     </ThemeContext.Provider>
   );

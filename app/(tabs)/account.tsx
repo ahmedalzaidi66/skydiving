@@ -13,7 +13,7 @@ import {
   Image,
   Modal,
 } from 'react-native';
-import { User, Mail, Lock, LogOut, Package, Eye, EyeOff, ShieldCheck, Heart, ChevronDown, ChevronUp, Trash2, Plus, Minus, TriangleAlert as AlertTriangle, Tag, Pencil, Zap, X, MessageCircle, Calendar, KeyRound, MailCheck } from 'lucide-react-native';
+import { User, Mail, Lock, LogOut, Package, Eye, EyeOff, ShieldCheck, Heart, ChevronDown, ChevronUp, Trash2, Plus, Minus, TriangleAlert as AlertTriangle, Tag, Pencil, Zap, X, MessageCircle, Calendar, KeyRound, MailCheck, Sun, Moon, Monitor } from 'lucide-react-native';
 import { useWishlist } from '@/context/WishlistContext';
 import { useRouter } from 'expo-router';
 import { openWhatsApp } from '@/components/WhatsAppButton';
@@ -25,7 +25,7 @@ import GlossyButton from '@/components/GlossyButton';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
-import { useThemeColors, ThemeColors } from '@/context/ThemeContext';
+import { useThemeColors, useTheme, ThemeColors, UserThemeChoice } from '@/context/ThemeContext';
 import { UsedGearListing } from '@/app/(tabs)/marketplace';
 
 const SHIPPING_THRESHOLD = 500;
@@ -819,6 +819,39 @@ function EditBirthdayModal({
   );
 }
 
+const THEME_OPTIONS: { value: UserThemeChoice; label: string; Icon: React.ComponentType<{ size: number; color: string; strokeWidth: number }> }[] = [
+  { value: 'light', label: 'Light', Icon: Sun },
+  { value: 'dark',  label: 'Dark',  Icon: Moon },
+  { value: 'system',label: 'System',Icon: Monitor },
+];
+
+function ThemeSelector() {
+  const C = useThemeColors();
+  const { userChoice, setThemePreset } = useTheme();
+  const styles = makeStyles(C);
+  return (
+    <View style={styles.themeSelectorRow}>
+      <Text style={styles.langLabel}>Theme</Text>
+      <View style={styles.themeOptions}>
+        {THEME_OPTIONS.map(({ value, label, Icon }) => {
+          const active = userChoice === value;
+          return (
+            <TouchableOpacity
+              key={value}
+              style={[styles.themeOption, active && styles.themeOptionActive]}
+              onPress={() => setThemePreset(value)}
+              activeOpacity={0.75}
+            >
+              <Icon size={14} color={active ? C.white : C.textMuted} strokeWidth={2} />
+              <Text style={[styles.themeOptionText, active && styles.themeOptionTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function ProfileView() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
@@ -914,6 +947,8 @@ function ProfileView() {
           <Text style={styles.langLabel}>{t.language}</Text>
           <LanguageSwitcher />
         </View>
+
+        <ThemeSelector />
 
         <TouchableOpacity
           style={styles.adminPanelBtn}
@@ -2022,6 +2057,45 @@ function makeStyles(C: ThemeColors) {
     color: C.textSecondary,
     fontSize: FontSize.md,
     fontWeight: '600',
+  },
+  themeSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: C.backgroundCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: C.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  themeOptions: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.backgroundInput,
+  },
+  themeOptionActive: {
+    backgroundColor: C.neonBlue,
+    borderColor: C.neonBlue,
+  },
+  themeOptionText: {
+    color: C.textMuted,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
+  themeOptionTextActive: {
+    color: C.white,
   },
   wishlistBtn: {
     flexDirection: 'row',
