@@ -31,6 +31,12 @@ const TAB_ROOTS = [
   '/reset-password',
 ];
 
+// Screens that render their own back button — suppress the global one.
+const SELF_MANAGED_BACK = [
+  /^\/product\/[^/]+$/,
+  /^\/marketplace\/[^/]+$/,
+];
+
 function isTabRoot(pathname: string): boolean {
   if (TAB_ROOTS.includes(pathname)) return true;
   // Admin screens have their own layout/shell with back navigation
@@ -53,6 +59,7 @@ export default function GlobalBackButton() {
   }, [router, scale]);
 
   if (isTabRoot(pathname)) return null;
+  if (SELF_MANAGED_BACK.some((re) => re.test(pathname))) return null;
 
   const top = insets.top + (Platform.OS === 'ios' ? 8 : 12);
 
