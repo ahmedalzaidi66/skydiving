@@ -10,15 +10,15 @@ import {
   ActivityIndicator,
   Platform,
   RefreshControl,
-  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, TriangleAlert as AlertTriangle, Tag, Package, Star, BadgeCheck, Eye, Zap, Heart, Search, X } from 'lucide-react-native';
+import { Plus, TriangleAlert as AlertTriangle, Tag, Package, Star, BadgeCheck, Eye, Zap, Heart } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
 import AppHeader from '@/components/AppHeader';
+import SearchBar from '@/components/SearchBar';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 import { useTheme, useThemeColors } from '@/context/ThemeContext';
 
@@ -101,6 +101,7 @@ export default function MarketplaceScreen() {
   const { isAuthenticated } = useAuth();
   const { gearWishlistIds } = useGearWishlist();
   const C = useThemeColors();
+  const ms = getMsStyles(C);
 
   const [listings, setListings] = useState<UsedGearListing[]>([]);
   const [allListings, setAllListings] = useState<UsedGearListing[]>([]);
@@ -116,6 +117,7 @@ export default function MarketplaceScreen() {
 
   const [rawSearch, setRawSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadingSearch, setLoadingSearch] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchingRef = useRef(false);
@@ -138,13 +140,18 @@ export default function MarketplaceScreen() {
 
   const handleSearchChange = useCallback((text: string) => {
     setRawSearch(text);
+    if (text.trim()) setLoadingSearch(true);
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => setSearchQuery(text.trim()), 300);
+    searchDebounceRef.current = setTimeout(() => {
+      setSearchQuery(text.trim());
+      setLoadingSearch(false);
+    }, 300);
   }, []);
 
   const clearSearch = useCallback(() => {
     setRawSearch('');
     setSearchQuery('');
+    setLoadingSearch(false);
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
   }, []);
 
@@ -292,26 +299,31 @@ export default function MarketplaceScreen() {
       </View>
 
       {/* Search bar */}
-      <View style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: C.backgroundSecondary, borderBottomWidth: 1, borderBottomColor: C.border }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.backgroundCard, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, paddingHorizontal: 10, paddingVertical: Platform.OS === 'ios' ? 9 : 7, gap: 8 }}>
-          <Search size={15} color={C.textMuted} strokeWidth={2} />
-          <TextInput
-            style={{ flex: 1, color: C.textPrimary, fontSize: FontSize.sm, padding: 0, margin: 0 }}
-            placeholder="Search gear, make, model…"
-            placeholderTextColor={C.textMuted}
-            value={rawSearch}
-            onChangeText={handleSearchChange}
-            returnKeyType="search"
-            autoCorrect={false}
-            autoCapitalize="none"
-          />
-          {rawSearch.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <X size={14} color={C.textMuted} strokeWidth={2.5} />
-            </TouchableOpacity>
-          )}
-        </View>
+      <View style={ms.searchWrap}>
+        <SearchBar
+          value={rawSearch}
+          onChangeText={handleSearchChange}
+          placeholder={t.searchGear ?? 'Search gear, make, model…'}
+        />
       </View>
+
+      {/* Search meta row */}
+      {isSearching && !loading && (
+        <View style={ms.searchMeta}>
+          {loadingSearch ? (
+            <ActivityIndicator size="small" color={C.neonBlue} style={{ marginRight: 6 }} />
+          ) : (
+            <Text style={ms.searchMetaText}>
+              {displayedListings.length === 0
+                ? (t.noResultsFor ?? 'No results for') + ` "${searchQuery}"`
+                : `${displayedListings.length} ${displayedListings.length === 1 ? 'result' : 'results'} for "${searchQuery}"`}
+            </Text>
+          )}
+          <TouchableOpacity onPress={clearSearch} activeOpacity={0.7} style={ms.searchMetaClear}>
+            <Text style={ms.searchMetaClearText}>{t.clearSearch ?? 'Clear'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Filters row */}
       <View style={{ borderBottomWidth: 1, borderBottomColor: C.border }}>
@@ -396,21 +408,27 @@ export default function MarketplaceScreen() {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <View style={ms.loadingWrap}>
           <ActivityIndicator color={C.neonBlue} size="large" />
+          <Text style={ms.loadingText}>{t.loading ?? 'Loading…'}</Text>
         </View>
       ) : displayedListings.length === 0 ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.md, padding: Spacing.xl }}>
-          <Package size={48} color={C.textMuted} strokeWidth={1.5} />
-          <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '700', textAlign: 'center' }}>
-            {isSearching ? `No results for "${searchQuery}"` : t.noListingsFound}
+        <View style={ms.emptyWrap}>
+          <View style={ms.emptyIconWrap}>
+            <Package size={36} color={C.textMuted} strokeWidth={1.5} />
+          </View>
+          <Text style={ms.emptyTitle}>
+            {isSearching ? (t.noResultsFor ?? 'No results for') + ` "${searchQuery}"` : t.noListingsFound}
           </Text>
-          {isSearching ? (
-            <TouchableOpacity onPress={clearSearch} activeOpacity={0.75} style={{ borderWidth: 1, borderColor: C.neonBlueBorder, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 7, marginTop: 4 }}>
-              <Text style={{ color: C.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Clear search</Text>
+          <Text style={ms.emptySubtext}>
+            {isSearching
+              ? (t.tryDifferentSearch ?? 'Try a different keyword or adjust filters')
+              : t.noListingsSubtitle}
+          </Text>
+          {isSearching && (
+            <TouchableOpacity onPress={clearSearch} activeOpacity={0.75} style={ms.clearBtn}>
+              <Text style={ms.clearBtnText}>{t.clearSearch ?? 'Clear search'}</Text>
             </TouchableOpacity>
-          ) : (
-            <Text style={{ color: C.textMuted, fontSize: FontSize.md, textAlign: 'center' }}>{t.noListingsSubtitle}</Text>
           )}
         </View>
       ) : (
@@ -598,6 +616,99 @@ function conditionLabel(cond: string, t: any): string {
 }
 
 export { conditionLabel, CONDITION_COLORS };
+
+function getMsStyles(C: ReturnType<typeof useThemeColors>) {
+  return StyleSheet.create({
+    searchWrap: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: C.backgroundSecondary,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    searchMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      backgroundColor: C.backgroundSecondary,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+      gap: 8,
+    },
+    searchMetaText: {
+      flex: 1,
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+    },
+    searchMetaClear: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+    },
+    searchMetaClearText: {
+      color: C.neonBlue,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+    },
+    loadingWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 12,
+    },
+    loadingText: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+    },
+    emptyWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 32,
+    },
+    emptyIconWrap: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: C.backgroundCard,
+      borderWidth: 1,
+      borderColor: C.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    emptyTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    emptySubtext: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    clearBtn: {
+      marginTop: 4,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      borderRadius: Radius.full,
+      paddingHorizontal: 18,
+      paddingVertical: 8,
+    },
+    clearBtnText: {
+      color: C.neonBlue,
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+    },
+  });
+}
 
 const s = StyleSheet.create({
   fab: {

@@ -8,17 +8,17 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   useWindowDimensions,
-  TextInput,
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ShoppingBag, Search, X, ShoppingCart, Heart } from 'lucide-react-native';
+import { ShoppingBag, ShoppingCart, Heart } from 'lucide-react-native';
 import { fetchProducts, fetchCategories, getProductName, getProductImage, getCategoryName, Product, Category } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useWishlistToast } from '@/context/WishlistToastContext';
 import AppHeader from '@/components/AppHeader';
+import SearchBar from '@/components/SearchBar';
 import StarRating from '@/components/StarRating';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 import { useTheme, useThemeColors, ThemeColors } from '@/context/ThemeContext';
@@ -50,7 +50,7 @@ function matchesSearch(product: Product, query: string, language: string): boole
 export default function ProductsScreen() {
   const router = useRouter();
   const { category: categoryParam } = useLocalSearchParams<{ category?: string }>();
-  const { language, t } = useLanguage();
+  const { language, t, isRTL } = useLanguage();
   const { width } = useWindowDimensions();
   const C = useThemeColors();
   const styles = makeStyles(C);
@@ -61,6 +61,7 @@ export default function ProductsScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(categoryParam ?? null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingSearch, setLoadingSearch] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
   const [rawSearch, setRawSearch] = useState('');
@@ -76,13 +77,18 @@ export default function ProductsScreen() {
 
   const handleSearchChange = useCallback((text: string) => {
     setRawSearch(text);
+    if (text.trim()) setLoadingSearch(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => setSearchQuery(text.trim()), 300);
+    debounceRef.current = setTimeout(() => {
+      setSearchQuery(text.trim());
+      setLoadingSearch(false);
+    }, 300);
   }, []);
 
   const clearSearch = useCallback(() => {
     setRawSearch('');
     setSearchQuery('');
+    setLoadingSearch(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
   }, []);
 
@@ -162,6 +168,7 @@ export default function ProductsScreen() {
   }, [searchQuery, products, allProducts, language]);
 
   const isSearching = searchQuery.length > 0;
+  const showSearchLoading = loadingSearch || (isSearching && searchQuery && allProducts.length === 0 && !loading);
 
   const renderFooter = () => {
     if (!isSearching && loadingMore) {
@@ -187,27 +194,34 @@ export default function ProductsScreen() {
     <View style={styles.container}>
       <AppHeader title={activeLabel} showBack />
 
+      {/* ── Search bar ── */}
       <View style={styles.searchWrap}>
-        <View style={styles.searchBar}>
-          <Search size={15} color={C.textMuted} strokeWidth={2} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search products…"
-            placeholderTextColor={C.textMuted}
-            value={rawSearch}
-            onChangeText={handleSearchChange}
-            returnKeyType="search"
-            autoCorrect={false}
-            autoCapitalize="none"
-          />
-          {rawSearch.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <X size={14} color={C.textMuted} strokeWidth={2.5} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <SearchBar
+          value={rawSearch}
+          onChangeText={handleSearchChange}
+          placeholder={t.searchProducts ?? 'Search products…'}
+        />
       </View>
 
+      {/* ── Search meta row: results count or loading ── */}
+      {isSearching && !loading && (
+        <View style={styles.searchMeta}>
+          {showSearchLoading ? (
+            <ActivityIndicator size="small" color={C.neonBlue} style={{ marginRight: 6 }} />
+          ) : (
+            <Text style={styles.searchMetaText}>
+              {displayedProducts.length === 0
+                ? (t.noResultsFor ?? `No results for`) + ` "${searchQuery}"`
+                : `${displayedProducts.length} ${displayedProducts.length === 1 ? 'result' : 'results'} for "${searchQuery}"`}
+            </Text>
+          )}
+          <TouchableOpacity onPress={clearSearch} activeOpacity={0.7} style={styles.searchMetaClear}>
+            <Text style={styles.searchMetaClearText}>{t.clearSearch ?? 'Clear'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Category chips ── */}
       <View style={styles.filterWrap}>
         <FlatList
           horizontal
@@ -218,7 +232,7 @@ export default function ProductsScreen() {
           renderItem={({ item }) => {
             const active = item === selectedCategory;
             const label = item === null
-              ? 'All'
+              ? (t.filterAll ?? 'All')
               : (categories.find(c => c.slug === item)
                   ? getCategoryName(categories.find(c => c.slug === item)!, language)
                   : capitalize(item));
@@ -237,19 +251,28 @@ export default function ProductsScreen() {
         />
       </View>
 
+      {/* ── Content ── */}
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={C.neonBlue} />
+          <Text style={styles.loadingText}>{t.loading ?? 'Loading…'}</Text>
         </View>
       ) : displayedProducts.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <ShoppingBag size={48} color={C.textMuted} strokeWidth={1.5} />
-          <Text style={styles.emptyText}>
-            {isSearching ? `No results for "${searchQuery}"` : 'No products found'}
+          <View style={styles.emptyIconWrap}>
+            <ShoppingBag size={36} color={C.textMuted} strokeWidth={1.5} />
+          </View>
+          <Text style={styles.emptyTitle}>
+            {isSearching ? (t.noResultsFor ?? 'No results for') + ` "${searchQuery}"` : (t.noProductsFound ?? 'No products found')}
+          </Text>
+          <Text style={styles.emptySubtext}>
+            {isSearching
+              ? (t.tryDifferentSearch ?? 'Try a different keyword or clear filters')
+              : (t.checkBackSoon ?? 'Check back soon for new arrivals')}
           </Text>
           {isSearching && (
             <TouchableOpacity onPress={clearSearch} activeOpacity={0.75} style={styles.clearSearchBtn}>
-              <Text style={styles.clearSearchBtnText}>Clear search</Text>
+              <Text style={styles.clearSearchBtnText}>{t.clearSearch ?? 'Clear search'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -371,29 +394,41 @@ function makeStyles(C: ThemeColors) {
     container: { flex: 1, backgroundColor: C.background },
 
     searchWrap: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       backgroundColor: C.backgroundSecondary,
       borderBottomWidth: 1,
       borderBottomColor: C.border,
     },
-    searchBar: {
+
+    // Search meta: result count + clear button
+    searchMeta: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: C.backgroundCard,
-      borderRadius: Radius.md,
-      borderWidth: 1,
-      borderColor: C.border,
-      paddingHorizontal: 9,
-      paddingVertical: Platform.OS === 'ios' ? 7 : 5,
-      gap: 7,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      backgroundColor: C.backgroundSecondary,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+      gap: 8,
     },
-    searchInput: {
+    searchMetaText: {
       flex: 1,
-      color: C.textPrimary,
-      fontSize: FontSize.sm,
-      padding: 0,
-      margin: 0,
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+    },
+    searchMetaClear: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+    },
+    searchMetaClearText: {
+      color: C.neonBlue,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
     },
 
     filterWrap: {
@@ -428,15 +463,46 @@ function makeStyles(C: ThemeColors) {
       fontWeight: '700',
     },
 
-    loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-    emptyText: { color: C.textMuted, fontSize: FontSize.md, textAlign: 'center', paddingHorizontal: 24 },
+    loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+    loadingText: { color: C.textMuted, fontSize: FontSize.sm },
+
+    emptyWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 32,
+    },
+    emptyIconWrap: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: C.backgroundCard,
+      borderWidth: 1,
+      borderColor: C.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    emptyTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    emptySubtext: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
     clearSearchBtn: {
+      marginTop: 4,
       borderWidth: 1,
       borderColor: C.neonBlueBorder,
       borderRadius: Radius.full,
-      paddingHorizontal: 16,
-      paddingVertical: 7,
+      paddingHorizontal: 18,
+      paddingVertical: 8,
     },
     clearSearchBtnText: {
       color: C.neonBlue,
