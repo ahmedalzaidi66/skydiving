@@ -14,6 +14,7 @@ import {
   Share,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Phone,
   MessageCircle,
@@ -75,6 +76,7 @@ function isBoosted(_listing: UsedGearListing): boolean {
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const { user } = useAuth();
   const { isGearWishlisted, toggleGear } = useGearWishlist();
@@ -370,38 +372,49 @@ export default function ListingDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Share button — absolute top-left */}
-      <TouchableOpacity
-        style={styles.shareBtn}
-        onPress={handleShare}
-        activeOpacity={0.8}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        {shareCopied
-          ? <Text style={styles.shareCopiedText}>Copied!</Text>
-          : <Share2 size={18} color={Colors.white} strokeWidth={2} />
-        }
-      </TouchableOpacity>
-
-      {!isOwner && (
-        <TouchableOpacity
-          style={styles.heartBtn}
-          onPress={() => toggleGear(listing)}
-          activeOpacity={0.8}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Heart
-            size={20}
-            color={wishlisted ? Colors.error : Colors.white}
-            fill={wishlisted ? Colors.error : 'transparent'}
-            strokeWidth={2}
-          />
-        </TouchableOpacity>
-      )}
-
       <ScrollView showsVerticalScrollIndicator={false} bounces>
         {/* Image carousel */}
         <View style={styles.imageWrap}>
+          {/* ── Top action bar: back (left) + share + heart (right) ── */}
+          <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+            <TouchableOpacity
+              style={styles.topBtn}
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronLeft size={20} color={Colors.white} strokeWidth={2.5} />
+            </TouchableOpacity>
+            <View style={styles.topBtnRow}>
+              {!isOwner && (
+                <TouchableOpacity
+                  style={styles.topBtn}
+                  onPress={() => toggleGear(listing)}
+                  activeOpacity={0.8}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Heart
+                    size={20}
+                    color={wishlisted ? Colors.error : Colors.white}
+                    fill={wishlisted ? Colors.error : 'transparent'}
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.topBtn}
+                onPress={handleShare}
+                activeOpacity={0.8}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {shareCopied
+                  ? <Text style={styles.shareCopiedText}>Copied!</Text>
+                  : <Share2 size={18} color={Colors.white} strokeWidth={2} />
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Boosted banner */}
           {boosted && (
             <View style={styles.boostBanner}>
@@ -1250,25 +1263,21 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: FontSize.md,
   },
-  heartBtn: {
+  topBar: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 24,
-    right: Spacing.md + 44 + 8,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.background + 'D1',
-    borderWidth: 1.5,
-    borderColor: Colors.white + '2E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 20,
-    elevation: 8,
-  },
-  shareBtn: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 24,
+    left: Spacing.md,
     right: Spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  topBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -1277,7 +1286,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.white + '2E',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 20,
     elevation: 8,
   },
   shareCopiedText: {

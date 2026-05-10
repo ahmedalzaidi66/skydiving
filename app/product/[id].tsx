@@ -16,6 +16,7 @@ import {
   Share,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ShoppingCart, Package, Shield, Star,
@@ -186,6 +187,7 @@ function SkeletonLine({ width: w = '80%', height = 16 }: { width?: any; height?:
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { addToCart, items } = useCart();
   const { t, language } = useLanguage();
   const { user } = useAuth();
@@ -442,19 +444,6 @@ export default function ProductDetailScreen() {
         <Lightbox images={images} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
       )}
 
-      {/* Share button — absolute top-left */}
-      <TouchableOpacity
-        style={styles.shareBtn}
-        onPress={handleShare}
-        activeOpacity={0.8}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        {shareCopied
-          ? <Text style={styles.shareCopiedText}>Copied!</Text>
-          : <Share2 size={18} color={Colors.white} strokeWidth={2} />
-        }
-      </TouchableOpacity>
-
       <ScrollView showsVerticalScrollIndicator={false} bounces>
         {/* ── Hero image ── */}
         <View style={styles.imageWrapper}>
@@ -473,6 +462,29 @@ export default function ProductDetailScreen() {
               style={StyleSheet.absoluteFillObject}
             />
           </TouchableOpacity>
+
+          {/* ── Top action bar: back (left) + share (right) ── */}
+          <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+            <TouchableOpacity
+              style={styles.topBtn}
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronLeft size={20} color={Colors.white} strokeWidth={2.5} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.topBtn}
+              onPress={handleShare}
+              activeOpacity={0.8}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {shareCopied
+                ? <Text style={styles.shareCopiedText}>Copied!</Text>
+                : <Share2 size={18} color={Colors.white} strokeWidth={2} />
+              }
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.imageOverlay} pointerEvents="box-none">
             {/* Discount badge */}
@@ -916,10 +928,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
   },
-  shareBtn: {
+  topBar: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 52 : 24,
+    left: Spacing.md,
     right: Spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    zIndex: 30,
+  },
+  topBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -928,7 +946,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 20,
     elevation: 8,
   },
   shareCopiedText: {
