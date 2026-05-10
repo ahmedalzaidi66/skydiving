@@ -529,7 +529,7 @@ function SearchResultsPanel({
             onPress={() => onProductPress(item.id)}
             activeOpacity={0.85}
           >
-            <View style={[resultsStyles.cardImg, { height: imgH }]}>
+            <View style={[resultsStyles.cardImg, { height: imgH, backgroundColor: colors.backgroundSecondary }]}>
               <Image
                 source={{ uri: getProductImage(item) }}
                 style={[StyleSheet.absoluteFillObject, { objectFit: 'cover' } as any]}
@@ -570,10 +570,8 @@ const resultsStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -583,7 +581,6 @@ const resultsStyles = StyleSheet.create({
   },
   cardImg: {
     width: '100%',
-    backgroundColor: '#F0F4F8',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -598,7 +595,6 @@ const resultsStyles = StyleSheet.create({
   badgeText: { fontSize: 8, fontWeight: '800' },
   cardBody: { padding: 7, gap: 2 },
   cardName: {
-    color: '#1A2332',
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 14,
@@ -662,7 +658,7 @@ function ShopByCategorySection({
         onPress={() => navigateToCategory(cat.slug)}
         activeOpacity={0.75}
       >
-        <View style={catStyles.circle}>
+        <View style={[catStyles.circle, { backgroundColor: colors.backgroundSecondary }]}>
           {cat.image ? (
             <Image
               source={{ uri: cat.image }}
@@ -670,7 +666,7 @@ function ShopByCategorySection({
               resizeMode="cover"
             />
           ) : (
-            <View style={catStyles.circlePlaceholder}>
+            <View style={[catStyles.circlePlaceholder, { backgroundColor: colors.backgroundCard }]}>
               <Text style={[catStyles.circlePlaceholderText, { color: colors.neonBlue }]}>
                 {name.slice(0, 2).toUpperCase()}
               </Text>
@@ -678,7 +674,7 @@ function ShopByCategorySection({
           )}
           <View style={catStyles.circleRing} />
         </View>
-        <Text style={catStyles.label} numberOfLines={2}>
+        <Text style={[catStyles.label, { color: colors.textPrimary }]} numberOfLines={2}>
           {name}
         </Text>
       </TouchableOpacity>
@@ -837,25 +833,25 @@ function FeaturedCard({
   const colors = useThemeColors();
   return (
     <TouchableOpacity
-      style={styles.featuredCard}
+      style={[styles.featuredCard, { backgroundColor: colors.backgroundCard, borderColor: colors.neonBlueBorder }]}
       onPress={onPress}
       activeOpacity={0.88}
     >
-      <View style={styles.featuredCardImageWrap}>
+      <View style={[styles.featuredCardImageWrap, { backgroundColor: colors.backgroundSecondary }]}>
         <Image
           source={{ uri: getProductImage(product) }}
           style={[StyleSheet.absoluteFillObject, styles.featuredCardImage]}
           resizeMode="cover"
         />
         <TouchableOpacity
-          style={styles.featuredHeartBtn}
+          style={[styles.featuredHeartBtn, { backgroundColor: colors.overlay, borderColor: colors.borderLight }]}
           onPress={onWishlist}
           activeOpacity={0.75}
           hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
         >
           <Heart
             size={11}
-            color={saved ? '#FF4D6D' : '#6B7E96'}
+            color={saved ? '#FF4D6D' : colors.textMuted}
             fill={saved ? '#FF4D6D' : 'transparent'}
             strokeWidth={2}
           />
@@ -863,7 +859,7 @@ function FeaturedCard({
       </View>
 
       <View style={styles.featuredCardInfo}>
-        <Text style={styles.featuredCardName} numberOfLines={2}>
+        <Text style={[styles.featuredCardName, { color: colors.textPrimary }]} numberOfLines={2}>
           {getProductName(product, language)}
         </Text>
         <StarRating
@@ -1082,10 +1078,8 @@ const styles = StyleSheet.create({
   },
   featuredCard: {
     width: 124,
-    backgroundColor: '#FFFFFF',
     borderRadius: 9,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
     flexShrink: 0,
     shadowColor: '#000',
@@ -1097,7 +1091,6 @@ const styles = StyleSheet.create({
   featuredCardImageWrap: {
     width: '100%',
     height: 90,
-    backgroundColor: '#F0F4F8',
     overflow: 'hidden',
     position: 'relative',
   },
@@ -1109,7 +1102,6 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   featuredCardName: {
-    color: '#1A2332',
     fontSize: 10,
     fontWeight: '700',
     lineHeight: 14,
@@ -1126,17 +1118,10 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.10)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
   },
   featuredCardActions: {
     flexDirection: 'row',

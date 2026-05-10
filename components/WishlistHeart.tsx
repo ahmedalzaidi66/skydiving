@@ -93,7 +93,7 @@ export default function WishlistHeart({ product, size = 18, onLoginRequired, onT
     onToggle?.(added);
   }, [isAuthenticated, product, toggle, onLoginRequired, onToggle, playAddAnimation, playRemoveAnimation, showWishlistToast, t]);
 
-  const iconColor = saved ? '#FF4D6D' : Colors.textSecondary;
+  const iconColor = saved ? '#FF4D6D' : Colors.textMuted;
   const fillColor = saved ? '#FF4D6D' : 'transparent';
   const particleSize = Math.max(4, Math.round(size * 0.32));
   const heartNode = <Heart size={size} color={iconColor} fill={fillColor} strokeWidth={2} />;
@@ -121,7 +121,7 @@ export default function WishlistHeart({ product, size = 18, onLoginRequired, onT
       {particles.map((p, i) => (
         <Animated.View key={i} style={[styles.particle, { width: particleSize, height: particleSize, borderRadius: particleSize / 2, transform: [{ translateX: p.translate.x }, { translateY: p.translate.y }, { scale: p.scale }], opacity: p.opacity }]} pointerEvents="none" />
       ))}
-      <Animated.View style={[{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.92)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,0,0,0.10)', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 3, elevation: 2, ...(Platform.OS === 'web' ? { backdropFilter: 'blur(6px)' } : {}) }, { transform: [{ scale }] }]}>
+      <Animated.View style={[{ width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.overlay, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.borderLight, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 3, elevation: 2, ...(Platform.OS === 'web' ? { backdropFilter: 'blur(6px)' } : {}) }, { transform: [{ scale }] }]}>
         {heartNode}
       </Animated.View>
     </TouchableOpacity>

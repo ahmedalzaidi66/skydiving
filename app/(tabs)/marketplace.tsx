@@ -20,6 +20,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
 import AppHeader from '@/components/AppHeader';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
 
 export type UsedGearListing = {
   id: string;
@@ -447,6 +448,8 @@ function ListingCard({
 }) {
   const { t } = useLanguage();
   const { isGearWishlisted, toggleGear } = useGearWishlist();
+  const { preset: themePreset } = useTheme();
+  const isLight = themePreset === 'light';
   const thumb = listing.main_image_url || listing.images?.[0];
   const condColor = CONDITION_COLORS[listing.condition] ?? Colors.textMuted;
   const condLabel = conditionLabel(listing.condition, t);
@@ -458,7 +461,7 @@ function ListingCard({
 
   return (
     <TouchableOpacity
-      style={[styles.card, isSold && styles.cardSold, boosted && styles.cardBoosted]}
+      style={[styles.card, !isLight && styles.cardDark, isSold && styles.cardSold, boosted && styles.cardBoosted]}
       onPress={onPress}
       activeOpacity={0.85}
     >
@@ -469,11 +472,11 @@ function ListingCard({
         </View>
       )}
 
-      <View style={styles.cardImageWrap}>
+      <View style={[styles.cardImageWrap, { backgroundColor: isLight ? '#F0F4F8' : Colors.background }]}>
         {thumb ? (
           <Image source={{ uri: thumb }} style={[styles.cardImage, isSold && styles.cardImageSold]} resizeMode="cover" />
         ) : (
-          <View style={styles.cardImagePlaceholder}>
+          <View style={[styles.cardImagePlaceholder, { backgroundColor: isLight ? '#F0F4F8' : Colors.backgroundSecondary }]}>
             <Tag size={32} color={Colors.textMuted} strokeWidth={1.5} />
           </View>
         )}
@@ -501,14 +504,14 @@ function ListingCard({
         )}
         {!isSold && (
           <TouchableOpacity
-            style={styles.heartBtn}
+            style={[styles.heartBtn, isLight && styles.heartBtnLight]}
             onPress={(e) => { e.stopPropagation?.(); toggleGear(listing); }}
             activeOpacity={0.8}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Heart
               size={16}
-              color={wishlisted ? Colors.error : '#6B7E96'}
+              color={wishlisted ? Colors.error : (isLight ? '#2E5F85' : 'rgba(255,255,255,0.85)')}
               fill={wishlisted ? Colors.error : 'transparent'}
               strokeWidth={2}
             />
@@ -707,7 +710,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderColor: 'rgba(0,119,182,0.22)',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -716,6 +719,11 @@ const styles = StyleSheet.create({
     elevation: 3,
     marginHorizontal: Platform.OS === 'web' ? Spacing.xs : 0,
     marginBottom: Platform.OS === 'web' ? Spacing.xs : 0,
+  },
+  cardDark: {
+    backgroundColor: Colors.backgroundCard,
+    borderColor: Colors.border,
+    shadowOpacity: 0.35,
   },
   cardBoosted: {
     borderColor: 'rgba(255,215,0,0.5)',
@@ -763,7 +771,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: 'rgba(5,10,20,0.75)',
   },
   condBadgeText: {
     fontSize: 10,
@@ -774,13 +782,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardTitle: {
-    color: '#1A2332',
+    color: Colors.textPrimary,
     fontSize: FontSize.md,
     fontWeight: '700',
     lineHeight: 20,
   },
   cardCategory: {
-    color: '#6B7E96',
+    color: Colors.textMuted,
     fontSize: FontSize.xs,
     fontWeight: '700',
     letterSpacing: 1,
@@ -792,10 +800,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: 'rgba(5,10,20,0.82)',
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.4)',
+    borderColor: Colors.neonBlueBorder,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
@@ -812,13 +820,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.88)',
+    backgroundColor: 'rgba(5,10,20,0.65)',
     borderRadius: Radius.full,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
   viewCountText: {
-    color: '#1A2332',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 9,
     fontWeight: '700',
   },
@@ -829,10 +837,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(5,10,20,0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  heartBtnLight: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderColor: 'rgba(0,0,0,0.10)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -863,7 +875,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   cardDate: {
-    color: '#6B7E96',
+    color: Colors.textMuted,
     fontSize: FontSize.xs,
   },
   fab: {

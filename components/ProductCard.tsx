@@ -39,10 +39,10 @@ export default function ProductCard({ product, onWishlistLoginRequired }: Props)
   return (
     <TouchableOpacity
       activeOpacity={0.85}
-      style={[{ flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', overflow: 'hidden', borderRadius: cardR, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 8, elevation: 3 }]}
+      style={[{ flex: 1, backgroundColor: Colors.backgroundCard, borderWidth: 1, borderColor: Colors.neonBlueBorder, overflow: 'hidden', borderRadius: cardR, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 8, elevation: 3 }]}
       onPress={() => router.push(`/product/${product.id}`)}
     >
-      <View style={{ height: imageH, width: '100%', backgroundColor: '#F0F4F8', position: 'relative', overflow: 'hidden', borderTopLeftRadius: cardR, borderTopRightRadius: cardR }}>
+      <View style={{ height: imageH, width: '100%', backgroundColor: Colors.backgroundSecondary, position: 'relative', overflow: 'hidden', borderTopLeftRadius: cardR, borderTopRightRadius: cardR }}>
         <Image
           source={{ uri: getProductImage(product) }}
           style={[StyleSheet.absoluteFillObject]}
@@ -59,7 +59,7 @@ export default function ProductCard({ product, onWishlistLoginRequired }: Props)
       </View>
 
       <View style={{ padding: pad, gap: 2 }}>
-        <Text style={{ color: '#1A2332', fontWeight: '600', lineHeight: 15, fontSize: productCardSizes.titleFontSize, textAlign: isRTL ? 'right' : 'left' }} numberOfLines={2}>
+        <Text style={{ color: Colors.textPrimary, fontWeight: '600', lineHeight: 15, fontSize: productCardSizes.titleFontSize, textAlign: isRTL ? 'right' : 'left' }} numberOfLines={2}>
           {getProductName(product, language)}
         </Text>
         <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
@@ -71,7 +71,7 @@ export default function ProductCard({ product, onWishlistLoginRequired }: Props)
               ${product.price.toLocaleString()}
             </Text>
             {product.compare_price != null && product.compare_price > product.price && (
-              <Text style={{ color: '#6B7E96', fontWeight: '500', textDecorationLine: 'line-through', fontSize: Math.max(9, productCardSizes.priceFontSize - 3) }}>
+              <Text style={{ color: Colors.textMuted, fontWeight: '500', textDecorationLine: 'line-through', fontSize: Math.max(9, productCardSizes.priceFontSize - 3) }}>
                 ${product.compare_price.toLocaleString()}
               </Text>
             )}

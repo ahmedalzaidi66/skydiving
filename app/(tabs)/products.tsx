@@ -21,6 +21,7 @@ import { useWishlistToast } from '@/context/WishlistToastContext';
 import AppHeader from '@/components/AppHeader';
 import StarRating from '@/components/StarRating';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
+import { useTheme } from '@/context/ThemeContext';
 
 const PAGE_SIZE = 10;
 
@@ -51,6 +52,8 @@ export default function ProductsScreen() {
   const { category: categoryParam } = useLocalSearchParams<{ category?: string }>();
   const { language, t } = useLanguage();
   const { width } = useWindowDimensions();
+  const { preset: themePreset } = useTheme();
+  const isLight = themePreset === 'light';
 
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -229,7 +232,7 @@ export default function ProductsScreen() {
                 onPress={() => setSelectedCategory(item)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                <Text style={[styles.chipText, active && styles.chipTextActive, !active && isLight && styles.chipTextLight]}>
                   {label}
                 </Text>
               </TouchableOpacity>
@@ -288,6 +291,8 @@ function ProductCard({
   const { addToCart } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { showCartToast, showWishlistToast } = useWishlistToast();
+  const { preset: themePreset } = useTheme();
+  const isLight = themePreset === 'light';
   const imgH = Math.round(cardW * 0.65);
   const saved = isWishlisted(product.id);
 
@@ -305,11 +310,11 @@ function ProductCard({
 
   return (
     <TouchableOpacity
-      style={[styles.card, { width: cardW }]}
+      style={[styles.card, !isLight && styles.cardDark, { width: cardW }]}
       onPress={onPress}
       activeOpacity={0.88}
     >
-      <View style={[styles.cardImageWrap, { height: imgH }]}>
+      <View style={[styles.cardImageWrap, { height: imgH, backgroundColor: isLight ? '#F0F4F8' : Colors.backgroundSecondary }]}>
         <Image
           source={{ uri: getProductImage(product) }}
           style={[StyleSheet.absoluteFillObject, styles.cardImage]}
@@ -321,14 +326,14 @@ function ProductCard({
           </View>
         )}
         <TouchableOpacity
-          style={styles.heartBtn}
+          style={[styles.heartBtn, isLight && styles.heartBtnLight]}
           onPress={handleWishlist}
           activeOpacity={0.75}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
           <Heart
             size={13}
-            color={saved ? '#FF4D6D' : '#6B7E96'}
+            color={saved ? '#FF4D6D' : (isLight ? '#2E5F85' : 'rgba(255,255,255,0.85)')}
             fill={saved ? '#FF4D6D' : 'transparent'}
             strokeWidth={2}
           />
@@ -423,6 +428,9 @@ const styles = StyleSheet.create({
     color: Colors.background,
     fontWeight: '700',
   },
+  chipTextLight: {
+    color: '#1A2332',
+  },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
@@ -446,7 +454,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderColor: 'rgba(0,119,182,0.22)',
     overflow: 'hidden',
     marginBottom: 7,
     shadowColor: '#000',
@@ -454,6 +462,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.10,
     shadowRadius: 8,
     elevation: 3,
+  },
+  cardDark: {
+    backgroundColor: Colors.backgroundCard,
+    borderColor: Colors.border,
+    shadowOpacity: 0.35,
   },
   cardImageWrap: {
     width: '100%',
@@ -479,7 +492,7 @@ const styles = StyleSheet.create({
   },
   cardBody: { padding: 7, gap: 2 },
   cardName: {
-    color: '#1A2332',
+    color: Colors.textPrimary,
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 14,
@@ -502,12 +515,16 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'rgba(6,12,24,0.65)',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.10)',
+    borderColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+  },
+  heartBtnLight: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: 'rgba(0,0,0,0.10)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
