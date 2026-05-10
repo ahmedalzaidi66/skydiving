@@ -350,6 +350,7 @@ export default function ListingDetailScreen() {
   const wishlisted = isGearWishlisted(listing.id);
 
   const handleShare = async () => {
+    console.log('share pressed');
     const url = `${window?.location?.origin ?? 'https://skydiverstore.com'}/marketplace/${listing.id}`;
     const message = `Check this out on Skydiver Man Gear: ${listing.title}`;
     if (Platform.OS !== 'web') {
@@ -377,7 +378,7 @@ export default function ListingDetailScreen() {
         {/* Image carousel */}
         <View style={styles.imageWrap}>
           {/* ── Top action bar: back (left) + share + heart (right) ── */}
-          <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+          <View style={[styles.topBar, { top: insets.top + 8 }]}>
             <TouchableOpacity
               style={styles.topBtn}
               onPress={() => router.back()}

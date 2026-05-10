@@ -415,6 +415,7 @@ export default function ProductDetailScreen() {
     : t.outOfStock;
 
   const handleShare = async () => {
+    console.log('share pressed');
     const slug = product.slug || product.id;
     const url = `${(typeof window !== 'undefined' && window?.location?.origin) ? window.location.origin : 'https://skydiverstore.com'}/product/${slug}`;
     const title = getProductName(product, language);
@@ -464,7 +465,7 @@ export default function ProductDetailScreen() {
           </TouchableOpacity>
 
           {/* ── Top action bar: back (left) + share (right) ── */}
-          <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+          <View style={[styles.topBar, { top: insets.top + 8 }]}>
             <TouchableOpacity
               style={styles.topBtn}
               onPress={() => router.back()}
