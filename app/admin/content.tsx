@@ -182,23 +182,29 @@ function HeroSlidesEditorSection() {
   const [saveMsgType, setSaveMsgType] = useState<'ok' | 'err'>('ok');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Load
-  useEffect(() => {
+  // Load all slides using adminSupabase so authenticated RLS policies apply
+  const loadSlides = useCallback(async () => {
     setLoading(true);
-    supabase
+    const db = adminSupabase();
+    const { data, error } = await db
       .from('hero_slides')
       .select('*')
-      .order('sort_order', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) setSlides(data as HeroSlide[]);
-        setLoading(false);
-      });
+      .order('sort_order', { ascending: true });
+    if (error) {
+      console.error('[HeroSlides] load error:', error.message, error);
+      flash(`Failed to load slides: ${error.message}`, 'err');
+    } else {
+      setSlides((data ?? []) as HeroSlide[]);
+    }
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadSlides(); }, [loadSlides]);
 
   function flash(msg: string, type: 'ok' | 'err' = 'ok') {
     setSaveMsg(msg);
     setSaveMsgType(type);
-    setTimeout(() => setSaveMsg(null), 3500);
+    setTimeout(() => setSaveMsg(null), 4000);
   }
 
   async function handleAddSlide() {
@@ -207,43 +213,57 @@ function HeroSlidesEditorSection() {
     const { data, error } = await db
       .from('hero_slides')
       .insert({ ...BLANK_SLIDE, sort_order: maxOrder + 1 })
-      .select()
-      .maybeSingle();
-    if (error || !data) { flash('Failed to add slide', 'err'); return; }
+      .select('*')
+      .single();
+    if (error) {
+      console.error('[HeroSlides] insert error:', error.message, error);
+      flash(`Failed to add slide: ${error.message}`, 'err');
+      return;
+    }
     const newSlide = data as HeroSlide;
     setSlides(prev => [...prev, newSlide]);
     setExpandedId(newSlide.id);
+    flash('New slide added — expand to edit it.');
   }
 
   async function handleDuplicateSlide(source: HeroSlide) {
     const maxOrder = slides.reduce((m, s) => Math.max(m, s.sort_order), -1);
     const db = adminSupabase();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id: _id, created_at: _c, updated_at: _u, ...rest } = source as any;
     const { data, error } = await db
       .from('hero_slides')
       .insert({ ...rest, sort_order: maxOrder + 1, is_active: false })
-      .select()
-      .maybeSingle();
-    if (error || !data) { flash('Failed to duplicate slide', 'err'); return; }
+      .select('*')
+      .single();
+    if (error) {
+      console.error('[HeroSlides] duplicate error:', error.message, error);
+      flash(`Failed to duplicate: ${error.message}`, 'err');
+      return;
+    }
     const newSlide = data as HeroSlide;
     setSlides(prev => [...prev, newSlide]);
     setExpandedId(newSlide.id);
-    flash('Slide duplicated — it is hidden by default.');
+    flash('Slide duplicated — hidden by default. Expand to activate it.');
   }
 
   async function handleDelete(id: string) {
     const db = adminSupabase();
     const { error } = await db.from('hero_slides').delete().eq('id', id);
-    if (error) { flash('Failed to delete slide', 'err'); return; }
+    if (error) {
+      console.error('[HeroSlides] delete error:', error.message, error);
+      flash(`Failed to delete: ${error.message}`, 'err');
+      return;
+    }
     setSlides(prev => prev.filter(s => s.id !== id));
     if (expandedId === id) setExpandedId(null);
-    flash('Slide deleted');
+    flash('Slide deleted.');
   }
 
   async function handleSaveSlide(slide: HeroSlide) {
     setSaving(true);
     const db = adminSupabase();
-    const { error } = await db
+    const { data, error } = await db
       .from('hero_slides')
       .update({
         image_url: slide.image_url,
@@ -257,10 +277,17 @@ function HeroSlidesEditorSection() {
         is_active: slide.is_active,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', slide.id);
+      .eq('id', slide.id)
+      .select('*')
+      .single();
     setSaving(false);
-    if (error) { flash('Failed to save slide', 'err'); return; }
-    setSlides(prev => prev.map(s => (s.id === slide.id ? slide : s)));
+    if (error) {
+      console.error('[HeroSlides] update error:', error.message, error);
+      flash(`Failed to save: ${error.message}`, 'err');
+      return;
+    }
+    // Use the server-returned row so local state always matches DB
+    setSlides(prev => prev.map(s => (s.id === slide.id ? (data as HeroSlide) : s)));
     flash('Slide saved!');
   }
 
@@ -270,6 +297,7 @@ function HeroSlidesEditorSection() {
     const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= slides.length) return;
 
+    // Optimistic local update
     const updated = [...slides];
     const tmp = updated[idx].sort_order;
     updated[idx] = { ...updated[idx], sort_order: updated[swapIdx].sort_order };
@@ -278,10 +306,17 @@ function HeroSlidesEditorSection() {
     setSlides(updated);
 
     const db = adminSupabase();
-    await Promise.all([
+    const [r1, r2] = await Promise.all([
       db.from('hero_slides').update({ sort_order: updated[idx].sort_order }).eq('id', updated[idx].id),
       db.from('hero_slides').update({ sort_order: updated[swapIdx].sort_order }).eq('id', updated[swapIdx].id),
     ]);
+    if (r1.error || r2.error) {
+      const msg = r1.error?.message ?? r2.error?.message ?? 'unknown';
+      console.error('[HeroSlides] move error:', msg);
+      flash(`Failed to reorder: ${msg}`, 'err');
+      // Reload from DB to resync
+      loadSlides();
+    }
   }
 
   if (loading) {
