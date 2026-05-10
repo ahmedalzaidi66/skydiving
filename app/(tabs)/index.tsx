@@ -895,14 +895,34 @@ function FeaturedCard({
 function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: string; t: { canopyWeightQuestion: string; canopyJumpsQuestion: string } }) {
   const router = useRouter();
   const colors = useThemeColors();
+  const { preset } = useTheme();
+  const isLight = preset === 'light';
   const [weight, setWeight] = useState('175');
   const [jumps, setJumps] = useState('150');
 
+  // Light-mode token overrides
+  const cardBg = isLight ? '#FFFFFF' : '#0D1830';
+  const cardBorder = isLight ? 'rgba(0,119,182,0.22)' : 'rgba(0,191,255,0.22)';
+  const cardShadow = isLight
+    ? { shadowColor: '#0077B6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.10, shadowRadius: 14, elevation: 4 }
+    : {};
+  const gradientColors: [string, string] = isLight
+    ? ['rgba(0,119,182,0.06)', 'rgba(0,150,199,0.02)']
+    : ['rgba(0,100,200,0.18)', 'rgba(5,10,20,0)'];
+  const titleColor = isLight ? '#0077B6' : colors.neonBlue;
+  const titleShadow = isLight
+    ? { textShadowColor: 'transparent', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 0 }
+    : { textShadowColor: colors.neonBlue + '99', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 };
+  const labelColor = isLight ? '#3A6080' : '#A8C8E0';
+  const valueColor = isLight ? '#0D2E4E' : '#FFFFFF';
+  const dividerColor = isLight ? 'rgba(0,119,182,0.12)' : 'rgba(0,191,255,0.12)';
+  const btnBg = isLight ? undefined : colors.neonBlue;
+  const btnTextColor = isLight ? '#FFFFFF' : '#050A14';
+
   return (
-    <View style={styles.canopySection}>
-      {/* Subtle blue radial glow from top-left where the icon sits */}
+    <View style={[styles.canopySection, { backgroundColor: cardBg, borderColor: cardBorder }, cardShadow]}>
       <LinearGradient
-        colors={['rgba(0,100,200,0.18)', 'rgba(5,10,20,0)']}
+        colors={gradientColors}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -912,33 +932,33 @@ function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: st
         {/* Title row: parachute icon + title */}
         <View style={styles.canopyTitleRow}>
           <Image source={LOGO} style={styles.canopyIcon} resizeMode="contain" />
-          <Text style={[styles.canopyTitle, { color: colors.neonBlue, textShadowColor: colors.neonBlue + '99', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 }]}>{title.toUpperCase()}</Text>
+          <Text style={[styles.canopyTitle, { color: titleColor }, titleShadow]}>{title.toUpperCase()}</Text>
         </View>
 
         {/* Weight field */}
         <View style={styles.canopyFieldRow}>
-          <Text style={styles.canopyFieldLabel}>{t.canopyWeightQuestion}</Text>
+          <Text style={[styles.canopyFieldLabel, { color: labelColor }]}>{t.canopyWeightQuestion}</Text>
           <View style={styles.canopyValueWrap}>
             <TextInput
-              style={styles.canopyValueText}
+              style={[styles.canopyValueText, { color: valueColor }]}
               value={weight}
               onChangeText={setWeight}
               keyboardType="numeric"
               placeholderTextColor={colors.textMuted}
               selectTextOnFocus
             />
-            <Text style={styles.canopyValueUnit}> lbs</Text>
+            <Text style={[styles.canopyValueUnit, { color: valueColor }]}> lbs</Text>
           </View>
         </View>
 
         {/* Divider */}
-        <View style={styles.canopyDivider} />
+        <View style={[styles.canopyDivider, { backgroundColor: dividerColor }]} />
 
         {/* Jumps field */}
         <View style={styles.canopyFieldRow}>
-          <Text style={styles.canopyFieldLabel}>{t.canopyJumpsQuestion}</Text>
+          <Text style={[styles.canopyFieldLabel, { color: labelColor }]}>{t.canopyJumpsQuestion}</Text>
           <TextInput
-            style={styles.canopyValueText}
+            style={[styles.canopyValueText, { color: valueColor }]}
             value={jumps}
             onChangeText={setJumps}
             keyboardType="numeric"
@@ -948,13 +968,30 @@ function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: st
         </View>
 
         {/* CTA */}
-        <TouchableOpacity
-          style={[styles.canopyBtn, { backgroundColor: colors.neonBlue, shadowColor: colors.neonBlue }]}
-          activeOpacity={0.85}
-          onPress={() => router.push('/(tabs)/canopy')}
-        >
-          <Text style={styles.canopyBtnText}>{ctaText.toUpperCase()}</Text>
-        </TouchableOpacity>
+        {isLight ? (
+          <TouchableOpacity
+            style={[styles.canopyBtn, { overflow: 'hidden', shadowColor: '#0077B6' }]}
+            activeOpacity={0.85}
+            onPress={() => router.push('/(tabs)/canopy')}
+          >
+            <LinearGradient
+              colors={['#0096C7', '#0077B6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.canopyBtnGradient}
+            >
+              <Text style={[styles.canopyBtnText, { color: btnTextColor }]}>{ctaText.toUpperCase()}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.canopyBtn, { backgroundColor: btnBg, shadowColor: colors.neonBlue, paddingVertical: 11, alignItems: 'center' }]}
+            activeOpacity={0.85}
+            onPress={() => router.push('/(tabs)/canopy')}
+          >
+            <Text style={[styles.canopyBtnText, { color: btnTextColor }]}>{ctaText.toUpperCase()}</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -1161,8 +1198,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.22)',
-    backgroundColor: '#0D1830',
   },
   canopyInner: {
     paddingHorizontal: 14,
@@ -1192,7 +1227,6 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   canopyFieldLabel: {
-    color: '#A8C8E0',
     fontSize: 12,
     fontWeight: '400',
   },
@@ -1201,7 +1235,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   canopyValueText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'right',
@@ -1209,27 +1242,27 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   canopyValueUnit: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
   },
   canopyDivider: {
     height: 1,
-    backgroundColor: 'rgba(0,191,255,0.12)',
     marginVertical: 2,
   },
   canopyBtn: {
     borderRadius: Radius.full,
-    paddingVertical: 11,
-    alignItems: 'center',
+    overflow: 'hidden',
     marginTop: 4,
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.55,
+    shadowOpacity: 0.45,
     shadowRadius: 10,
     elevation: 6,
   },
+  canopyBtnGradient: {
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
   canopyBtnText: {
-    color: '#050A14',
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 2,
