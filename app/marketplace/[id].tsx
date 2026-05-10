@@ -107,6 +107,9 @@ export default function ListingDetailScreen() {
   const [boostDone, setBoostDone] = useState(false);
   const [existingBoostStatus, setExistingBoostStatus] = useState<string | null>(null);
 
+  // Share
+  const [shareCopied, setShareCopied] = useState(false);
+
   // View tracking — once per listing session
   const viewTracked = useRef(false);
   // Prevent stale state on fast navigation
@@ -345,8 +348,6 @@ export default function ListingDetailScreen() {
   };
 
   const wishlisted = isGearWishlisted(listing.id);
-
-  const [shareCopied, setShareCopied] = useState(false);
 
   const handleShare = async () => {
     const url = `${window?.location?.origin ?? 'https://skydiverstore.com'}/marketplace/${listing.id}`;
