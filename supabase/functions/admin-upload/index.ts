@@ -41,13 +41,14 @@ Deno.serve(async (req: Request) => {
 
     // Route to correct bucket based on folder
     const bucketMap: Record<string, string> = {
-      products: 'product-images',
-      branding: 'product-images',
-      cms:      'product-images',
-      general:  'uplods',
-      tryon:    'tryon-models',
+      products:      'product-images',
+      branding:      'product-images',
+      cms:           'product-images',
+      'hero-slides': 'product-images',
+      general:       'uplods',
+      tryon:         'tryon-models',
     };
-    const bucket = bucketMap[folder] ?? 'uplods';
+    const bucket = bucketMap[folder] ?? 'product-images';
 
     const ext = fileName.includes('.') ? fileName.split('.').pop()!.toLowerCase() : 'jpg';
     const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;

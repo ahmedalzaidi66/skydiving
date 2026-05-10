@@ -4,15 +4,16 @@ export type UploadResult =
   | { url: string; error: null }
   | { url: null; error: string };
 
-export type UploadFolder = 'products' | 'branding' | 'cms' | 'general' | 'tryon';
+export type UploadFolder = 'products' | 'branding' | 'cms' | 'general' | 'tryon' | 'hero-slides';
 
 // Bucket routing — maps upload folder to the actual Supabase storage bucket name
 const BUCKET_MAP: Record<UploadFolder, string> = {
-  products: 'product-images',
-  branding: 'product-images',
-  cms:      'product-images',
-  general:  'uplods',
-  tryon:    'tryon-models',
+  products:     'product-images',
+  branding:     'product-images',
+  cms:          'product-images',
+  'hero-slides': 'product-images',
+  general:      'uplods',
+  tryon:        'tryon-models',
 };
 
 const ALLOWED_TYPES = new Set([
