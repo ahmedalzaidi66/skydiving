@@ -41,7 +41,8 @@ import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
-import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
+import { Spacing, FontSize, Radius } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
 import { conditionLabel, CONDITION_COLORS, UsedGearListing } from '@/app/(tabs)/marketplace';
 
 type SellerProfile = {
@@ -80,6 +81,7 @@ export default function ListingDetailScreen() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { isGearWishlisted, toggleGear } = useGearWishlist();
+  const C = useThemeColors();
 
   const [listing, setListing] = useState<UsedGearListing | null>(null);
   const [seller, setSeller] = useState<SellerProfile | null>(null);
@@ -91,7 +93,6 @@ export default function ListingDetailScreen() {
   const [ratingMsg, setRatingMsg] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
 
-  // Report state
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportMessage, setReportMessage] = useState('');
@@ -100,22 +101,16 @@ export default function ListingDetailScreen() {
   const [reportDone, setReportDone] = useState(false);
   const [reportError, setReportError] = useState('');
 
-  // Boost state
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [boostSettings, setBoostSettings] = useState<BoostSettings>({ price: 9.99, durationDays: 7 });
   const [boostSubmitting, setBoostSubmitting] = useState(false);
   const [boostDone, setBoostDone] = useState(false);
   const [existingBoostStatus, setExistingBoostStatus] = useState<string | null>(null);
 
-  // Share
   const [shareCopied, setShareCopied] = useState(false);
-
-  // Lightbox
   const [showLightbox, setShowLightbox] = useState(false);
 
-  // View tracking — once per listing session
   const viewTracked = useRef(false);
-  // Prevent stale state on fast navigation
   const fetchId = useRef(0);
 
   useEffect(() => {
@@ -132,15 +127,12 @@ export default function ListingDetailScreen() {
     setExistingRating(null);
     setExistingBoostStatus(null);
 
-    // 8s timeout — prevents infinite spinner on slow/hung connections
     const timeoutId = setTimeout(() => {
       if (thisFetch !== fetchId.current) return;
-      console.warn('[marketplace/[id]] fetch timed out after 8s');
       setFetchError('Request timed out. Please check your connection and try again.');
       setLoading(false);
     }, 8000);
 
-    // Phase 1: Fetch listing only — render immediately, do not wait for rating
     supabase
       .from('used_gear_listings')
       .select('id, title, price, description, condition, category, location, contact, status, user_id, images, main_image_url, shipping_included, seller_verified, created_at, make, model, size, color, dom, serial_number, total_jumps, main_make, main_model, main_size, main_dom, main_jumps, main_serial, reserve_make, reserve_model, reserve_size, reserve_dom, reserve_repacks, reserve_serial, aad_make, aad_model, aad_dom, aad_eol, aad_jumps, aad_needs_service, aad_serial')
@@ -151,7 +143,6 @@ export default function ListingDetailScreen() {
         clearTimeout(timeoutId);
 
         if (listingError) {
-          console.error('[marketplace/[id]] listing fetch error:', listingError.message, listingError);
           setFetchError(listingError.message);
           setLoading(false);
           return;
@@ -163,7 +154,6 @@ export default function ListingDetailScreen() {
 
         if (!l) return;
 
-        // Lazy: user's existing rating (independent, non-blocking)
         if (user) {
           supabase
             .from('seller_ratings')
@@ -181,7 +171,6 @@ export default function ListingDetailScreen() {
             .catch(() => {});
         }
 
-        // Lazy: seller profile
         if (l.user_id) {
           supabase
             .from('seller_profiles')
@@ -195,7 +184,6 @@ export default function ListingDetailScreen() {
             .catch(() => {});
         }
 
-        // Lazy: boost settings
         supabase
           .from('site_settings')
           .select('key, value')
@@ -211,7 +199,6 @@ export default function ListingDetailScreen() {
           })
           .catch(() => {});
 
-        // Fire-and-forget view tracking
         const viewerKey = user?.id
           ? `user_${user.id}`
           : `anon_${Platform.OS}_${Date.now().toString(36).slice(-6)}`;
@@ -221,9 +208,7 @@ export default function ListingDetailScreen() {
       .catch((err: any) => {
         if (thisFetch !== fetchId.current) return;
         clearTimeout(timeoutId);
-        const msg = err?.message ?? 'Failed to load listing';
-        console.error('[marketplace/[id]] fetch error:', msg, err);
-        setFetchError(msg);
+        setFetchError(err?.message ?? 'Failed to load listing');
         setLoading(false);
       });
   }, [id]);
@@ -307,20 +292,20 @@ export default function ListingDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={Colors.neonBlue} size="large" />
+      <View style={{ flex: 1, backgroundColor: C.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={C.neonBlue} size="large" />
       </View>
     );
   }
 
   if (fetchError || !listing) {
     return (
-      <View style={styles.centered}>
-        <Text style={[styles.notFoundText, fetchError ? { color: Colors.error } : {}]}>
+      <View style={{ flex: 1, backgroundColor: C.background, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: fetchError ? C.error : C.textMuted, fontSize: FontSize.md }}>
           {fetchError ?? 'Listing not found'}
         </Text>
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75} style={{ marginTop: 12 }}>
-          <Text style={{ color: Colors.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Go back</Text>
+          <Text style={{ color: C.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Go back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -330,7 +315,7 @@ export default function ListingDetailScreen() {
   const images = listing.main_image_url && !rawImages.includes(listing.main_image_url)
     ? [listing.main_image_url, ...rawImages]
     : rawImages.length > 0 ? rawImages : listing.main_image_url ? [listing.main_image_url] : [];
-  const condColor = CONDITION_COLORS[listing.condition] ?? Colors.textMuted;
+  const condColor = CONDITION_COLORS[listing.condition] ?? C.textMuted;
   const isVerified = listing.seller_verified || seller?.is_verified;
   const isRig = RIG_CATEGORIES.includes(listing.category);
   const boosted = isBoosted(listing);
@@ -353,8 +338,7 @@ export default function ListingDetailScreen() {
   const wishlisted = isGearWishlisted(listing.id);
 
   const handleShare = async () => {
-    console.log('share pressed');
-    const url = `${window?.location?.origin ?? 'https://skydiverstore.com'}/marketplace/${listing.id}`;
+    const url = `${(typeof window !== 'undefined' && window?.location?.origin) ? window.location.origin : 'https://skydiverstore.com'}/marketplace/${listing.id}`;
     const message = `Check this out on Skydiver Man Gear: ${listing.title}`;
     if (Platform.OS !== 'web') {
       try {
@@ -376,55 +360,54 @@ export default function ListingDetailScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
       <ScrollView showsVerticalScrollIndicator={false} bounces>
         {/* Image carousel */}
-        <View style={styles.imageWrap}>
-          {/* ── Top action bar: back (left) + share + heart (right) ── */}
-          <View style={[styles.topBar, { top: insets.top + 8 }]}>
+        <View style={{ width: '100%', height: Platform.OS === 'web' ? 420 : 320, backgroundColor: C.backgroundSecondary, position: 'relative' }}>
+          {/* Top action bar */}
+          <View style={[s.topBar, { top: insets.top + 8 }]}>
             <TouchableOpacity
-              style={styles.topBtn}
+              style={s.topBtn}
               onPress={() => router.back()}
               activeOpacity={0.8}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <ChevronLeft size={20} color={Colors.white} strokeWidth={2.5} />
+              <ChevronLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
             </TouchableOpacity>
-            <View style={styles.topBtnRow}>
+            <View style={s.topBtnRow}>
               {!isOwner && (
                 <TouchableOpacity
-                  style={styles.topBtn}
+                  style={s.topBtn}
                   onPress={() => toggleGear(listing)}
                   activeOpacity={0.8}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <Heart
                     size={20}
-                    color={wishlisted ? Colors.error : Colors.white}
-                    fill={wishlisted ? Colors.error : 'transparent'}
+                    color={wishlisted ? '#FF4444' : '#FFFFFF'}
+                    fill={wishlisted ? '#FF4444' : 'transparent'}
                     strokeWidth={2}
                   />
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                style={styles.topBtn}
+                style={s.topBtn}
                 onPress={handleShare}
                 activeOpacity={0.8}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {shareCopied
-                  ? <Text style={styles.shareCopiedText}>Copied!</Text>
-                  : <Share2 size={18} color={Colors.white} strokeWidth={2} />
+                  ? <Text style={{ color: C.neonBlue, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>Copied!</Text>
+                  : <Share2 size={18} color="#FFFFFF" strokeWidth={2} />
                 }
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Boosted banner */}
           {boosted && (
-            <View style={styles.boostBanner}>
-              <Zap size={12} color={Colors.gold} strokeWidth={2.5} fill={Colors.gold} />
-              <Text style={styles.boostBannerText}>FEATURED LISTING</Text>
+            <View style={s.boostBanner}>
+              <Zap size={12} color={C.gold} strokeWidth={2.5} fill={C.gold} />
+              <Text style={{ color: C.gold, fontSize: 10, fontWeight: '900', letterSpacing: 2 }}>FEATURED LISTING</Text>
             </View>
           )}
 
@@ -445,26 +428,26 @@ export default function ListingDetailScreen() {
                 <>
                   {imgIdx > 0 && (
                     <TouchableOpacity
-                      style={[styles.imgNav, styles.imgNavLeft]}
+                      style={[s.imgNav, s.imgNavLeft]}
                       onPress={() => setImgIdx((i) => i - 1)}
                       activeOpacity={0.8}
                     >
-                      <ChevronLeft size={22} color={Colors.white} strokeWidth={2.5} />
+                      <ChevronLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
                     </TouchableOpacity>
                   )}
                   {imgIdx < images.length - 1 && (
                     <TouchableOpacity
-                      style={[styles.imgNav, styles.imgNavRight]}
+                      style={[s.imgNav, s.imgNavRight]}
                       onPress={() => setImgIdx((i) => i + 1)}
                       activeOpacity={0.8}
                     >
-                      <ChevronRight size={22} color={Colors.white} strokeWidth={2.5} />
+                      <ChevronRight size={22} color="#FFFFFF" strokeWidth={2.5} />
                     </TouchableOpacity>
                   )}
-                  <View style={styles.imgDots}>
+                  <View style={s.imgDots}>
                     {images.map((_, i) => (
                       <TouchableOpacity key={i} onPress={() => setImgIdx(i)} activeOpacity={0.8}>
-                        <View style={[styles.dot, i === imgIdx && styles.dotActive]} />
+                        <View style={[s.dot, i === imgIdx && { backgroundColor: C.neonBlue, width: 18 }]} />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -472,171 +455,166 @@ export default function ListingDetailScreen() {
               )}
             </>
           ) : (
-            <View style={styles.imgPlaceholder}>
-              <Tag size={48} color={Colors.textMuted} strokeWidth={1.5} />
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Tag size={48} color={C.textMuted} strokeWidth={1.5} />
             </View>
           )}
-          <View style={[styles.condBadge, { borderColor: condColor }]}>
-            <Text style={[styles.condBadgeText, { color: condColor }]}>
+
+          <View style={[s.condBadge, { borderColor: condColor, backgroundColor: C.background + 'CC' }]}>
+            <Text style={[s.condBadgeText, { color: condColor }]}>
               {conditionLabel(listing.condition, t)}
             </Text>
           </View>
 
-          {/* View count */}
           {views > 0 && (
-            <View style={styles.viewCountChip}>
-              <Eye size={12} color={Colors.textSecondary} strokeWidth={2} />
-              <Text style={styles.viewCountText}>{views} views</Text>
+            <View style={s.viewCountChip}>
+              <Eye size={12} color={C.textSecondary} strokeWidth={2} />
+              <Text style={{ color: C.textSecondary, fontSize: FontSize.xs, fontWeight: '600' }}>{views} views</Text>
             </View>
           )}
         </View>
 
-        <View style={styles.body}>
-          {/* Title + price */}
-          <Text style={styles.title}>{listing.title}</Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>${Number(listing.price).toLocaleString()}</Text>
+        <View style={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: Spacing.xxl }}>
+          <Text style={{ color: C.textPrimary, fontSize: FontSize.xl, fontWeight: '800', lineHeight: 28 }}>{listing.title}</Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' }}>
+            <Text style={{ color: C.neonBlue, fontSize: FontSize.xxl, fontWeight: '900' }}>
+              ${Number(listing.price).toLocaleString()}
+            </Text>
             {listing.shipping_included && (
-              <View style={styles.shippingBadge}>
-                <Truck size={12} color={Colors.success} strokeWidth={2} />
-                <Text style={styles.shippingBadgeText}>Shipping included</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.successDim, borderRadius: Radius.full, borderWidth: 1, borderColor: C.success + '4D', paddingHorizontal: 10, paddingVertical: 4 }}>
+                <Truck size={12} color={C.success} strokeWidth={2} />
+                <Text style={{ color: C.success, fontSize: FontSize.xs, fontWeight: '700' }}>Shipping included</Text>
               </View>
             )}
           </View>
 
           {listing.category ? (
-            <Text style={styles.category}>{listing.category.replace(/_/g, ' ').toUpperCase()}</Text>
+            <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 1.5 }}>
+              {listing.category.replace(/_/g, ' ').toUpperCase()}
+            </Text>
           ) : null}
 
-          {/* Location */}
           {!!listing.location && (
-            <View style={styles.locationRow}>
-              <MapPin size={13} color={Colors.textMuted} strokeWidth={2} />
-              <Text style={styles.locationText}>{listing.location}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <MapPin size={13} color={C.textMuted} strokeWidth={2} />
+              <Text style={{ color: C.textMuted, fontSize: FontSize.sm }}>{listing.location}</Text>
             </View>
           )}
 
-          {/* Safety warning */}
-          <View style={styles.safetyBox}>
-            <AlertTriangle size={14} color={Colors.warning} strokeWidth={2} />
-            <Text style={styles.safetyText}>{t.usedGearSafetyWarning}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: C.warning + '14', borderRadius: Radius.md, borderWidth: 1, borderColor: C.warning + '40', padding: Spacing.sm }}>
+            <AlertTriangle size={14} color={C.warning} strokeWidth={2} />
+            <Text style={{ flex: 1, color: C.warning, fontSize: FontSize.xs, fontWeight: '600', lineHeight: 17 }}>{t.usedGearSafetyWarning}</Text>
           </View>
 
-          {/* ── Owner: Boost CTA ── */}
           {isOwner && listing.status === 'approved' && (
             <BoostCTA
               boostStatus={existingBoostStatus}
               boostSettings={boostSettings}
               boosted={boosted}
               onPress={() => { setBoostDone(false); setShowBoostModal(true); }}
+              C={C}
             />
           )}
 
-          {/* ── Gear Specs ── */}
-          <DetailCard title="Equipment Details">
-            <DetailRow label="Make" value={listing.make} />
-            <DetailRow label="Model" value={listing.model} />
-            <DetailRow label="Size" value={listing.size} />
-            <DetailRow label="Color" value={listing.color} />
-            <DetailRow label="DOM" value={listing.dom} />
-            <DetailRow label="Serial Number" value={listing.serial_number} />
-            <DetailRow label="Total Jumps" value={listing.total_jumps != null ? String(listing.total_jumps) : ''} />
+          <DetailCard title="Equipment Details" C={C}>
+            <DetailRow label="Make" value={listing.make} C={C} />
+            <DetailRow label="Model" value={listing.model} C={C} />
+            <DetailRow label="Size" value={listing.size} C={C} />
+            <DetailRow label="Color" value={listing.color} C={C} />
+            <DetailRow label="DOM" value={listing.dom} C={C} />
+            <DetailRow label="Serial Number" value={listing.serial_number} C={C} />
+            <DetailRow label="Total Jumps" value={listing.total_jumps != null ? String(listing.total_jumps) : ''} C={C} />
           </DetailCard>
 
-          {/* ── Rig Sub-Components ── */}
           {isRig && (
             <>
               {hasAnyRigField(listing, 'main') && (
-                <DetailCard title="Main Canopy">
-                  <DetailRow label="Make" value={listing.main_make} />
-                  <DetailRow label="Model" value={listing.main_model} />
-                  <DetailRow label="Size" value={listing.main_size} />
-                  <DetailRow label="DOM" value={listing.main_dom} />
-                  <DetailRow label="Jumps" value={listing.main_jumps != null ? String(listing.main_jumps) : ''} />
-                  <DetailRow label="Serial" value={listing.main_serial} />
+                <DetailCard title="Main Canopy" C={C}>
+                  <DetailRow label="Make" value={listing.main_make} C={C} />
+                  <DetailRow label="Model" value={listing.main_model} C={C} />
+                  <DetailRow label="Size" value={listing.main_size} C={C} />
+                  <DetailRow label="DOM" value={listing.main_dom} C={C} />
+                  <DetailRow label="Jumps" value={listing.main_jumps != null ? String(listing.main_jumps) : ''} C={C} />
+                  <DetailRow label="Serial" value={listing.main_serial} C={C} />
                 </DetailCard>
               )}
 
               {hasAnyRigField(listing, 'reserve') && (
-                <DetailCard title="Reserve">
-                  <DetailRow label="Make" value={listing.reserve_make} />
-                  <DetailRow label="Model" value={listing.reserve_model} />
-                  <DetailRow label="Size" value={listing.reserve_size} />
-                  <DetailRow label="DOM" value={listing.reserve_dom} />
-                  <DetailRow label="Repacks" value={listing.reserve_repacks != null ? String(listing.reserve_repacks) : ''} />
-                  <DetailRow label="Serial" value={listing.reserve_serial} />
+                <DetailCard title="Reserve" C={C}>
+                  <DetailRow label="Make" value={listing.reserve_make} C={C} />
+                  <DetailRow label="Model" value={listing.reserve_model} C={C} />
+                  <DetailRow label="Size" value={listing.reserve_size} C={C} />
+                  <DetailRow label="DOM" value={listing.reserve_dom} C={C} />
+                  <DetailRow label="Repacks" value={listing.reserve_repacks != null ? String(listing.reserve_repacks) : ''} C={C} />
+                  <DetailRow label="Serial" value={listing.reserve_serial} C={C} />
                 </DetailCard>
               )}
 
               {hasAnyRigField(listing, 'aad') && (
-                <DetailCard title="AAD">
-                  <DetailRow label="Make" value={listing.aad_make} />
-                  <DetailRow label="Model" value={listing.aad_model} />
-                  <DetailRow label="DOM" value={listing.aad_dom} />
-                  <DetailRow label="EOL" value={listing.aad_eol} />
-                  <DetailRow label="Jumps" value={listing.aad_jumps != null ? String(listing.aad_jumps) : ''} />
-                  <DetailRow label="Needs Service" value={listing.aad_needs_service ? 'Yes' : ''} highlight={listing.aad_needs_service} />
-                  <DetailRow label="Serial" value={listing.aad_serial} />
+                <DetailCard title="AAD" C={C}>
+                  <DetailRow label="Make" value={listing.aad_make} C={C} />
+                  <DetailRow label="Model" value={listing.aad_model} C={C} />
+                  <DetailRow label="DOM" value={listing.aad_dom} C={C} />
+                  <DetailRow label="EOL" value={listing.aad_eol} C={C} />
+                  <DetailRow label="Jumps" value={listing.aad_jumps != null ? String(listing.aad_jumps) : ''} C={C} />
+                  <DetailRow label="Needs Service" value={listing.aad_needs_service ? 'Yes' : ''} highlight={listing.aad_needs_service} C={C} />
+                  <DetailRow label="Serial" value={listing.aad_serial} C={C} />
                 </DetailCard>
               )}
             </>
           )}
 
-          {/* ── Seller Info ── */}
-          <View style={styles.sellerCard}>
-            <View style={styles.sellerCardHeader}>
-              <Text style={styles.sellerCardTitle}>{t.sellerInfo}</Text>
+          {/* Seller Info */}
+          <View style={{ backgroundColor: C.backgroundCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, padding: Spacing.md, gap: Spacing.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: C.textSecondary, fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t.sellerInfo}</Text>
               {isVerified && (
-                <View style={styles.verifiedBadge}>
-                  <BadgeCheck size={13} color={Colors.neonBlue} strokeWidth={2.5} />
-                  <Text style={styles.verifiedText}>{t.verifiedSeller}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.neonBlueGlow, borderRadius: Radius.full, borderWidth: 1, borderColor: C.neonBlueBorder, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <BadgeCheck size={13} color={C.neonBlue} strokeWidth={2.5} />
+                  <Text style={{ color: C.neonBlue, fontSize: 10, fontWeight: '800', letterSpacing: 0.3 }}>{t.verifiedSeller}</Text>
                 </View>
               )}
             </View>
-            <View style={styles.sellerStats}>
-              {seller && (
-                <>
-                  <View style={styles.statItem}>
-                    <Package size={14} color={Colors.textMuted} strokeWidth={2} />
-                    <Text style={styles.statLabel}>{t.totalListings}</Text>
-                    <Text style={styles.statValue}>{seller.total_listings}</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Calendar size={14} color={Colors.textMuted} strokeWidth={2} />
-                    <Text style={styles.statLabel}>{t.memberSince}</Text>
-                    <Text style={styles.statValue}>
-                      {new Date(seller.join_date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                      })}
-                    </Text>
-                  </View>
-                </>
-              )}
-            </View>
+            {seller && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Package size={14} color={C.textMuted} strokeWidth={2} />
+                  <Text style={{ color: C.textMuted, fontSize: FontSize.xs }}>{t.totalListings}</Text>
+                  <Text style={{ color: C.textPrimary, fontSize: FontSize.xs, fontWeight: '700' }}>{seller.total_listings}</Text>
+                </View>
+                <View style={{ width: 1, height: 14, backgroundColor: C.border }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <Calendar size={14} color={C.textMuted} strokeWidth={2} />
+                  <Text style={{ color: C.textMuted, fontSize: FontSize.xs }}>{t.memberSince}</Text>
+                  <Text style={{ color: C.textPrimary, fontSize: FontSize.xs, fontWeight: '700' }}>
+                    {new Date(seller.join_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                  </Text>
+                </View>
+              </View>
+            )}
             {seller && seller.rating_count > 0 ? (
-              <View style={styles.avgRatingRow}>
-                <StarRow value={seller.avg_rating} size={16} />
-                <Text style={styles.avgRatingText}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <StarRow value={seller.avg_rating} size={16} C={C} />
+                <Text style={{ color: C.textSecondary, fontSize: FontSize.xs, fontWeight: '600' }}>
                   {Number(seller.avg_rating).toFixed(1)} · {seller.rating_count} {t.ratingStars}
                 </Text>
               </View>
             ) : (
-              <Text style={styles.noRatingsText}>{t.noRatingsYet}</Text>
+              <Text style={{ color: C.textMuted, fontSize: FontSize.xs }}>{t.noRatingsYet}</Text>
             )}
           </View>
 
-          {/* ── Rate seller ── */}
-          <View style={styles.rateSection}>
-            <Text style={styles.rateSectionTitle}>{t.rateThisSeller}</Text>
+          {/* Rate seller */}
+          <View style={{ gap: Spacing.sm }}>
+            <Text style={{ color: C.textSecondary, fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t.rateThisSeller}</Text>
             {existingRating !== null ? (
-              <View style={styles.alreadyRatedRow}>
-                <StarRow value={existingRating} size={22} interactive={false} />
-                <Text style={styles.alreadyRatedText}>{t.alreadyRated}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' }}>
+                <StarRow value={existingRating} size={22} interactive={false} C={C} />
+                <Text style={{ color: C.textMuted, fontSize: FontSize.xs }}>{t.alreadyRated}</Text>
               </View>
             ) : (
-              <View style={styles.starRow}>
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <TouchableOpacity
                     key={s}
@@ -647,78 +625,71 @@ export default function ListingDetailScreen() {
                   >
                     <Star
                       size={30}
-                      color={s <= myRating ? Colors.gold : Colors.textMuted}
-                      fill={s <= myRating ? Colors.gold : 'transparent'}
+                      color={s <= myRating ? C.gold : C.textMuted}
+                      fill={s <= myRating ? C.gold : 'transparent'}
                       strokeWidth={1.5}
                     />
                   </TouchableOpacity>
                 ))}
                 {submittingRating && (
-                  <ActivityIndicator size="small" color={Colors.neonBlue} style={{ marginLeft: 8 }} />
+                  <ActivityIndicator size="small" color={C.neonBlue} style={{ marginLeft: 8 }} />
                 )}
               </View>
             )}
-            {ratingMsg !== '' && <Text style={styles.ratingMsg}>{ratingMsg}</Text>}
+            {ratingMsg !== '' && <Text style={{ color: C.success, fontSize: FontSize.xs, fontWeight: '600' }}>{ratingMsg}</Text>}
           </View>
 
-          {/* Description */}
           {!!listing.description && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t.listingDescription}</Text>
-              <Text style={styles.descText}>{listing.description}</Text>
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: C.textSecondary, fontSize: FontSize.sm, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }}>{t.listingDescription}</Text>
+              <Text style={{ color: C.textPrimary, fontSize: FontSize.md, lineHeight: 24 }}>{listing.description}</Text>
             </View>
           )}
 
-          <Text style={styles.postedDate}>
+          <Text style={{ color: C.textMuted, fontSize: FontSize.sm }}>
             {t.postedOn}{' '}
-            {new Date(listing.created_at).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
+            {new Date(listing.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
           </Text>
 
-          {/* Contact */}
           {!!listing.contact && (
-            <View style={styles.contactSection}>
-              <View style={styles.contactSafetyRow}>
-                <ShieldCheck size={13} color={Colors.success} strokeWidth={2} />
-                <Text style={styles.contactSafetyText}>{t.contactSafetyNote}</Text>
+            <View style={{ gap: Spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.success + '0F', borderRadius: Radius.md, borderWidth: 1, borderColor: C.success + '33', paddingHorizontal: Spacing.sm, paddingVertical: 8 }}>
+                <ShieldCheck size={13} color={C.success} strokeWidth={2} />
+                <Text style={{ flex: 1, color: C.success, fontSize: FontSize.xs, fontWeight: '600', lineHeight: 16 }}>{t.contactSafetyNote}</Text>
               </View>
               {isPhone && (
-                <TouchableOpacity style={styles.whatsappBtn} onPress={handleWhatsApp} activeOpacity={0.8}>
+                <TouchableOpacity style={s.whatsappBtn} onPress={handleWhatsApp} activeOpacity={0.8}>
                   <MessageCircle size={20} color="#FFFFFF" strokeWidth={2} />
-                  <Text style={styles.whatsappBtnText}>{t.contactOnWhatsApp}</Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: FontSize.lg, fontWeight: '800' }}>{t.contactOnWhatsApp}</Text>
                 </TouchableOpacity>
               )}
               {isPhone && (
-                <TouchableOpacity style={styles.callBtn} onPress={handleCall} activeOpacity={0.8}>
-                  <Phone size={18} color={Colors.neonBlue} strokeWidth={2} />
-                  <Text style={styles.callBtnText}>{t.callSeller}</Text>
+                <TouchableOpacity style={[s.callBtn, { borderColor: C.neonBlueBorder }]} onPress={handleCall} activeOpacity={0.8}>
+                  <Phone size={18} color={C.neonBlue} strokeWidth={2} />
+                  <Text style={{ color: C.neonBlue, fontSize: FontSize.md, fontWeight: '700' }}>{t.callSeller}</Text>
                 </TouchableOpacity>
               )}
               {!isPhone && (
                 <TouchableOpacity
-                  style={styles.whatsappBtn}
+                  style={s.whatsappBtn}
                   onPress={() => Linking.openURL(`tel:${contactRaw}`).catch(() => {})}
                   activeOpacity={0.8}
                 >
                   <Phone size={20} color="#FFFFFF" strokeWidth={2} />
-                  <Text style={styles.whatsappBtnText}>{t.contactSeller}</Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: FontSize.lg, fontWeight: '800' }}>{t.contactSeller}</Text>
                 </TouchableOpacity>
               )}
             </View>
           )}
 
-          {/* Report listing */}
           {!isOwner && (
             <TouchableOpacity
-              style={styles.reportBtn}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing.sm, opacity: 0.6 }}
               onPress={() => { setReportDone(false); setReportError(''); setReportReason(''); setReportMessage(''); setReportPhone(''); setShowReportModal(true); }}
               activeOpacity={0.75}
             >
-              <Flag size={14} color={Colors.textMuted} strokeWidth={2} />
-              <Text style={styles.reportBtnText}>Report this listing</Text>
+              <Flag size={14} color={C.textMuted} strokeWidth={2} />
+              <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }}>Report this listing</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -731,70 +702,73 @@ export default function ListingDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowReportModal(false)}
       >
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.sheet}>
-            <View style={modalStyles.header}>
-              <Text style={modalStyles.title}>Report Listing</Text>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalSheet, { backgroundColor: C.backgroundCard, borderColor: C.border }]}>
+            <View style={s.modalHeader}>
+              <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '800' }}>Report Listing</Text>
               <TouchableOpacity onPress={() => setShowReportModal(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <X size={22} color={Colors.textMuted} strokeWidth={2} />
+                <X size={22} color={C.textMuted} strokeWidth={2} />
               </TouchableOpacity>
             </View>
 
             {reportDone ? (
-              <View style={modalStyles.doneWrap}>
-                <CircleCheck size={48} color={Colors.success} strokeWidth={1.5} />
-                <Text style={modalStyles.doneText}>Report submitted. Thank you.</Text>
+              <View style={{ alignItems: 'center', paddingVertical: Spacing.xl, gap: Spacing.md }}>
+                <CircleCheck size={48} color={C.success} strokeWidth={1.5} />
+                <Text style={{ color: C.textSecondary, fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 }}>Report submitted. Thank you.</Text>
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                <Text style={modalStyles.label}>Reason *</Text>
-                <View style={modalStyles.reasonGrid}>
+                <Text style={[s.modalLabel, { color: C.textMuted }]}>Reason *</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.sm }}>
                   {REPORT_REASONS.map((r) => (
                     <TouchableOpacity
                       key={r}
-                      style={[modalStyles.reasonChip, reportReason === r && modalStyles.reasonChipActive]}
+                      style={[
+                        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.full, borderWidth: 1, borderColor: C.border, backgroundColor: C.backgroundSecondary },
+                        reportReason === r && { borderColor: C.error, backgroundColor: C.errorDim },
+                      ]}
                       onPress={() => { setReportReason(r); setReportError(''); }}
                       activeOpacity={0.75}
                     >
-                      <Text style={[modalStyles.reasonChipText, reportReason === r && modalStyles.reasonChipTextActive]}>{r}</Text>
+                      <Text style={[{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }, reportReason === r && { color: C.error, fontWeight: '700' }]}>{r}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                <Text style={modalStyles.label}>Additional details</Text>
+                <Text style={[s.modalLabel, { color: C.textMuted }]}>Additional details</Text>
                 <TextInput
-                  style={modalStyles.textArea}
+                  style={[s.modalTextArea, { backgroundColor: C.backgroundInput, borderColor: C.border, color: C.textPrimary }]}
                   value={reportMessage}
                   onChangeText={setReportMessage}
                   placeholder="Describe the issue..."
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={C.textMuted}
                   multiline
                   numberOfLines={3}
                 />
 
-                <Text style={modalStyles.label}>Your WhatsApp / phone (optional)</Text>
+                <Text style={[s.modalLabel, { color: C.textMuted }]}>Your WhatsApp / phone (optional)</Text>
                 <TextInput
-                  style={modalStyles.input}
+                  style={[s.modalInput, { backgroundColor: C.backgroundInput, borderColor: C.border, color: C.textPrimary }]}
                   value={reportPhone}
                   onChangeText={setReportPhone}
                   placeholder="+1 555 000 0000"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={C.textMuted}
                   keyboardType="phone-pad"
                 />
-                <Text style={modalStyles.hint}>Admin may contact you to follow up.</Text>
+                <Text style={{ color: C.textMuted, fontSize: FontSize.xs, marginBottom: Spacing.md }}>Admin may contact you to follow up.</Text>
 
-                {reportError !== '' && <Text style={modalStyles.errorText}>{reportError}</Text>}
+                {reportError !== '' && <Text style={{ color: C.error, fontSize: FontSize.xs, fontWeight: '600', marginBottom: Spacing.sm }}>{reportError}</Text>}
 
                 <TouchableOpacity
-                  style={[modalStyles.submitBtn, reportSubmitting && modalStyles.submitBtnDisabled]}
+                  style={[s.submitBtn, { backgroundColor: C.neonBlue }, reportSubmitting && { opacity: 0.5 }]}
                   onPress={handleSubmitReport}
                   activeOpacity={0.8}
                   disabled={reportSubmitting}
                 >
                   {reportSubmitting ? (
-                    <ActivityIndicator size="small" color={Colors.white} />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={modalStyles.submitBtnText}>Submit Report</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: FontSize.md, fontWeight: '800' }}>Submit Report</Text>
                   )}
                 </TouchableOpacity>
               </ScrollView>
@@ -810,58 +784,58 @@ export default function ListingDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowBoostModal(false)}
       >
-        <View style={modalStyles.overlay}>
-          <View style={modalStyles.sheet}>
-            <View style={modalStyles.header}>
-              <Text style={modalStyles.title}>Boost Your Listing</Text>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalSheet, { backgroundColor: C.backgroundCard, borderColor: C.border }]}>
+            <View style={s.modalHeader}>
+              <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '800' }}>Boost Your Listing</Text>
               <TouchableOpacity onPress={() => setShowBoostModal(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <X size={22} color={Colors.textMuted} strokeWidth={2} />
+                <X size={22} color={C.textMuted} strokeWidth={2} />
               </TouchableOpacity>
             </View>
 
             {boostDone ? (
-              <View style={modalStyles.doneWrap}>
-                <CircleCheck size={48} color={Colors.success} strokeWidth={1.5} />
-                <Text style={modalStyles.doneText}>Boost request sent! Admin will activate it after payment confirmation.</Text>
+              <View style={{ alignItems: 'center', paddingVertical: Spacing.xl, gap: Spacing.md }}>
+                <CircleCheck size={48} color={C.success} strokeWidth={1.5} />
+                <Text style={{ color: C.textSecondary, fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 }}>Boost request sent! Admin will activate it after payment confirmation.</Text>
               </View>
             ) : (
-              <View style={modalStyles.boostBody}>
-                <View style={modalStyles.boostHighlight}>
-                  <Zap size={28} color={Colors.gold} strokeWidth={2} fill={Colors.gold} />
+              <View style={{ gap: Spacing.md }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: C.gold + '14', borderRadius: Radius.md, borderWidth: 1, borderColor: C.gold + '4D', padding: Spacing.md }}>
+                  <Zap size={28} color={C.gold} strokeWidth={2} fill={C.gold} />
                   <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={modalStyles.boostHighlightTitle}>Featured placement</Text>
-                    <Text style={modalStyles.boostHighlightDesc}>
+                    <Text style={{ color: C.gold, fontSize: FontSize.md, fontWeight: '800' }}>Featured placement</Text>
+                    <Text style={{ color: C.textMuted, fontSize: FontSize.xs, lineHeight: 16 }}>
                       Your listing appears at the top of the marketplace for {boostSettings.durationDays} days.
                     </Text>
                   </View>
                 </View>
 
-                <View style={modalStyles.boostPriceRow}>
-                  <Text style={modalStyles.boostPriceLabel}>Boost price</Text>
-                  <Text style={modalStyles.boostPrice}>${boostSettings.price.toFixed(2)}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.borderLight }}>
+                  <Text style={{ color: C.textMuted, fontSize: FontSize.sm }}>Boost price</Text>
+                  <Text style={{ color: C.textPrimary, fontSize: FontSize.xl, fontWeight: '900' }}>${boostSettings.price.toFixed(2)}</Text>
                 </View>
-                <View style={modalStyles.boostPriceRow}>
-                  <Text style={modalStyles.boostPriceLabel}>Duration</Text>
-                  <Text style={modalStyles.boostPriceMeta}>{boostSettings.durationDays} days</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.borderLight }}>
+                  <Text style={{ color: C.textMuted, fontSize: FontSize.sm }}>Duration</Text>
+                  <Text style={{ color: C.textPrimary, fontSize: FontSize.sm, fontWeight: '700' }}>{boostSettings.durationDays} days</Text>
                 </View>
 
-                <View style={modalStyles.boostPaymentNote}>
-                  <AlertTriangle size={13} color={Colors.warning} strokeWidth={2} />
-                  <Text style={modalStyles.boostPaymentNoteText}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: C.warning + '12', borderRadius: Radius.md, borderWidth: 1, borderColor: C.warning + '33', padding: Spacing.sm }}>
+                  <AlertTriangle size={13} color={C.warning} strokeWidth={2} />
+                  <Text style={{ flex: 1, color: C.warning, fontSize: FontSize.xs, fontWeight: '500', lineHeight: 16 }}>
                     Payment will be arranged by admin after you submit this request. Your listing will be boosted once payment is confirmed.
                   </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={[modalStyles.submitBtn, boostSubmitting && modalStyles.submitBtnDisabled]}
+                  style={[s.submitBtn, { backgroundColor: C.neonBlue }, boostSubmitting && { opacity: 0.5 }]}
                   onPress={handleRequestBoost}
                   activeOpacity={0.8}
                   disabled={boostSubmitting}
                 >
                   {boostSubmitting ? (
-                    <ActivityIndicator size="small" color={Colors.white} />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={modalStyles.submitBtnText}>Request Boost — ${boostSettings.price.toFixed(2)}</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: FontSize.md, fontWeight: '800' }}>Request Boost — ${boostSettings.price.toFixed(2)}</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -878,44 +852,44 @@ export default function ListingDetailScreen() {
         onRequestClose={() => setShowLightbox(false)}
         statusBarTranslucent
       >
-        <View style={lbStyles.overlay}>
+        <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
           <Image
             source={{ uri: images[imgIdx] }}
-            style={lbStyles.image}
+            style={{ width: '100%', height: '100%' }}
             resizeMode="contain"
           />
           {images.length > 1 && (
             <>
               {imgIdx > 0 && (
                 <TouchableOpacity
-                  style={[lbStyles.navBtn, lbStyles.navLeft]}
+                  style={[s.lbNavBtn, { left: 12 }]}
                   onPress={() => setImgIdx((i) => i - 1)}
                   activeOpacity={0.8}
                 >
-                  <ChevronLeft size={28} color={Colors.white} strokeWidth={2.5} />
+                  <ChevronLeft size={28} color="#FFFFFF" strokeWidth={2.5} />
                 </TouchableOpacity>
               )}
               {imgIdx < images.length - 1 && (
                 <TouchableOpacity
-                  style={[lbStyles.navBtn, lbStyles.navRight]}
+                  style={[s.lbNavBtn, { right: 12 }]}
                   onPress={() => setImgIdx((i) => i + 1)}
                   activeOpacity={0.8}
                 >
-                  <ChevronRight size={28} color={Colors.white} strokeWidth={2.5} />
+                  <ChevronRight size={28} color="#FFFFFF" strokeWidth={2.5} />
                 </TouchableOpacity>
               )}
-              <View style={lbStyles.counter}>
-                <Text style={lbStyles.counterText}>{imgIdx + 1} / {images.length}</Text>
+              <View style={{ position: 'absolute', bottom: 32, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: Radius.full, paddingHorizontal: 14, paddingVertical: 5 }}>
+                <Text style={{ color: '#FFFFFF', fontSize: FontSize.sm, fontWeight: '700' }}>{imgIdx + 1} / {images.length}</Text>
               </View>
             </>
           )}
           <TouchableOpacity
-            style={[lbStyles.closeBtn, { top: insets.top + 12 }]}
+            style={[s.lbCloseBtn, { top: insets.top + 12 }]}
             onPress={() => setShowLightbox(false)}
             activeOpacity={0.8}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <X size={22} color={Colors.white} strokeWidth={2.5} />
+            <X size={22} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
       </Modal>
@@ -928,34 +902,36 @@ function BoostCTA({
   boostSettings,
   boosted,
   onPress,
+  C,
 }: {
   boostStatus: string | null;
   boostSettings: BoostSettings;
   boosted: boolean;
   onPress: () => void;
+  C: any;
 }) {
   if (boosted) {
     return (
-      <View style={boostCtaStyles.active}>
-        <Zap size={16} color={Colors.gold} strokeWidth={2.5} fill={Colors.gold} />
-        <Text style={boostCtaStyles.activeText}>Listing is currently featured</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: C.gold + '1A', borderRadius: Radius.md, borderWidth: 1, borderColor: C.gold + '66', padding: Spacing.md }}>
+        <Zap size={16} color={C.gold} strokeWidth={2.5} fill={C.gold} />
+        <Text style={{ color: C.gold, fontSize: FontSize.sm, fontWeight: '700' }}>Listing is currently featured</Text>
       </View>
     );
   }
   if (boostStatus === 'pending_payment') {
     return (
-      <View style={boostCtaStyles.pending}>
-        <Zap size={16} color={Colors.warning} strokeWidth={2} />
-        <Text style={boostCtaStyles.pendingText}>Boost pending payment confirmation</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: C.warning + '14', borderRadius: Radius.md, borderWidth: 1, borderColor: C.warning + '4D', padding: Spacing.md }}>
+        <Zap size={16} color={C.warning} strokeWidth={2} />
+        <Text style={{ color: C.warning, fontSize: FontSize.sm, fontWeight: '600' }}>Boost pending payment confirmation</Text>
       </View>
     );
   }
   return (
-    <TouchableOpacity style={boostCtaStyles.btn} onPress={onPress} activeOpacity={0.85}>
-      <Zap size={16} color={Colors.gold} strokeWidth={2.5} />
+    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: C.gold + '14', borderRadius: Radius.md, borderWidth: 1, borderColor: C.gold + '59', padding: Spacing.md }} onPress={onPress} activeOpacity={0.85}>
+      <Zap size={16} color={C.gold} strokeWidth={2.5} />
       <View style={{ flex: 1 }}>
-        <Text style={boostCtaStyles.btnTitle}>Boost this listing</Text>
-        <Text style={boostCtaStyles.btnSub}>
+        <Text style={{ color: C.gold, fontSize: FontSize.sm, fontWeight: '800' }}>Boost this listing</Text>
+        <Text style={{ color: C.gold + '99', fontSize: FontSize.xs, fontWeight: '500', marginTop: 2 }}>
           Featured placement for {boostSettings.durationDays} days · ${boostSettings.price.toFixed(2)}
         </Text>
       </View>
@@ -963,345 +939,56 @@ function BoostCTA({
   );
 }
 
-const boostCtaStyles = StyleSheet.create({
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.gold + '14',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.gold + '59',
-    padding: Spacing.md,
-  },
-  btnTitle: {
-    color: Colors.gold,
-    fontSize: FontSize.sm,
-    fontWeight: '800',
-  },
-  btnSub: {
-    color: Colors.gold + '99',
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  active: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.gold + '1A',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.gold + '66',
-    padding: Spacing.md,
-  },
-  activeText: {
-    color: Colors.gold,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  pending: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.warning + '14',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.warning + '4D',
-    padding: Spacing.md,
-  },
-  pendingText: {
-    color: Colors.warning,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-});
-
-const modalStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: Colors.backgroundCard,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    paddingBottom: Platform.OS === 'ios' ? 40 : Spacing.lg,
-    maxHeight: '85%',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
-  },
-  title: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-  },
-  label: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginTop: Spacing.sm,
-  },
-  reasonGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  reasonChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.backgroundSecondary,
-  },
-  reasonChipActive: {
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorDim,
-  },
-  reasonChipText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  reasonChipTextActive: {
-    color: Colors.error,
-    fontWeight: '700',
-  },
-  textArea: {
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    minHeight: 72,
-    textAlignVertical: 'top',
-    marginBottom: Spacing.sm,
-  },
-  input: {
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    marginBottom: 4,
-  },
-  hint: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    marginBottom: Spacing.md,
-  },
-  errorText: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    marginBottom: Spacing.sm,
-  },
-  submitBtn: {
-    backgroundColor: Colors.neonBlue,
-    borderRadius: Radius.full,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-  },
-  submitBtnDisabled: { opacity: 0.5 },
-  submitBtnText: {
-    color: Colors.background,
-    fontSize: FontSize.md,
-    fontWeight: '800',
-  },
-  doneWrap: {
-    alignItems: 'center',
-    paddingVertical: Spacing.xl,
-    gap: Spacing.md,
-  },
-  doneText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  boostBody: {
-    gap: Spacing.md,
-  },
-  boostHighlight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.gold + '14',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.gold + '4D',
-    padding: Spacing.md,
-  },
-  boostHighlightTitle: {
-    color: Colors.gold,
-    fontSize: FontSize.md,
-    fontWeight: '800',
-  },
-  boostHighlightDesc: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    lineHeight: 16,
-  },
-  boostPriceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  boostPriceLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-  },
-  boostPrice: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.xl,
-    fontWeight: '900',
-  },
-  boostPriceMeta: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  boostPaymentNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: Colors.warning + '12',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.warning + '33',
-    padding: Spacing.sm,
-  },
-  boostPaymentNoteText: {
-    flex: 1,
-    color: Colors.warning,
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-    lineHeight: 16,
-  },
-});
-
 function hasAnyRigField(listing: UsedGearListing, prefix: 'main' | 'reserve' | 'aad'): boolean {
   const keys = Object.keys(listing) as (keyof UsedGearListing)[];
   return keys.some((k) => k.startsWith(prefix + '_') && !!listing[k]);
 }
 
-function DetailCard({ title, children }: { title: string; children: React.ReactNode }) {
+function DetailCard({ title, children, C }: { title: string; children: React.ReactNode; C: any }) {
   const rows = React.Children.toArray(children).filter((c) => {
     const el = c as React.ReactElement<{ value?: string }>;
     return el.props?.value;
   });
   if (rows.length === 0) return null;
   return (
-    <View style={cardStyles.card}>
-      <Text style={cardStyles.title}>{title}</Text>
-      <View style={cardStyles.body}>{rows}</View>
+    <View style={{ backgroundColor: C.backgroundCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
+      <Text style={{ color: C.textSecondary, fontSize: FontSize.xs, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', paddingHorizontal: Spacing.md, paddingVertical: 10, backgroundColor: C.neonBlueGlow, borderBottomWidth: 1, borderBottomColor: C.border }}>
+        {title}
+      </Text>
+      <View style={{ paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm }}>{rows}</View>
     </View>
   );
 }
-
-const cardStyles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  title: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    backgroundColor: Colors.neonBlueGlow,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  body: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-  },
-});
 
 function DetailRow({
   label,
   value,
   highlight,
+  C,
 }: {
   label: string;
   value?: string;
   highlight?: boolean;
+  C: any;
 }) {
   if (!value) return null;
   return (
-    <View style={rowStyles.row}>
-      <Text style={rowStyles.label}>{label}</Text>
-      <Text style={[rowStyles.value, highlight && rowStyles.valueHighlight]}>{value}</Text>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.borderLight }}>
+      <Text style={{ color: C.textMuted, fontSize: FontSize.sm, fontWeight: '600', flex: 1 }}>{label}</Text>
+      <Text style={{ color: highlight ? C.warning : C.textPrimary, fontSize: FontSize.sm, fontWeight: '700', flex: 2, textAlign: 'right' }}>{value}</Text>
     </View>
   );
 }
 
-const rowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  label: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    flex: 1,
-  },
-  value: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    flex: 2,
-    textAlign: 'right',
-  },
-  valueHighlight: {
-    color: Colors.warning,
-  },
-});
-
-function StarRow({ value, size = 14, interactive = false }: { value: number; size?: number; interactive?: boolean }) {
+function StarRow({ value, size = 14, interactive = false, C }: { value: number; size?: number; interactive?: boolean; C: any }) {
   return (
     <View style={{ flexDirection: 'row', gap: 2 }}>
       {[1, 2, 3, 4, 5].map((s) => (
         <Star
           key={s}
           size={size}
-          color={s <= Math.round(value) ? Colors.gold : Colors.textMuted}
-          fill={s <= Math.round(value) ? Colors.gold : 'transparent'}
+          color={s <= Math.round(value) ? C.gold : C.textMuted}
+          fill={s <= Math.round(value) ? C.gold : 'transparent'}
           strokeWidth={1.5}
         />
       ))}
@@ -1309,21 +996,7 @@ function StarRow({ value, size = 14, interactive = false }: { value: number; siz
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  centered: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notFoundText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.md,
-  },
+const s = StyleSheet.create({
   topBar: {
     position: 'absolute',
     left: Spacing.md,
@@ -1342,24 +1015,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.background + 'D1',
+    backgroundColor: 'rgba(5,10,20,0.72)',
     borderWidth: 1.5,
-    borderColor: Colors.white + '2E',
+    borderColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
-  },
-  shareCopiedText: {
-    color: Colors.neonBlue,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  imageWrap: {
-    width: '100%',
-    height: Platform.OS === 'web' ? 420 : 320,
-    backgroundColor: Colors.backgroundSecondary,
-    position: 'relative',
   },
   boostBanner: {
     position: 'absolute',
@@ -1371,21 +1032,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: Colors.gold + '2E',
+    backgroundColor: 'rgba(255,215,0,0.2)',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.gold + '59',
-  },
-  boostBannerText: {
-    color: Colors.gold,
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 2,
-  },
-  imgPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderBottomColor: 'rgba(255,215,0,0.4)',
   },
   imgNav: {
     position: 'absolute',
@@ -1394,9 +1044,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.background + 'B3',
+    backgroundColor: 'rgba(5,10,20,0.65)',
     borderWidth: 1,
-    borderColor: Colors.white + '33',
+    borderColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1415,12 +1065,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: Colors.white + '4D',
-  },
-  dotActive: {
-    backgroundColor: Colors.neonBlue,
-    width: 18,
-    borderRadius: 3.5,
+    backgroundColor: 'rgba(255,255,255,0.4)',
   },
   condBadge: {
     position: 'absolute',
@@ -1430,7 +1075,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: Colors.background + 'CC',
   },
   condBadgeText: {
     fontSize: FontSize.xs,
@@ -1443,230 +1087,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.background + 'A6',
+    backgroundColor: 'rgba(5,10,20,0.65)',
     borderRadius: Radius.full,
     paddingHorizontal: 8,
     paddingVertical: 4,
-  },
-  viewCountText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  body: {
-    padding: Spacing.md,
-    gap: Spacing.md,
-    paddingBottom: Spacing.xxl,
-  },
-  title: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.xl,
-    fontWeight: '800',
-    lineHeight: 28,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    flexWrap: 'wrap',
-  },
-  price: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xxl,
-    fontWeight: '900',
-  },
-  shippingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.successDim,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.success + '4D',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  shippingBadgeText: {
-    color: Colors.success,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-  },
-  category: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  locationText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-  },
-  safetyBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: Colors.warning + '14',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.warning + '40',
-    padding: Spacing.sm,
-  },
-  safetyText: {
-    flex: 1,
-    color: Colors.warning,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    lineHeight: 17,
-  },
-  sellerCard: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  sellerCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sellerCardTitle: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.neonBlueGlow,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  verifiedText: {
-    color: Colors.neonBlue,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  sellerStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  statLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-  },
-  statValue: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-  },
-  statDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: Colors.border,
-  },
-  avgRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  avgRatingText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  noRatingsText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-  },
-  rateSection: {
-    gap: Spacing.sm,
-  },
-  rateSectionTitle: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  starRow: {
-    flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
-  },
-  alreadyRatedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    flexWrap: 'wrap',
-  },
-  alreadyRatedText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-  },
-  ratingMsg: {
-    color: Colors.success,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  section: {
-    gap: 6,
-  },
-  sectionTitle: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  descText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    lineHeight: 24,
-  },
-  postedDate: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-  },
-  contactSection: {
-    gap: Spacing.sm,
-  },
-  contactSafetyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.success + '0F',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.success + '33',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 8,
-  },
-  contactSafetyText: {
-    flex: 1,
-    color: Colors.success,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    lineHeight: 16,
   },
   whatsappBtn: {
     flexDirection: 'row',
@@ -1682,11 +1106,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  whatsappBtnText: {
-    color: Colors.white,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-  },
   callBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1696,53 +1115,59 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     paddingVertical: 14,
     borderWidth: 1.5,
-    borderColor: Colors.neonBlueBorder,
   },
-  callBtnText: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.md,
-    fontWeight: '700',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
   },
-  reportBtn: {
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    padding: Spacing.lg,
+    paddingBottom: Platform.OS === 'ios' ? 40 : Spacing.lg,
+    maxHeight: '85%',
+  },
+  modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: Spacing.sm,
-    opacity: 0.6,
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
   },
-  reportBtnText: {
-    color: Colors.textMuted,
+  modalLabel: {
     fontSize: FontSize.xs,
-    fontWeight: '600',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: Spacing.sm,
   },
-});
-
-const lbStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
+  modalTextArea: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    fontSize: FontSize.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    minHeight: 72,
+    textAlignVertical: 'top',
+    marginBottom: Spacing.sm,
+  },
+  modalInput: {
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    fontSize: FontSize.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  submitBtn: {
+    borderRadius: Radius.full,
+    paddingVertical: 16,
     alignItems: 'center',
+    marginTop: Spacing.sm,
   },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  closeBtn: {
-    position: 'absolute',
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  navBtn: {
+  lbNavBtn: {
     position: 'absolute',
     top: '50%' as any,
     marginTop: -28,
@@ -1756,20 +1181,17 @@ const lbStyles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 10,
   },
-  navLeft: { left: 12 },
-  navRight: { right: 12 },
-  counter: {
+  lbCloseBtn: {
     position: 'absolute',
-    bottom: 32,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: Radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-  },
-  counterText: {
-    color: Colors.white,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
 });

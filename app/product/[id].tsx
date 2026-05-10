@@ -47,7 +47,8 @@ import QuantitySelector from '@/components/QuantitySelector';
 import GlossyButton from '@/components/GlossyButton';
 import ProductCard from '@/components/ProductCard';
 import WishlistHeart from '@/components/WishlistHeart';
-import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const IMAGE_HEIGHT = Platform.OS === 'web' ? 440 : Math.min(SCREEN_W, 400);
@@ -79,19 +80,19 @@ function Lightbox({ images, initialIndex, onClose }: {
       <View style={lb.backdrop} {...panResponder.panHandlers}>
         <Image source={{ uri: images[current] }} style={lb.image} resizeMode="contain" />
         <TouchableOpacity style={lb.closeBtn} onPress={onClose} activeOpacity={0.8}>
-          <X size={22} color={Colors.white} strokeWidth={2.5} />
+          <X size={22} color="#FFFFFF" strokeWidth={2.5} />
         </TouchableOpacity>
         <View style={lb.counter}>
           <Text style={lb.counterText}>{current + 1} / {images.length}</Text>
         </View>
         {current > 0 && (
           <TouchableOpacity style={[lb.navBtn, lb.navLeft]} onPress={prev} activeOpacity={0.8}>
-            <ChevronLeft size={28} color={Colors.white} strokeWidth={2.5} />
+            <ChevronLeft size={28} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         )}
         {current < images.length - 1 && (
           <TouchableOpacity style={[lb.navBtn, lb.navRight]} onPress={next} activeOpacity={0.8}>
-            <ChevronRight size={28} color={Colors.white} strokeWidth={2.5} />
+            <ChevronRight size={28} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         )}
         {images.length > 1 && (
@@ -149,20 +150,20 @@ const lb = StyleSheet.create({
   navRight: { right: 12 },
   dots: { position: 'absolute', bottom: 130, flexDirection: 'row', gap: 8, alignItems: 'center' },
   dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: 'rgba(255,255,255,0.35)' },
-  dotActive: { backgroundColor: Colors.neonBlue, width: 20, borderRadius: 3.5 },
+  dotActive: { backgroundColor: '#00BFFF', width: 20, borderRadius: 3.5 },
   thumbScroll: { position: 'absolute', bottom: 24, left: 0, right: 0 },
   thumbRow: { paddingHorizontal: 16, gap: 8 },
   thumb: {
     width: 60, height: 60, borderRadius: Radius.sm,
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)', overflow: 'hidden',
   },
-  thumbActive: { borderColor: Colors.neonBlue, borderWidth: 2 },
+  thumbActive: { borderColor: '#00BFFF', borderWidth: 2 },
   thumbImg: { objectFit: 'cover' } as any,
 });
 
 // ── Skeleton loader ───────────────────────────────────────────────────────────
 
-function SkeletonLine({ width: w = '80%', height = 16 }: { width?: any; height?: number }) {
+function SkeletonLine({ width: w = '80%', height = 16, bg }: { width?: any; height?: number; bg: string }) {
   const pulse = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     Animated.loop(
@@ -176,7 +177,7 @@ function SkeletonLine({ width: w = '80%', height = 16 }: { width?: any; height?:
     <Animated.View
       style={{
         height, width: w, borderRadius: Radius.sm,
-        backgroundColor: Colors.backgroundCard, opacity: pulse,
+        backgroundColor: bg, opacity: pulse,
       }}
     />
   );
@@ -191,6 +192,8 @@ export default function ProductDetailScreen() {
   const { addToCart, items } = useCart();
   const { t, language } = useLanguage();
   const { user } = useAuth();
+  const C = useThemeColors();
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -226,7 +229,6 @@ export default function ProductDetailScreen() {
 
     const thisFetch = ++fetchId.current;
 
-    // Reset to initial state immediately for fast navigation feel
     setLoading(true);
     setFetchError(null);
     setProduct(null);
@@ -240,15 +242,12 @@ export default function ProductDetailScreen() {
     setReviewBody('');
     setReviewName('');
 
-    // 8s timeout — prevents infinite skeleton on slow/hung connections
     const timeoutId = setTimeout(() => {
       if (thisFetch !== fetchId.current) return;
-      console.warn('[product/[id]] fetch timed out after 8s');
       setFetchError('Request timed out. Please check your connection and try again.');
       setLoading(false);
     }, 8000);
 
-    // Phase 1: Fetch main product — render as soon as it arrives
     fetchProductById(id, language)
       .then((data) => {
         if (thisFetch !== fetchId.current) return;
@@ -258,8 +257,6 @@ export default function ProductDetailScreen() {
 
         if (!data) return;
 
-        // Phase 2: Lazy-load secondary data — each call is independent so a
-        // failure in one does not block the others from resolving.
         supabase
           .from('product_color_variants')
           .select('id, name, hex, image_url, is_default, sort_order, stock')
@@ -287,14 +284,11 @@ export default function ProductDetailScreen() {
             setApprovedReviews(reviewData ?? []);
           })
           .catch(() => {});
-
-        // Related products disabled — use getRelatedProducts(data, language, 4) to re-enable
       })
       .catch((err: any) => {
         if (thisFetch !== fetchId.current) return;
         clearTimeout(timeoutId);
         const msg = err?.message ?? 'Failed to load product';
-        console.error('[product/[id]] fetch error:', msg, err);
         setFetchError(msg);
         setLoading(false);
       });
@@ -363,7 +357,6 @@ export default function ProductDetailScreen() {
     });
     setReviewSubmitting(false);
     if (error) {
-      console.error('[review submit] Supabase error:', error);
       setReviewError(error.message ?? 'Failed to submit review. Please try again.');
     } else {
       setReviewSubmitted(true);
@@ -388,16 +381,16 @@ export default function ProductDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <View style={[styles.imageWrapper, { backgroundColor: Colors.backgroundCard }]} />
-        <View style={styles.skeletonContent}>
-          <SkeletonLine width="70%" height={28} />
-          <SkeletonLine width="40%" height={18} />
-          <SkeletonLine width="30%" height={36} />
+      <View style={{ flex: 1, backgroundColor: C.background }}>
+        <View style={{ width: '100%', height: IMAGE_HEIGHT, backgroundColor: C.backgroundCard }} />
+        <View style={{ padding: Spacing.lg, gap: Spacing.md }}>
+          <SkeletonLine width="70%" height={28} bg={C.backgroundCard} />
+          <SkeletonLine width="40%" height={18} bg={C.backgroundCard} />
+          <SkeletonLine width="30%" height={36} bg={C.backgroundCard} />
           <View style={{ height: Spacing.md }} />
-          <SkeletonLine width="100%" height={14} />
-          <SkeletonLine width="90%" height={14} />
-          <SkeletonLine width="75%" height={14} />
+          <SkeletonLine width="100%" height={14} bg={C.backgroundCard} />
+          <SkeletonLine width="90%" height={14} bg={C.backgroundCard} />
+          <SkeletonLine width="75%" height={14} bg={C.backgroundCard} />
         </View>
       </View>
     );
@@ -405,12 +398,12 @@ export default function ProductDetailScreen() {
 
   if (fetchError || !product) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: Spacing.lg }]}>
-        <Text style={{ color: Colors.error, fontSize: FontSize.md, fontWeight: '700', textAlign: 'center', marginBottom: Spacing.sm }}>
+      <View style={{ flex: 1, backgroundColor: C.background, justifyContent: 'center', alignItems: 'center', padding: Spacing.lg }}>
+        <Text style={{ color: C.error, fontSize: FontSize.md, fontWeight: '700', textAlign: 'center', marginBottom: Spacing.sm }}>
           {fetchError ?? 'Product not found'}
         </Text>
         <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75}>
-          <Text style={{ color: Colors.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Go back</Text>
+          <Text style={{ color: C.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Go back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -433,7 +426,7 @@ export default function ProductDetailScreen() {
     ? 'low'
     : 'out';
 
-  const stockColor = stockStatus === 'in' ? Colors.success : stockStatus === 'low' ? Colors.warning : Colors.error;
+  const stockColor = stockStatus === 'in' ? C.success : stockStatus === 'low' ? C.warning : C.error;
   const stockLabel = stockStatus === 'in'
     ? t.inStock
     : stockStatus === 'low'
@@ -441,7 +434,6 @@ export default function ProductDetailScreen() {
     : t.outOfStock;
 
   const handleShare = async () => {
-    console.log('share pressed');
     const slug = product.slug || product.id;
     const url = `${(typeof window !== 'undefined' && window?.location?.origin) ? window.location.origin : 'https://skydiverstore.com'}/product/${slug}`;
     const title = getProductName(product, language);
@@ -466,22 +458,22 @@ export default function ProductDetailScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
       {lightboxIndex !== null && (
         <Lightbox images={images} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
       )}
 
       <ScrollView showsVerticalScrollIndicator={false} bounces>
         {/* ── Hero image ── */}
-        <View style={styles.imageWrapper}>
+        <View style={{ width: '100%', height: IMAGE_HEIGHT, position: 'relative', backgroundColor: C.backgroundSecondary }}>
           <TouchableOpacity
-            style={styles.imageContainer}
+            style={StyleSheet.absoluteFillObject}
             onPress={() => images.length > 0 && setLightboxIndex(activeImageIndex)}
             activeOpacity={0.95}
           >
             <Image
               source={{ uri: activeImage }}
-              style={[StyleSheet.absoluteFillObject, styles.image]}
+              style={[StyleSheet.absoluteFillObject, { objectFit: 'contain', objectPosition: 'center' } as any]}
               resizeMode="contain"
             />
             <LinearGradient
@@ -490,59 +482,56 @@ export default function ProductDetailScreen() {
             />
           </TouchableOpacity>
 
-          {/* ── Top action bar: back (left) + share (right) ── */}
-          <View style={[styles.topBar, { top: insets.top + 8 }]}>
+          {/* Top action bar */}
+          <View style={[s.topBar, { top: insets.top + 8 }]}>
             <TouchableOpacity
-              style={styles.topBtn}
+              style={s.topBtn}
               onPress={() => router.back()}
               activeOpacity={0.8}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <ChevronLeft size={20} color={Colors.white} strokeWidth={2.5} />
+              <ChevronLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.topBtn}
+              style={s.topBtn}
               onPress={handleShare}
               activeOpacity={0.8}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               {shareCopied
-                ? <Text style={styles.shareCopiedText}>Copied!</Text>
-                : <Share2 size={18} color={Colors.white} strokeWidth={2} />
+                ? <Text style={{ color: C.neonBlue, fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>Copied!</Text>
+                : <Share2 size={18} color="#FFFFFF" strokeWidth={2} />
               }
             </TouchableOpacity>
           </View>
 
-          <View style={styles.imageOverlay} pointerEvents="box-none">
-            {/* Discount badge */}
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 10 }]} pointerEvents="box-none">
             {hasDiscount && (
-              <View style={styles.discountBadge}>
+              <View style={s.discountBadge}>
                 <Tag size={10} color="#fff" strokeWidth={2.5} />
-                <Text style={styles.discountBadgeText}>-{discountPct}%</Text>
+                <Text style={s.discountBadgeText}>-{discountPct}%</Text>
               </View>
             )}
-
-            {/* Product badge (e.g. "New", "Best Seller") */}
             {product.badge && !hasDiscount && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{product.badge}</Text>
+              <View style={[s.badge, { backgroundColor: C.neonBlue }]}>
+                <Text style={s.badgeText}>{product.badge}</Text>
               </View>
             )}
-
             {images.length > 1 && (
-              <View style={styles.imageCount}>
-                <Text style={styles.imageCountText}>{activeImageIndex + 1}/{images.length}</Text>
+              <View style={s.imageCount}>
+                <Text style={s.imageCountText}>{activeImageIndex + 1}/{images.length}</Text>
               </View>
             )}
-
-            <View style={styles.imageBottom}>
-              <View style={styles.categoryPill}>
-                <Text style={styles.categoryTag}>{product.category.toUpperCase()}</Text>
+            <View style={s.imageBottom}>
+              <View style={s.categoryPill}>
+                <Text style={{ color: C.textSecondary, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 1.5 }}>
+                  {product.category.toUpperCase()}
+                </Text>
               </View>
               {images.length > 0 && (
-                <View style={styles.expandHint}>
-                  <Zap size={10} color={Colors.textMuted} strokeWidth={2} />
-                  <Text style={styles.expandHintText}>Tap to expand</Text>
+                <View style={s.expandHint}>
+                  <Zap size={10} color={C.textMuted} strokeWidth={2} />
+                  <Text style={{ color: C.textMuted, fontSize: 10, fontWeight: '600' }}>Tap to expand</Text>
                 </View>
               )}
             </View>
@@ -551,24 +540,29 @@ export default function ProductDetailScreen() {
 
         {/* ── Thumbnail strip ── */}
         {images.length > 1 && (
-          <View style={styles.thumbnailContainer}>
+          <View style={{ backgroundColor: C.backgroundSecondary, borderBottomWidth: 1, borderBottomColor: C.border }}>
             <ScrollView
               horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.thumbnailRow}
+              contentContainerStyle={{ paddingHorizontal: Spacing.md, paddingVertical: 10, gap: 8 }}
             >
               {images.map((img, idx) => (
                 <TouchableOpacity
                   key={idx}
                   onPress={() => setActiveImageIndex(idx)}
                   activeOpacity={0.8}
-                  style={[styles.thumbnail, idx === activeImageIndex && styles.thumbnailActive]}
+                  style={[
+                    { width: 60, height: 60, borderRadius: Radius.md, borderWidth: 1.5, borderColor: C.borderLight, overflow: 'hidden', backgroundColor: C.background },
+                    idx === activeImageIndex && { borderColor: C.neonBlue, borderWidth: 2 },
+                  ]}
                 >
                   <Image
                     source={{ uri: img }}
-                    style={[StyleSheet.absoluteFillObject, styles.thumbnailImage]}
+                    style={[StyleSheet.absoluteFillObject, { objectFit: 'cover' } as any]}
                     resizeMode="cover"
                   />
-                  {idx === activeImageIndex && <View style={styles.thumbnailActiveOverlay} />}
+                  {idx === activeImageIndex && (
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: C.neonBlueGlow }]} />
+                  )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -576,107 +570,116 @@ export default function ProductDetailScreen() {
         )}
 
         {/* ── Main content ── */}
-        <View style={styles.content}>
-          {/* Name + wishlist */}
-          <View style={styles.nameRow}>
-            <Text style={[styles.name, { flex: 1 }]}>{getProductName(product, language)}</Text>
+        <View style={{ padding: Spacing.lg, paddingTop: Spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm, marginBottom: 6 }}>
+            <Text style={{ color: C.textPrimary, fontSize: FontSize.xxl, fontWeight: '800', lineHeight: 34, letterSpacing: -0.3, flex: 1 }}>
+              {getProductName(product, language)}
+            </Text>
             <WishlistHeart product={product} size={20} variant="detail" />
           </View>
 
-          {/* Rating */}
-          <View style={styles.ratingRow}>
+          <View style={{ marginBottom: Spacing.md }}>
             <StarRating rating={product.rating} reviewCount={product.review_count} size={15} />
           </View>
 
-          {/* Price block */}
-          <View style={styles.priceBlock}>
-            <View style={styles.priceRow}>
-              <Text style={styles.price}>${product.price.toLocaleString()}</Text>
+          <View style={{ marginBottom: Spacing.sm, gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm }}>
+              <Text style={{ color: C.neonBlue, fontSize: FontSize.xxl + 6, fontWeight: '900', letterSpacing: -1 }}>
+                ${product.price.toLocaleString()}
+              </Text>
               {hasDiscount && (
-                <Text style={styles.comparePrice}>${product.compare_price!.toLocaleString()}</Text>
+                <Text style={{ color: C.textMuted, fontSize: FontSize.lg, fontWeight: '500', textDecorationLine: 'line-through' }}>
+                  ${product.compare_price!.toLocaleString()}
+                </Text>
               )}
             </View>
             {hasDiscount && (
-              <View style={styles.savingsBadge}>
-                <Text style={styles.savingsText}>
+              <View style={{ alignSelf: 'flex-start', backgroundColor: C.errorDim, borderRadius: Radius.sm, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 1, borderColor: C.error + '4D' }}>
+                <Text style={{ color: C.error, fontSize: FontSize.xs, fontWeight: '700' }}>
                   You save ${(product.compare_price! - product.price).toLocaleString()} ({discountPct}% off)
                 </Text>
               </View>
             )}
           </View>
 
-          {/* Stock status */}
-          <View style={[styles.stockRow, { marginBottom: Spacing.md }]}>
-            <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
-            <Text style={[styles.stockText, { color: stockColor }]}>{stockLabel}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: Spacing.md }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: stockColor }} />
+            <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: stockColor }}>{stockLabel}</Text>
             {selectedColor && selectedColor.stock != null && (
-              <Text style={styles.colorStockLabel}>· {selectedColor.name}</Text>
+              <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }}>· {selectedColor.name}</Text>
             )}
           </View>
 
           {product.sku && (
-            <Text style={styles.sku}>{t.skuLabel}: {product.sku}</Text>
+            <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '500', marginBottom: Spacing.sm }}>
+              {t.skuLabel}: {product.sku}
+            </Text>
           )}
 
-          {/* Trust badges */}
-          <View style={styles.trustRow}>
-            <TrustBadge icon={<Shield size={13} color={Colors.neonBlue} />} label={t.proTested} />
-            <TrustBadge icon={<Package size={13} color={Colors.neonBlue} />} label={t.freeShipping} />
-            <TrustBadge icon={<Star size={13} color={Colors.neonBlue} />} label={t.topRated} />
+          <View style={{ flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.md, flexWrap: 'wrap' }}>
+            <TrustBadge icon={<Shield size={13} color={C.neonBlue} />} label={t.proTested} C={C} />
+            <TrustBadge icon={<Package size={13} color={C.neonBlue} />} label={t.freeShipping} C={C} />
+            <TrustBadge icon={<Star size={13} color={C.neonBlue} />} label={t.topRated} C={C} />
           </View>
 
-          <View style={styles.divider} />
+          <View style={{ height: 1, backgroundColor: C.borderLight, marginVertical: Spacing.md }} />
 
-          {/* Description */}
-          <Text style={styles.sectionTitle}>{t.description}</Text>
-          <Text style={styles.description}>{getProductDescription(product, language)}</Text>
+          <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '700', marginBottom: Spacing.sm }}>
+            {t.description}
+          </Text>
+          <Text style={{ color: C.textSecondary, fontSize: FontSize.md, lineHeight: 26 }}>
+            {getProductDescription(product, language)}
+          </Text>
 
-          {/* Specs */}
           {product.specifications && Object.keys(product.specifications).length > 0 && (
             <>
-              <View style={styles.divider} />
-              <Text style={styles.sectionTitle}>{t.specifications}</Text>
-              <View style={styles.specsTable}>
+              <View style={{ height: 1, backgroundColor: C.borderLight, marginVertical: Spacing.md }} />
+              <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '700', marginBottom: Spacing.sm }}>
+                {t.specifications}
+              </Text>
+              <View style={{ borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, overflow: 'hidden', backgroundColor: C.backgroundCard }}>
                 {Object.entries(product.specifications).map(([key, val], i, arr) => (
                   <View
                     key={key}
-                    style={[styles.specRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}
+                    style={[
+                      { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: C.borderLight, paddingHorizontal: Spacing.md, paddingVertical: 11 },
+                      i === arr.length - 1 && { borderBottomWidth: 0 },
+                    ]}
                   >
-                    <Text style={styles.specKey}>{key}</Text>
-                    <Text style={styles.specVal}>{String(val)}</Text>
+                    <Text style={{ flex: 1, color: C.textSecondary, fontSize: FontSize.sm, fontWeight: '600' }}>{key}</Text>
+                    <Text style={{ flex: 1, color: C.textPrimary, fontSize: FontSize.sm, fontWeight: '500', textAlign: 'right' }}>{String(val)}</Text>
                   </View>
                 ))}
               </View>
             </>
           )}
 
-          <View style={styles.divider} />
+          <View style={{ height: 1, backgroundColor: C.borderLight, marginVertical: Spacing.md }} />
 
-          {/* In-cart banner */}
           {inCartQty > 0 && (
-            <View style={styles.inCartBanner}>
-              <ShoppingCart size={14} color={Colors.neonBlue} strokeWidth={2} />
-              <Text style={styles.inCartText}>{inCartQty} {t.inCart}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, backgroundColor: C.neonBlueGlow, borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.md, borderWidth: 1, borderColor: C.neonBlueBorder }}>
+              <ShoppingCart size={14} color={C.neonBlue} strokeWidth={2} />
+              <Text style={{ color: C.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>{inCartQty} {t.inCart}</Text>
             </View>
           )}
 
-          {/* Stock warning */}
           {stockMsg !== '' && (
-            <View style={styles.stockWarningBanner}>
-              <Text style={styles.stockWarningText}>{stockMsg}</Text>
+            <View style={{ backgroundColor: C.warning + '1A', borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.sm, borderWidth: 1, borderColor: C.warning + '4D' }}>
+              <Text style={{ color: C.warning, fontSize: FontSize.sm, fontWeight: '700', textAlign: 'center' }}>{stockMsg}</Text>
             </View>
           )}
 
-          {/* Color picker */}
           {colorVariants.length > 0 && (
-            <View style={styles.colorSection}>
-              <View style={styles.colorLabelRow}>
-                <Text style={styles.colorLabel}>{t.color ?? 'Color'}</Text>
+            <View style={{ gap: 10, marginBottom: Spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ color: C.textSecondary, fontSize: FontSize.sm, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {t.color ?? 'Color'}
+                </Text>
                 {selectedColor && (
-                  <Text style={styles.colorSelectedName}>{selectedColor.name}</Text>
+                  <Text style={{ color: C.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>{selectedColor.name}</Text>
                 )}
               </View>
-              <View style={styles.colorSwatchRow}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                 {colorVariants.map((v) => {
                   const active = selectedColor?.id === v.id;
                   const colorOos = !product.unlimited_stock && v.stock != null && v.stock === 0;
@@ -684,16 +687,17 @@ export default function ProductDetailScreen() {
                     <TouchableOpacity
                       key={v.id}
                       style={[
-                        styles.colorSwatch,
-                        { backgroundColor: v.hex },
-                        active && styles.colorSwatchActive,
-                        colorOos && styles.colorSwatchOos,
+                        { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(128,128,128,0.3)', justifyContent: 'center', alignItems: 'center', backgroundColor: v.hex },
+                        active && { borderColor: C.white, borderWidth: 2.5 },
+                        colorOos && { opacity: 0.3 },
                       ]}
                       onPress={() => !colorOos && setSelectedColor(v)}
                       activeOpacity={colorOos ? 1 : 0.8}
                     >
-                      {active && <View style={styles.colorSwatchCheck} />}
-                      {colorOos && <View style={styles.colorSwatchStrike} />}
+                      {active && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.9)' }} />}
+                      {colorOos && (
+                        <View style={{ position: 'absolute', width: '130%' as any, height: 2, backgroundColor: 'rgba(255,255,255,0.8)', transform: [{ rotate: '45deg' }] }} />
+                      )}
                     </TouchableOpacity>
                   );
                 })}
@@ -701,9 +705,8 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Quantity */}
-          <View style={styles.qtyRow}>
-            <Text style={styles.qtyLabel}>{t.quantity}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Spacing.xs }}>
+            <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '700' }}>{t.quantity}</Text>
             <QuantitySelector
               value={quantity}
               onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -717,69 +720,69 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* ── Customer Reviews ── */}
-        <View style={styles.reviewsSection}>
-          <View style={styles.reviewsSectionHeader}>
-            <View style={styles.relatedAccent} />
-            <Text style={styles.relatedTitle}>Customer Reviews</Text>
+        <View style={{ borderTopWidth: 1, borderTopColor: C.borderLight, paddingTop: Spacing.lg, paddingHorizontal: Spacing.lg, paddingBottom: Spacing.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: Spacing.md }}>
+            <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: C.neonBlue }} />
+            <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '800', letterSpacing: 0.2 }}>Customer Reviews</Text>
             {product.review_count > 0 && (
-              <View style={styles.reviewsCountBadge}>
-                <Text style={styles.reviewsCountText}>{product.review_count}</Text>
+              <View style={{ backgroundColor: C.neonBlueGlow, borderRadius: Radius.full, borderWidth: 1, borderColor: C.neonBlueBorder, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 4 }}>
+                <Text style={{ color: C.neonBlue, fontSize: FontSize.xs, fontWeight: '800' }}>{product.review_count}</Text>
               </View>
             )}
           </View>
 
           {approvedReviews.length > 0 && (
-            <View style={styles.reviewsList}>
+            <View style={{ gap: Spacing.sm, marginBottom: Spacing.md }}>
               {approvedReviews.map((rv) => (
-                <View key={rv.id} style={styles.reviewCard}>
-                  <View style={styles.reviewCardHeader}>
-                    <View style={styles.reviewAvatar}>
-                      <Text style={styles.reviewAvatarText}>{rv.customer_name?.[0]?.toUpperCase() ?? '?'}</Text>
+                <View key={rv.id} style={{ backgroundColor: C.backgroundCard, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, padding: Spacing.md, gap: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                    <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.neonBlue, justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+                      <Text style={{ color: C.background, fontSize: FontSize.sm, fontWeight: '800' }}>{rv.customer_name?.[0]?.toUpperCase() ?? '?'}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.reviewAuthor}>{rv.customer_name}</Text>
-                      <Text style={styles.reviewDate}>
+                      <Text style={{ color: C.textPrimary, fontSize: FontSize.sm, fontWeight: '700' }}>{rv.customer_name}</Text>
+                      <Text style={{ color: C.textMuted, fontSize: FontSize.xs }}>
                         {new Date(rv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </Text>
                     </View>
-                    <View style={styles.reviewStars}>
+                    <View style={{ flexDirection: 'row', gap: 2 }}>
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
                           size={12}
-                          color={i < rv.rating ? Colors.gold : Colors.border}
-                          fill={i < rv.rating ? Colors.gold : 'transparent'}
+                          color={i < rv.rating ? C.gold : C.border}
+                          fill={i < rv.rating ? C.gold : 'transparent'}
                           strokeWidth={1.5}
                         />
                       ))}
                     </View>
                   </View>
-                  <Text style={styles.reviewBodyText}>{rv.body}</Text>
+                  <Text style={{ color: C.textSecondary, fontSize: FontSize.sm, lineHeight: 20 }}>{rv.body}</Text>
                 </View>
               ))}
             </View>
           )}
 
           {approvedReviews.length === 0 && (
-            <Text style={styles.noReviewsText}>No reviews yet. Be the first to review this product.</Text>
+            <Text style={{ color: C.textMuted, fontSize: FontSize.sm, marginBottom: Spacing.md }}>
+              No reviews yet. Be the first to review this product.
+            </Text>
           )}
 
-          {/* Submit review form */}
-          <View style={styles.reviewForm}>
-            <Text style={styles.reviewFormTitle}>
+          <View style={{ backgroundColor: C.backgroundCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, padding: Spacing.md, gap: Spacing.sm }}>
+            <Text style={{ color: C.textPrimary, fontSize: FontSize.md, fontWeight: '800', marginBottom: 4 }}>
               {reviewSubmitted ? 'Review Submitted!' : 'Write a Review'}
             </Text>
             {reviewSubmitted ? (
-              <View style={styles.reviewSuccessBox}>
-                <Text style={styles.reviewSuccessText}>
+              <View style={{ backgroundColor: C.successDim, borderRadius: Radius.md, borderWidth: 1, borderColor: C.success + '40', padding: Spacing.md }}>
+                <Text style={{ color: C.success, fontSize: FontSize.sm, fontWeight: '600', lineHeight: 20 }}>
                   Thank you! Your review is pending admin approval and will appear once approved.
                 </Text>
               </View>
             ) : (
               <>
-                {/* Star picker */}
-                <Text style={styles.reviewFieldLabel}>Rating *</Text>
-                <View style={styles.reviewStarPicker}>
+                <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Rating *</Text>
+                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 4 }}>
                   {[1, 2, 3, 4, 5].map((s) => (
                     <TouchableOpacity
                       key={s}
@@ -789,8 +792,8 @@ export default function ProductDetailScreen() {
                     >
                       <Star
                         size={32}
-                        color={s <= reviewRating ? Colors.gold : Colors.textMuted}
-                        fill={s <= reviewRating ? Colors.gold : 'transparent'}
+                        color={s <= reviewRating ? C.gold : C.textMuted}
+                        fill={s <= reviewRating ? C.gold : 'transparent'}
                         strokeWidth={1.5}
                       />
                     </TouchableOpacity>
@@ -799,43 +802,43 @@ export default function ProductDetailScreen() {
 
                 {!user && (
                   <>
-                    <Text style={styles.reviewFieldLabel}>Your Name</Text>
+                    <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Your Name</Text>
                     <TextInput
-                      style={styles.reviewInput}
+                      style={{ backgroundColor: C.backgroundSecondary, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, color: C.textPrimary, fontSize: FontSize.sm, paddingHorizontal: Spacing.md, paddingVertical: 10 }}
                       value={reviewName}
                       onChangeText={setReviewName}
                       placeholder="Enter your name"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={C.textMuted}
                     />
                   </>
                 )}
 
-                <Text style={styles.reviewFieldLabel}>Review *</Text>
+                <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Review *</Text>
                 <TextInput
-                  style={[styles.reviewInput, styles.reviewTextArea]}
+                  style={{ backgroundColor: C.backgroundSecondary, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, color: C.textPrimary, fontSize: FontSize.sm, paddingHorizontal: Spacing.md, paddingVertical: 10, minHeight: 88, textAlignVertical: 'top' }}
                   value={reviewBody}
                   onChangeText={setReviewBody}
                   placeholder="Share your experience with this product..."
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={C.textMuted}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
                 />
 
                 {reviewError !== '' && (
-                  <Text style={styles.reviewErrorText}>{reviewError}</Text>
+                  <Text style={{ color: C.error, fontSize: FontSize.xs, fontWeight: '600' }}>{reviewError}</Text>
                 )}
 
                 <TouchableOpacity
-                  style={[styles.reviewSubmitBtn, reviewSubmitting && { opacity: 0.5 }]}
+                  style={[{ backgroundColor: C.neonBlue, borderRadius: Radius.full, paddingVertical: 14, alignItems: 'center', marginTop: 4 }, reviewSubmitting && { opacity: 0.5 }]}
                   onPress={handleSubmitReview}
                   activeOpacity={0.8}
                   disabled={reviewSubmitting}
                 >
                   {reviewSubmitting ? (
-                    <ActivityIndicator size="small" color={Colors.background} />
+                    <ActivityIndicator size="small" color={C.background} />
                   ) : (
-                    <Text style={styles.reviewSubmitBtnText}>Submit Review</Text>
+                    <Text style={{ color: C.background, fontSize: FontSize.md, fontWeight: '800' }}>Submit Review</Text>
                   )}
                 </TouchableOpacity>
               </>
@@ -845,27 +848,27 @@ export default function ProductDetailScreen() {
 
         {/* ── Related products ── */}
         {related.length > 0 && (
-          <View style={styles.relatedSection}>
-            <View style={styles.relatedHeader}>
-              <View style={styles.relatedTitleGroup}>
-                <View style={styles.relatedAccent} />
-                <Text style={styles.relatedTitle}>{t.youMayAlsoLike}</Text>
+          <View style={{ borderTopWidth: 1, borderTopColor: C.borderLight, paddingTop: Spacing.lg, paddingBottom: Spacing.xl }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ width: 3, height: 18, borderRadius: 2, backgroundColor: C.neonBlue }} />
+                <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '800', letterSpacing: 0.2 }}>{t.youMayAlsoLike}</Text>
               </View>
               <TouchableOpacity
-                style={styles.relatedSeeAll}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
                 onPress={() => router.push('/(tabs)/products' as any)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.relatedSeeAllText}>{t.seeAll}</Text>
-                <ChevronRight size={14} color={Colors.neonBlue} strokeWidth={2.5} />
+                <Text style={{ color: C.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>{t.seeAll}</Text>
+                <ChevronRight size={14} color={C.neonBlue} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
             <ScrollView
               horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.relatedScroll}
+              contentContainerStyle={{ paddingHorizontal: Spacing.lg, gap: Spacing.sm }}
             >
               {related.map((item) => (
-                <View key={item.id} style={styles.relatedCard}>
+                <View key={item.id} style={{ width: 160 }}>
                   <ProductCard product={item} />
                 </View>
               ))}
@@ -875,31 +878,31 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       {/* ── Sticky footer ── */}
-      <View style={styles.footer}>
+      <View style={{ backgroundColor: C.background, paddingHorizontal: Spacing.md, paddingTop: Spacing.sm, paddingBottom: Platform.OS === 'ios' ? 34 : Spacing.md, borderTopWidth: 1, borderTopColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 12 }}>
         {addedFeedback ? (
-          <Animated.View style={[styles.successBanner, { opacity: successOpacity }]}>
-            <View style={styles.successIconWrap}>
-              <ShoppingCart size={18} color={Colors.success} strokeWidth={2} />
+          <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: C.successDim, borderRadius: Radius.md, paddingVertical: 14, paddingHorizontal: Spacing.md, borderWidth: 1, borderColor: C.success + '4D' }, { opacity: successOpacity }]}>
+            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.successDim, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: C.success + '59' }}>
+              <ShoppingCart size={18} color={C.success} strokeWidth={2} />
             </View>
-            <View style={styles.successTextWrap}>
-              <Text style={styles.successTitle}>{t.addedToCart}</Text>
-              <Text style={styles.successSub}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: C.success, fontSize: FontSize.md, fontWeight: '800' }}>{t.addedToCart}</Text>
+              <Text style={{ color: C.textSecondary, fontSize: FontSize.xs, fontWeight: '500' }}>
                 {quantity} × {getProductName(product, language)}
               </Text>
             </View>
-            <Text style={styles.successPrice}>
+            <Text style={{ color: C.success, fontSize: FontSize.lg, fontWeight: '900' }}>
               ${(product.price * quantity).toLocaleString()}
             </Text>
           </Animated.View>
         ) : (
-          <View style={styles.footerRow}>
-            <View style={styles.footerPrice}>
-              <Text style={styles.footerPriceLabel}>{t.total}</Text>
-              <Text style={styles.footerPriceValue}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
+            <View style={{ gap: 1, minWidth: 80 }}>
+              <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600', letterSpacing: 0.3 }}>{t.total}</Text>
+              <Text style={{ color: C.neonBlue, fontSize: FontSize.xl, fontWeight: '900', lineHeight: 26 }}>
                 ${(product.price * quantity).toLocaleString()}
               </Text>
               {hasDiscount && (
-                <Text style={styles.footerSavings}>
+                <Text style={{ color: C.error, fontSize: FontSize.xs, fontWeight: '700', marginTop: 1 }}>
                   Save ${((product.compare_price! - product.price) * quantity).toLocaleString()}
                 </Text>
               )}
@@ -919,42 +922,16 @@ export default function ProductDetailScreen() {
   );
 }
 
-function TrustBadge({ icon, label }: { icon: React.ReactNode; label: string }) {
+function TrustBadge({ icon, label, C }: { icon: React.ReactNode; label: string; C: any }) {
   return (
-    <View style={styles.trustBadge}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.neonBlueGlow, borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: C.neonBlueBorder }}>
       {icon}
-      <Text style={styles.trustLabel}>{label}</Text>
+      <Text style={{ color: C.neonBlue, fontSize: FontSize.xs, fontWeight: '700' }}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  skeletonContent: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  imageWrapper: {
-    width: '100%',
-    height: IMAGE_HEIGHT,
-    position: 'relative',
-    backgroundColor: Colors.backgroundSecondary,
-  },
-  imageContainer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  image: {
-    objectFit: 'contain',
-    objectPosition: 'center',
-  } as any,
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-  },
+const s = StyleSheet.create({
   topBar: {
     position: 'absolute',
     left: Spacing.md,
@@ -975,24 +952,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 8,
   },
-  shareCopiedText: {
-    color: Colors.neonBlue,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
   badge: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 112 : 68,
     right: Spacing.md,
-    backgroundColor: Colors.neonBlue,
     borderRadius: Radius.sm,
     paddingHorizontal: 10,
     paddingVertical: 4,
     zIndex: 15,
   },
   badgeText: {
-    color: Colors.white,
+    color: '#FFFFFF',
     fontSize: FontSize.xs,
     fontWeight: '800',
     letterSpacing: 0.8,
@@ -1004,19 +974,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: Colors.error,
+    backgroundColor: '#FF4444',
     borderRadius: Radius.sm,
     paddingHorizontal: 9,
     paddingVertical: 5,
     zIndex: 15,
-    shadowColor: Colors.error,
+    shadowColor: '#FF4444',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 8,
     elevation: 6,
   },
   discountBadgeText: {
-    color: Colors.white,
+    color: '#FFFFFF',
     fontSize: FontSize.xs,
     fontWeight: '900',
     letterSpacing: 0.5,
@@ -1054,12 +1024,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,191,255,0.2)',
   },
-  categoryTag: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
   expandHint: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1069,573 +1033,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  expandHintText: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  thumbnailContainer: {
-    backgroundColor: Colors.backgroundSecondary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  thumbnailRow: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.borderLight,
-    overflow: 'hidden',
-    backgroundColor: Colors.background,
-  },
-  thumbnailActive: {
-    borderColor: Colors.neonBlue,
-    borderWidth: 2,
-    shadowColor: Colors.neonBlue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  thumbnailActiveOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.neonBlueGlow,
-  },
-  thumbnailImage: {
-    objectFit: 'cover',
-  } as any,
-  content: {
-    padding: Spacing.lg,
-    paddingTop: Spacing.md,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-    marginBottom: 6,
-  },
-  name: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
-    lineHeight: 34,
-    letterSpacing: -0.3,
-  },
-  ratingRow: {
-    marginBottom: Spacing.md,
-  },
-  priceBlock: {
-    marginBottom: Spacing.sm,
-    gap: 6,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: Spacing.sm,
-  },
-  price: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xxl + 6,
-    fontWeight: '900',
-    letterSpacing: -1,
-    ...Shadow.neonBlueSubtle,
-  },
-  comparePrice: {
-    color: Colors.textMuted,
-    fontSize: FontSize.lg,
-    fontWeight: '500',
-    textDecorationLine: 'line-through',
-  },
-  savingsBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.errorDim,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: Colors.error + '4D',
-  },
-  savingsText: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-  },
-  stockRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  stockDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  stockText: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  colorStockLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  sku: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-    marginBottom: Spacing.sm,
-  },
-  trustRow: {
-    flexDirection: 'row',
-    gap: Spacing.xs,
-    marginBottom: Spacing.md,
-    flexWrap: 'wrap',
-  },
-  trustBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.neonBlueGlow,
-    borderRadius: Radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-  },
-  trustLabel: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: Spacing.md,
-  },
-  sectionTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    marginBottom: Spacing.sm,
-  },
-  description: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-    lineHeight: 26,
-  },
-  specsTable: {
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-    backgroundColor: Colors.backgroundCard,
-  },
-  specRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 11,
-  },
-  specKey: {
-    flex: 1,
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  specVal: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-    textAlign: 'right',
-  },
-  inCartBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.neonBlueGlow,
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-  },
-  inCartText: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  stockWarningBanner: {
-    backgroundColor: Colors.warning + '1A',
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.warning + '4D',
-  },
-  stockWarningText: {
-    color: Colors.warning,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  colorSection: {
-    gap: 10,
-    marginBottom: Spacing.md,
-  },
-  colorLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  colorLabel: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  colorSelectedName: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  colorSwatchRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  colorSwatch: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  colorSwatchActive: {
-    borderColor: Colors.white,
-    borderWidth: 2.5,
-    shadowColor: Colors.white,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  colorSwatchCheck: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
-  colorSwatchOos: {
-    opacity: 0.3,
-  },
-  colorSwatchStrike: {
-    position: 'absolute',
-    width: '130%' as any,
-    height: 2,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    transform: [{ rotate: '45deg' }],
-  },
-  qtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.xs,
-  },
-  qtyLabel: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-  },
-  footer: {
-    backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? 34 : Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  footerPrice: {
-    gap: 1,
-    minWidth: 80,
-  },
-  footerPriceLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  footerPriceValue: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xl,
-    fontWeight: '900',
-    lineHeight: 26,
-  },
-  footerSavings: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    marginTop: 1,
-  },
-  successBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: Colors.successDim,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.success + '4D',
-  },
-  successIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: Colors.successDim,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.success + '59',
-  },
-  successTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  successTitle: {
-    color: Colors.success,
-    fontSize: FontSize.md,
-    fontWeight: '800',
-  },
-  successSub: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-  },
-  successPrice: {
-    color: Colors.success,
-    fontSize: FontSize.lg,
-    fontWeight: '900',
-  },
-  relatedSection: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
-  },
-  relatedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.md,
-  },
-  relatedTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  relatedAccent: {
-    width: 3,
-    height: 18,
-    borderRadius: 2,
-    backgroundColor: Colors.neonBlue,
-  },
-  relatedTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  relatedSeeAll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  relatedSeeAllText: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  relatedScroll: {
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  relatedCard: {
-    width: 160,
-  },
-  reviewsSection: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-    paddingTop: Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
-  },
-  reviewsSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: Spacing.md,
-  },
-  reviewsCountBadge: {
-    backgroundColor: Colors.neonBlueGlow,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginLeft: 4,
-  },
-  reviewsCountText: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xs,
-    fontWeight: '800',
-  },
-  reviewsList: {
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  reviewCard: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: 8,
-  },
-  reviewCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  reviewAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: Colors.neonBlue,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  reviewAvatarText: {
-    color: Colors.background,
-    fontSize: FontSize.sm,
-    fontWeight: '800',
-  },
-  reviewAuthor: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  reviewDate: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-  },
-  reviewStars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  reviewBodyText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    lineHeight: 20,
-  },
-  noReviewsText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    marginBottom: Spacing.md,
-  },
-  reviewForm: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  reviewFormTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  reviewSuccessBox: {
-    backgroundColor: Colors.successDim,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.success + '40',
-    padding: Spacing.md,
-  },
-  reviewSuccessText: {
-    color: Colors.success,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  reviewFieldLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 4,
-  },
-  reviewStarPicker: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  reviewInput: {
-    backgroundColor: Colors.backgroundSecondary,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-  },
-  reviewTextArea: {
-    minHeight: 88,
-    textAlignVertical: 'top',
-  },
-  reviewErrorText: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  reviewSubmitBtn: {
-    backgroundColor: Colors.neonBlue,
-    borderRadius: Radius.full,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  reviewSubmitBtnText: {
-    color: Colors.background,
-    fontSize: FontSize.md,
-    fontWeight: '800',
+    borderColor: 'rgba(0,191,255,0.15)',
   },
 });

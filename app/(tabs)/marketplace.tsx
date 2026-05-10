@@ -19,8 +19,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
 import AppHeader from '@/components/AppHeader';
-import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
-import { useTheme } from '@/context/ThemeContext';
+import { Spacing, FontSize, Radius } from '@/constants/theme';
+import { useTheme, useThemeColors } from '@/context/ThemeContext';
 
 export type UsedGearListing = {
   id: string;
@@ -66,6 +66,7 @@ export type UsedGearListing = {
   aad_needs_service: boolean;
   aad_serial: string;
   main_image_url: string | null;
+  view_count?: number;
 };
 
 type SellerRatingSummary = {
@@ -75,12 +76,13 @@ type SellerRatingSummary = {
   is_verified: boolean;
 };
 
+// These are intentionally static — condition colors are semantic and don't change with theme
 const CONDITION_COLORS: Record<string, string> = {
-  new:      Colors.success,
+  new:      '#00E676',
   like_new: '#00E676',
-  good:     Colors.neonBlue,
-  fair:     Colors.warning,
-  poor:     Colors.error,
+  good:     '#00BFFF',
+  fair:     '#FFB300',
+  poor:     '#FF4444',
 };
 
 const SORT_OPTIONS = ['newest', 'priceLowHigh', 'priceHighLow'] as const;
@@ -98,6 +100,7 @@ export default function MarketplaceScreen() {
   const { t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const { gearWishlistIds } = useGearWishlist();
+  const C = useThemeColors();
 
   const [listings, setListings] = useState<UsedGearListing[]>([]);
   const [allListings, setAllListings] = useState<UsedGearListing[]>([]);
@@ -180,7 +183,6 @@ export default function MarketplaceScreen() {
     const { data } = await buildQuery(0, category, sortKey, avail);
     const rows = (data ?? []) as UsedGearListing[];
 
-    // Load all categories on first/reset fetch for filter chips
     if (!category) {
       const { data: allRows } = await supabase
         .from('used_gear_listings')
@@ -262,17 +264,17 @@ export default function MarketplaceScreen() {
   const renderFooter = () => {
     if (!isSearching && loadingMore) {
       return (
-        <View style={styles.footerLoader}>
-          <ActivityIndicator size="small" color={Colors.neonBlue} />
+        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={C.neonBlue} />
         </View>
       );
     }
     if (!isSearching && !hasMore && listings.length > 0) {
       return (
-        <View style={styles.footerEnd}>
-          <View style={styles.footerEndLine} />
-          <Text style={styles.footerEndText}>No more listings</Text>
-          <View style={styles.footerEndLine} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 20, paddingHorizontal: 24, gap: 10 }}>
+          <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
+          <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600', letterSpacing: 0.5 }}>No more listings</Text>
+          <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
         </View>
       );
     }
@@ -280,23 +282,23 @@ export default function MarketplaceScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
       <AppHeader title={t.usedGear} />
 
       {/* Safety banner */}
-      <View style={styles.safetyBanner}>
-        <AlertTriangle size={14} color={Colors.warning} strokeWidth={2} />
-        <Text style={styles.safetyText}>{t.usedGearSafetyWarning}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,179,0,0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,179,0,0.2)', paddingHorizontal: Spacing.md, paddingVertical: 10 }}>
+        <AlertTriangle size={14} color={C.warning} strokeWidth={2} />
+        <Text style={{ flex: 1, color: C.warning, fontSize: FontSize.xs, fontWeight: '600', lineHeight: 16 }}>{t.usedGearSafetyWarning}</Text>
       </View>
 
       {/* Search bar */}
-      <View style={styles.searchWrap}>
-        <View style={styles.searchBar}>
-          <Search size={15} color={Colors.textMuted} strokeWidth={2} />
+      <View style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: C.backgroundSecondary, borderBottomWidth: 1, borderBottomColor: C.border }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.backgroundCard, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, paddingHorizontal: 10, paddingVertical: Platform.OS === 'ios' ? 9 : 7, gap: 8 }}>
+          <Search size={15} color={C.textMuted} strokeWidth={2} />
           <TextInput
-            style={styles.searchInput}
+            style={{ flex: 1, color: C.textPrimary, fontSize: FontSize.sm, padding: 0, margin: 0 }}
             placeholder="Search gear, make, model…"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={C.textMuted}
             value={rawSearch}
             onChangeText={handleSearchChange}
             returnKeyType="search"
@@ -305,73 +307,88 @@ export default function MarketplaceScreen() {
           />
           {rawSearch.length > 0 && (
             <TouchableOpacity onPress={clearSearch} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <X size={14} color={Colors.textMuted} strokeWidth={2.5} />
+              <X size={14} color={C.textMuted} strokeWidth={2.5} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       {/* Filters row */}
-      <View style={styles.filtersWrap}>
+      <View style={{ borderBottomWidth: 1, borderBottomColor: C.border }}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersRow}
+          contentContainerStyle={{ flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: 10, alignItems: 'center' }}
         >
           <TouchableOpacity
-            style={[styles.chip, !selectedCategory && styles.chipActive]}
+            style={[
+              { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1, borderColor: C.border, backgroundColor: C.backgroundCard },
+              !selectedCategory && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+            ]}
             onPress={() => setSelectedCategory(null)}
             activeOpacity={0.75}
           >
-            <Text style={[styles.chipText, !selectedCategory && styles.chipTextActive]}>
+            <Text style={[{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }, !selectedCategory && { color: C.neonBlue, fontWeight: '700' }]}>
               {t.filterAll}
             </Text>
           </TouchableOpacity>
           {allCategories.map((cat) => (
             <TouchableOpacity
               key={cat}
-              style={[styles.chip, selectedCategory === cat && styles.chipActive]}
+              style={[
+                { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1, borderColor: C.border, backgroundColor: C.backgroundCard },
+                selectedCategory === cat && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+              ]}
               onPress={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
               activeOpacity={0.75}
             >
-              <Text style={[styles.chipText, selectedCategory === cat && styles.chipTextActive]}>
+              <Text style={[{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }, selectedCategory === cat && { color: C.neonBlue, fontWeight: '700' }]}>
                 {cat}
               </Text>
             </TouchableOpacity>
           ))}
 
-          <View style={styles.chipDivider} />
+          <View style={{ width: 1, height: 20, backgroundColor: C.border, marginHorizontal: 4 }} />
 
           <TouchableOpacity
-            style={[styles.chip, availFilter === 'available' && styles.chipActive]}
+            style={[
+              { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1, borderColor: C.border, backgroundColor: C.backgroundCard },
+              availFilter === 'available' && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+            ]}
             onPress={() => setAvailFilter('available')}
             activeOpacity={0.75}
           >
-            <Text style={[styles.chipText, availFilter === 'available' && styles.chipTextActive]}>
+            <Text style={[{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }, availFilter === 'available' && { color: C.neonBlue, fontWeight: '700' }]}>
               Available
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.chip, availFilter === 'all' && styles.chipActive]}
+            style={[
+              { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1, borderColor: C.border, backgroundColor: C.backgroundCard },
+              availFilter === 'all' && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+            ]}
             onPress={() => setAvailFilter('all')}
             activeOpacity={0.75}
           >
-            <Text style={[styles.chipText, availFilter === 'all' && styles.chipTextActive]}>
+            <Text style={[{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }, availFilter === 'all' && { color: C.neonBlue, fontWeight: '700' }]}>
               + Sold
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.chipDivider} />
+          <View style={{ width: 1, height: 20, backgroundColor: C.border, marginHorizontal: 4 }} />
 
-          {SORT_OPTIONS.map((s) => (
+          {SORT_OPTIONS.map((sk) => (
             <TouchableOpacity
-              key={s}
-              style={[styles.chip, styles.chipSort, sort === s && styles.chipSortActive]}
-              onPress={() => setSort(s)}
+              key={sk}
+              style={[
+                { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, borderWidth: 1, borderColor: C.borderLight, backgroundColor: C.backgroundCard },
+                sort === sk && { backgroundColor: C.gold + '1A', borderColor: C.gold + '59' },
+              ]}
+              onPress={() => setSort(sk)}
               activeOpacity={0.75}
             >
-              <Text style={[styles.chipText, sort === s && styles.chipTextActive]}>
-                {sortLabel(s)}
+              <Text style={[{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }, sort === sk && { color: C.neonBlue, fontWeight: '700' }]}>
+                {sortLabel(sk)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -379,21 +396,21 @@ export default function MarketplaceScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={Colors.neonBlue} size="large" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color={C.neonBlue} size="large" />
         </View>
       ) : displayedListings.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Package size={48} color={Colors.textMuted} strokeWidth={1.5} />
-          <Text style={styles.emptyTitle}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: Spacing.md, padding: Spacing.xl }}>
+          <Package size={48} color={C.textMuted} strokeWidth={1.5} />
+          <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '700', textAlign: 'center' }}>
             {isSearching ? `No results for "${searchQuery}"` : t.noListingsFound}
           </Text>
           {isSearching ? (
-            <TouchableOpacity onPress={clearSearch} activeOpacity={0.75} style={styles.clearSearchBtn}>
-              <Text style={styles.clearSearchBtnText}>Clear search</Text>
+            <TouchableOpacity onPress={clearSearch} activeOpacity={0.75} style={{ borderWidth: 1, borderColor: C.neonBlueBorder, borderRadius: Radius.full, paddingHorizontal: 16, paddingVertical: 7, marginTop: 4 }}>
+              <Text style={{ color: C.neonBlue, fontSize: FontSize.sm, fontWeight: '700' }}>Clear search</Text>
             </TouchableOpacity>
           ) : (
-            <Text style={styles.emptySubtitle}>{t.noListingsSubtitle}</Text>
+            <Text style={{ color: C.textMuted, fontSize: FontSize.md, textAlign: 'center' }}>{t.noListingsSubtitle}</Text>
           )}
         </View>
       ) : (
@@ -403,7 +420,7 @@ export default function MarketplaceScreen() {
           extraData={gearWishlistIds}
           numColumns={Platform.OS === 'web' ? 2 : 1}
           key={Platform.OS === 'web' ? 'web-2col' : 'mobile-1col'}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
@@ -412,7 +429,7 @@ export default function MarketplaceScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={Colors.neonBlue}
+              tintColor={C.neonBlue}
             />
           }
           renderItem={({ item }) => (
@@ -427,11 +444,11 @@ export default function MarketplaceScreen() {
 
       {/* FAB — post a listing */}
       <TouchableOpacity
-        style={styles.fab}
+        style={s.fab}
         onPress={() => router.push('/marketplace/create' as any)}
         activeOpacity={0.8}
       >
-        <Plus size={26} color={Colors.background} strokeWidth={2.5} />
+        <Plus size={26} color="#050A14" strokeWidth={2.5} />
       </TouchableOpacity>
     </View>
   );
@@ -449,10 +466,11 @@ function ListingCard({
   const { t } = useLanguage();
   const { isGearWishlisted, toggleGear } = useGearWishlist();
   const { preset: themePreset } = useTheme();
+  const C = useThemeColors();
   const isLight = themePreset === 'light';
   const thumb = listing.main_image_url || listing.images?.[0];
-  const condColor = CONDITION_COLORS[listing.condition] ?? Colors.textMuted;
-  const condLabel = conditionLabel(listing.condition, t);
+  const condColor = CONDITION_COLORS[listing.condition] ?? C.textMuted;
+  const condLabelText = conditionLabel(listing.condition, t);
   const isVerified = listing.seller_verified || seller?.is_verified;
   const isSold = listing.status === 'sold';
   const boosted = isBoosted(listing);
@@ -461,95 +479,104 @@ function ListingCard({
 
   return (
     <TouchableOpacity
-      style={[styles.card, !isLight && styles.cardDark, isSold && styles.cardSold, boosted && styles.cardBoosted]}
+      style={[
+        { flex: 1, backgroundColor: C.backgroundCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: C.border, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: isLight ? 0.10 : 0.35, shadowRadius: 8, elevation: 3, marginHorizontal: Platform.OS === 'web' ? Spacing.xs : 0, marginBottom: Platform.OS === 'web' ? Spacing.xs : 0 },
+        isSold && { opacity: 0.72, borderColor: C.borderLight },
+        boosted && { borderColor: C.gold + '80', shadowColor: C.gold, shadowOpacity: 0.25, shadowRadius: 10 },
+      ]}
       onPress={onPress}
       activeOpacity={0.85}
     >
       {boosted && (
-        <View style={styles.boostRibbon}>
-          <Zap size={10} color="#FFD700" strokeWidth={2.5} fill="#FFD700" />
-          <Text style={styles.boostRibbonText}>FEATURED</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.gold + '1A', borderBottomWidth: 1, borderBottomColor: C.gold + '40', paddingHorizontal: Spacing.sm, paddingVertical: 5 }}>
+          <Zap size={10} color={C.gold} strokeWidth={2.5} fill={C.gold} />
+          <Text style={{ color: C.gold, fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }}>FEATURED</Text>
         </View>
       )}
 
-      <View style={[styles.cardImageWrap, { backgroundColor: isLight ? '#F0F4F8' : Colors.background }]}>
+      <View style={{ width: '100%', height: 180, backgroundColor: isLight ? '#F0F4F8' : C.backgroundSecondary, position: 'relative' }}>
         {thumb ? (
-          <Image source={{ uri: thumb }} style={[styles.cardImage, isSold && styles.cardImageSold]} resizeMode="cover" />
+          <Image source={{ uri: thumb }} style={[StyleSheet.absoluteFillObject, isSold && { opacity: 0.55 }]} resizeMode="cover" />
         ) : (
-          <View style={[styles.cardImagePlaceholder, { backgroundColor: isLight ? '#F0F4F8' : Colors.backgroundSecondary }]}>
-            <Tag size={32} color={Colors.textMuted} strokeWidth={1.5} />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isLight ? '#F0F4F8' : C.backgroundSecondary }}>
+            <Tag size={32} color={C.textMuted} strokeWidth={1.5} />
           </View>
         )}
         {isSold && (
-          <View style={styles.soldOverlay}>
-            <Text style={styles.soldOverlayText}>SOLD</Text>
+          <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,10,20,0.55)', justifyContent: 'center', alignItems: 'center' } as any}>
+            <Text style={{ color: '#FFFFFF', fontSize: FontSize.xl, fontWeight: '900', letterSpacing: 4, opacity: 0.9 }}>SOLD</Text>
           </View>
         )}
         {!isSold && (
-          <View style={[styles.condBadge, { borderColor: condColor }]}>
-            <Text style={[styles.condBadgeText, { color: condColor }]}>{condLabel}</Text>
+          <View style={{ position: 'absolute', top: 10, right: 10, borderWidth: 1, borderRadius: Radius.sm, paddingHorizontal: 8, paddingVertical: 3, borderColor: condColor, backgroundColor: 'rgba(5,10,20,0.75)' }}>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: condColor }}>{condLabelText}</Text>
           </View>
         )}
         {isVerified && !isSold && (
-          <View style={styles.verifiedOverlay}>
-            <BadgeCheck size={11} color={Colors.neonBlue} strokeWidth={2.5} />
-            <Text style={styles.verifiedOverlayText}>{t.verifiedSeller}</Text>
+          <View style={{ position: 'absolute', bottom: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(5,10,20,0.82)', borderRadius: Radius.full, borderWidth: 1, borderColor: C.neonBlueBorder, paddingHorizontal: 7, paddingVertical: 3 }}>
+            <BadgeCheck size={11} color={C.neonBlue} strokeWidth={2.5} />
+            <Text style={{ color: C.neonBlue, fontSize: 9, fontWeight: '800', letterSpacing: 0.2 }}>{t.verifiedSeller}</Text>
           </View>
         )}
         {views > 0 && (
-          <View style={styles.viewCountBadge}>
+          <View style={{ position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(5,10,20,0.65)', borderRadius: Radius.full, paddingHorizontal: 7, paddingVertical: 3 }}>
             <Eye size={10} color="rgba(255,255,255,0.75)" strokeWidth={2} />
-            <Text style={styles.viewCountText}>{views}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 9, fontWeight: '700' }}>{views}</Text>
           </View>
         )}
         {!isSold && (
           <TouchableOpacity
-            style={[styles.heartBtn, isLight && styles.heartBtnLight]}
+            style={[
+              { position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(5,10,20,0.65)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+              isLight && { backgroundColor: 'rgba(255,255,255,0.92)', borderColor: 'rgba(0,0,0,0.10)', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 3, elevation: 2 },
+            ]}
             onPress={(e) => { e.stopPropagation?.(); toggleGear(listing); }}
             activeOpacity={0.8}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Heart
               size={16}
-              color={wishlisted ? Colors.error : (isLight ? '#2E5F85' : 'rgba(255,255,255,0.85)')}
-              fill={wishlisted ? Colors.error : 'transparent'}
+              color={wishlisted ? '#FF4444' : (isLight ? C.neonBlueDim : 'rgba(255,255,255,0.85)')}
+              fill={wishlisted ? '#FF4444' : 'transparent'}
               strokeWidth={2}
             />
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={styles.cardBody}>
-        <Text style={[styles.cardTitle, isSold && styles.cardTitleSold]} numberOfLines={2}>{listing.title}</Text>
+      <View style={{ padding: Spacing.md, gap: 4 }}>
+        <Text style={[{ color: C.textPrimary, fontSize: FontSize.md, fontWeight: '700', lineHeight: 20 }, isSold && { color: C.textMuted, textDecorationLine: 'line-through' }]} numberOfLines={2}>{listing.title}</Text>
         {listing.category ? (
-          <Text style={styles.cardCategory}>{listing.category.toUpperCase()}</Text>
+          <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 1 }}>{listing.category.toUpperCase()}</Text>
         ) : null}
 
         {seller && seller.rating_count > 0 && !isSold && (
-          <View style={styles.cardRatingRow}>
-            {[1, 2, 3, 4, 5].map((s) => (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            {[1, 2, 3, 4, 5].map((sv) => (
               <Star
-                key={s}
+                key={sv}
                 size={11}
-                color={s <= Math.round(seller.avg_rating) ? Colors.gold : Colors.textMuted}
-                fill={s <= Math.round(seller.avg_rating) ? Colors.gold : 'transparent'}
+                color={sv <= Math.round(seller.avg_rating) ? C.gold : C.textMuted}
+                fill={sv <= Math.round(seller.avg_rating) ? C.gold : 'transparent'}
                 strokeWidth={1.5}
               />
             ))}
-            <Text style={styles.cardRatingText}>
+            <Text style={{ color: C.gold, fontSize: FontSize.xs, fontWeight: '700', marginLeft: 3 }}>
               {Number(seller.avg_rating).toFixed(1)}
             </Text>
           </View>
         )}
 
-        <View style={styles.cardBottom}>
-          <Text style={[styles.cardPrice, isSold && styles.cardPriceSold]}>${Number(listing.price).toLocaleString()}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+          <Text style={[{ color: C.neonBlue, fontSize: FontSize.lg, fontWeight: '900' }, isSold && { color: C.textMuted, textDecorationLine: 'line-through' }]}>
+            ${Number(listing.price).toLocaleString()}
+          </Text>
           {isSold ? (
-            <View style={styles.soldBadge}>
-              <Text style={styles.soldBadgeText}>SOLD</Text>
+            <View style={{ backgroundColor: C.errorDim, borderRadius: Radius.full, borderWidth: 1, borderColor: C.error, paddingHorizontal: 8, paddingVertical: 2 }}>
+              <Text style={{ color: C.error, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>SOLD</Text>
             </View>
           ) : (
-            <Text style={styles.cardDate}>
+            <Text style={{ color: C.textMuted, fontSize: FontSize.xs }}>
               {new Date(listing.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </Text>
           )}
@@ -572,312 +599,7 @@ function conditionLabel(cond: string, t: any): string {
 
 export { conditionLabel, CONDITION_COLORS };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  safetyBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,179,0,0.08)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,179,0,0.2)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-  },
-  searchWrap: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: Colors.backgroundSecondary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: Platform.OS === 'ios' ? 9 : 7,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    padding: 0,
-    margin: 0,
-  },
-  clearSearchBtn: {
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    borderRadius: Radius.full,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    marginTop: 4,
-  },
-  clearSearchBtnText: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
-  safetyText: {
-    flex: 1,
-    color: Colors.warning,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-  filtersWrap: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  filtersRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.backgroundCard,
-  },
-  chipActive: {
-    backgroundColor: Colors.neonBlueGlow,
-    borderColor: Colors.neonBlueBorder,
-  },
-  chipSort: {
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  chipSortActive: {
-    backgroundColor: 'rgba(255,215,0,0.12)',
-    borderColor: 'rgba(255,215,0,0.35)',
-  },
-  chipText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: Colors.neonBlue,
-    fontWeight: '700',
-  },
-  chipDivider: {
-    width: 1,
-    height: 20,
-    backgroundColor: Colors.border,
-    marginHorizontal: 4,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.md,
-    padding: Spacing.xl,
-  },
-  emptyTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    color: Colors.textMuted,
-    fontSize: FontSize.md,
-    textAlign: 'center',
-  },
-  listContent: {
-    padding: Spacing.md,
-    gap: Spacing.md,
-    paddingBottom: 100,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(0,119,182,0.22)',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 3,
-    marginHorizontal: Platform.OS === 'web' ? Spacing.xs : 0,
-    marginBottom: Platform.OS === 'web' ? Spacing.xs : 0,
-  },
-  cardDark: {
-    backgroundColor: Colors.backgroundCard,
-    borderColor: Colors.border,
-    shadowOpacity: 0.35,
-  },
-  cardBoosted: {
-    borderColor: 'rgba(255,215,0,0.5)',
-    shadowColor: '#FFD700',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  boostRibbon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,215,0,0.15)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,215,0,0.3)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 5,
-  },
-  boostRibbonText: {
-    color: '#FFD700',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1.5,
-  },
-  cardImageWrap: {
-    width: '100%',
-    height: 180,
-    backgroundColor: '#F0F4F8',
-    position: 'relative',
-  },
-  cardImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  cardImagePlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F0F4F8',
-  },
-  condBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    borderWidth: 1,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: 'rgba(5,10,20,0.75)',
-  },
-  condBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  cardBody: {
-    padding: Spacing.md,
-    gap: 4,
-  },
-  cardTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  cardCategory: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  verifiedOverlay: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(5,10,20,0.82)',
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  verifiedOverlayText: {
-    color: Colors.neonBlue,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  viewCountBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(5,10,20,0.65)',
-    borderRadius: Radius.full,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  viewCountText: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  heartBtn: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(5,10,20,0.65)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  heartBtnLight: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderColor: 'rgba(0,0,0,0.10)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  cardRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  cardRatingText: {
-    color: Colors.gold,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    marginLeft: 3,
-  },
-  cardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  cardPrice: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.lg,
-    fontWeight: '900',
-  },
-  cardDate: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-  },
+const s = StyleSheet.create({
   fab: {
     position: 'absolute',
     bottom: 28,
@@ -885,7 +607,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: Colors.neonBlue,
+    backgroundColor: '#00BFFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#00BFFF',
@@ -894,69 +616,5 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 10,
     zIndex: 10,
-  },
-  cardSold: {
-    opacity: 0.72,
-    borderColor: 'rgba(0,0,0,0.06)',
-  },
-  cardImageSold: {
-    opacity: 0.55,
-  },
-  soldOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(5,10,20,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  soldOverlayText: {
-    color: Colors.white,
-    fontSize: FontSize.xl,
-    fontWeight: '900',
-    letterSpacing: 4,
-    opacity: 0.9,
-  },
-  soldBadge: {
-    backgroundColor: 'rgba(255,68,68,0.18)',
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.error,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  soldBadgeText: {
-    color: Colors.error,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  cardTitleSold: {
-    color: Colors.textMuted,
-    textDecorationLine: 'line-through',
-  },
-  cardPriceSold: {
-    color: Colors.textMuted,
-    textDecorationLine: 'line-through',
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  footerEnd: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    gap: 10,
-  },
-  footerEndLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  footerEndText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 0.5,
   },
 });
