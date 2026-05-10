@@ -110,6 +110,9 @@ export default function ListingDetailScreen() {
   // Share
   const [shareCopied, setShareCopied] = useState(false);
 
+  // Lightbox
+  const [showLightbox, setShowLightbox] = useState(false);
+
   // View tracking — once per listing session
   const viewTracked = useRef(false);
   // Prevent stale state on fast navigation
@@ -427,11 +430,17 @@ export default function ListingDetailScreen() {
 
           {images.length > 0 ? (
             <>
-              <Image
-                source={{ uri: images[imgIdx] }}
+              <TouchableOpacity
                 style={StyleSheet.absoluteFillObject as any}
-                resizeMode="cover"
-              />
+                onPress={() => setShowLightbox(true)}
+                activeOpacity={0.92}
+              >
+                <Image
+                  source={{ uri: images[imgIdx] }}
+                  style={StyleSheet.absoluteFillObject as any}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
               {images.length > 1 && (
                 <>
                   {imgIdx > 0 && (
@@ -858,6 +867,56 @@ export default function ListingDetailScreen() {
               </View>
             )}
           </View>
+        </View>
+      </Modal>
+
+      {/* ── Image Lightbox ── */}
+      <Modal
+        visible={showLightbox}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLightbox(false)}
+        statusBarTranslucent
+      >
+        <View style={lbStyles.overlay}>
+          <Image
+            source={{ uri: images[imgIdx] }}
+            style={lbStyles.image}
+            resizeMode="contain"
+          />
+          {images.length > 1 && (
+            <>
+              {imgIdx > 0 && (
+                <TouchableOpacity
+                  style={[lbStyles.navBtn, lbStyles.navLeft]}
+                  onPress={() => setImgIdx((i) => i - 1)}
+                  activeOpacity={0.8}
+                >
+                  <ChevronLeft size={28} color={Colors.white} strokeWidth={2.5} />
+                </TouchableOpacity>
+              )}
+              {imgIdx < images.length - 1 && (
+                <TouchableOpacity
+                  style={[lbStyles.navBtn, lbStyles.navRight]}
+                  onPress={() => setImgIdx((i) => i + 1)}
+                  activeOpacity={0.8}
+                >
+                  <ChevronRight size={28} color={Colors.white} strokeWidth={2.5} />
+                </TouchableOpacity>
+              )}
+              <View style={lbStyles.counter}>
+                <Text style={lbStyles.counterText}>{imgIdx + 1} / {images.length}</Text>
+              </View>
+            </>
+          )}
+          <TouchableOpacity
+            style={[lbStyles.closeBtn, { top: insets.top + 12 }]}
+            onPress={() => setShowLightbox(false)}
+            activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <X size={22} color={Colors.white} strokeWidth={2.5} />
+          </TouchableOpacity>
         </View>
       </Modal>
     </View>
@@ -1656,5 +1715,61 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: FontSize.xs,
     fontWeight: '600',
+  },
+});
+
+const lbStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  closeBtn: {
+    position: 'absolute',
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  navBtn: {
+    position: 'absolute',
+    top: '50%' as any,
+    marginTop: -28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  navLeft: { left: 12 },
+  navRight: { right: 12 },
+  counter: {
+    position: 'absolute',
+    bottom: 32,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: Radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  counterText: {
+    color: Colors.white,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
 });
