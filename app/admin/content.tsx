@@ -171,6 +171,7 @@ const BLANK_SLIDE: Omit<HeroSlide, 'id' | 'created_at' | 'updated_at'> = {
   button_url: '/(tabs)/products',
   sort_order: 0,
   is_active: true,
+  overlay_color: 'rgba(5,10,20,0.45)',
 };
 
 function HeroSlidesEditorSection() {
@@ -214,6 +215,22 @@ function HeroSlidesEditorSection() {
     setExpandedId(newSlide.id);
   }
 
+  async function handleDuplicateSlide(source: HeroSlide) {
+    const maxOrder = slides.reduce((m, s) => Math.max(m, s.sort_order), -1);
+    const db = adminSupabase();
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = source as any;
+    const { data, error } = await db
+      .from('hero_slides')
+      .insert({ ...rest, sort_order: maxOrder + 1, is_active: false })
+      .select()
+      .maybeSingle();
+    if (error || !data) { flash('Failed to duplicate slide', 'err'); return; }
+    const newSlide = data as HeroSlide;
+    setSlides(prev => [...prev, newSlide]);
+    setExpandedId(newSlide.id);
+    flash('Slide duplicated — it is hidden by default.');
+  }
+
   async function handleDelete(id: string) {
     const db = adminSupabase();
     const { error } = await db.from('hero_slides').delete().eq('id', id);
@@ -235,6 +252,7 @@ function HeroSlidesEditorSection() {
         badge: slide.badge,
         button_text: slide.button_text,
         button_url: slide.button_url,
+        overlay_color: slide.overlay_color ?? 'rgba(5,10,20,0.45)',
         sort_order: slide.sort_order,
         is_active: slide.is_active,
         updated_at: new Date().toISOString(),
@@ -314,6 +332,7 @@ function HeroSlidesEditorSection() {
             onToggleExpand={() => setExpandedId(expandedId === slide.id ? null : slide.id)}
             onSave={handleSaveSlide}
             onDelete={handleDelete}
+            onDuplicate={handleDuplicateSlide}
             onMoveUp={() => moveSlide(slide.id, 'up')}
             onMoveDown={() => moveSlide(slide.id, 'down')}
           />
@@ -329,14 +348,21 @@ function HeroSlidesEditorSection() {
   );
 }
 
+function parseOverlay(overlayColor: string): number {
+  const m = (overlayColor || '').match(/rgba?\([^)]*,\s*([\d.]+)\)/);
+  if (m) return Math.min(1, Math.max(0, parseFloat(m[1])));
+  return 0.45;
+}
+
 function SlideCard({
   slide, index, total, expanded, saving,
-  onToggleExpand, onSave, onDelete, onMoveUp, onMoveDown,
+  onToggleExpand, onSave, onDelete, onDuplicate, onMoveUp, onMoveDown,
 }: {
   slide: HeroSlide; index: number; total: number; expanded: boolean; saving: boolean;
   onToggleExpand: () => void;
   onSave: (s: HeroSlide) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (s: HeroSlide) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
@@ -348,6 +374,11 @@ function SlideCard({
     setDraft(prev => ({ ...prev, [key]: val }));
   }
 
+  function setOverlay(opacity: number) {
+    upd('overlay_color', `rgba(5,10,20,${opacity.toFixed(2)})`);
+  }
+
+  const overlayOpacity = parseOverlay(draft.overlay_color ?? 'rgba(5,10,20,0.45)');
   const hasImage = !!draft.image_url;
 
   return (
@@ -365,7 +396,7 @@ function SlideCard({
           <Text style={slidesStyles.cardTitle} numberOfLines={1}>
             {draft.title || `Slide ${index + 1}`}
           </Text>
-          {draft.badge ? <Text style={slidesStyles.cardBadge}>{draft.badge}</Text> : null}
+          {draft.badge ? <Text style={slidesStyles.cardBadge}>{draft.badge.toUpperCase()}</Text> : null}
         </View>
         <View style={slidesStyles.cardMeta}>
           <View style={[slidesStyles.activePill, draft.is_active ? slidesStyles.activePillOn : slidesStyles.activePillOff]}>
@@ -397,13 +428,27 @@ function SlideCard({
             value={draft.image_url}
             onChange={(v) => upd('image_url', v)}
             folder="hero-slides"
-            previewHeight={120}
-            hint="Upload an image or paste a URL."
+            previewHeight={130}
+            hint="Upload an image or paste a URL. Recommended: 1200×600px or wider."
             allowUrl
             editorPreset="hero"
           />
 
           <View style={{ height: Spacing.md }} />
+
+          {/* Overlay darkness */}
+          <View style={heroStyles.overlayRow}>
+            <View style={heroStyles.overlayLabelRow}>
+              <SlidersHorizontal size={13} color={Colors.neonBlue} strokeWidth={2} />
+              <Text style={heroStyles.overlayLabel}>Overlay Darkness</Text>
+              <View style={[heroStyles.overlayChip, { backgroundColor: `rgba(0,0,0,${overlayOpacity.toFixed(2)})`, borderColor: Colors.border }]}>
+                <Text style={heroStyles.overlayChipText}>{Math.round(overlayOpacity * 100)}%</Text>
+              </View>
+            </View>
+            <OverlaySlider value={overlayOpacity} onChange={setOverlay} />
+          </View>
+
+          <Divider />
 
           <ContentField label="Badge Text" value={draft.badge} onChange={(v) => upd('badge', v)} placeholder="NEW ARRIVAL" />
           <ContentField label="Title" value={draft.title} onChange={(v) => upd('title', v)} placeholder="Headline text" />
@@ -431,7 +476,7 @@ function SlideCard({
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={slidesStyles.urlHint}>Use an app path like /(tabs)/products or a full URL.</Text>
+            <Text style={slidesStyles.urlHint}>App path: /(tabs)/products · /(tabs)/marketplace · /(tabs)/canopy</Text>
           </View>
 
           <Divider />
@@ -444,15 +489,15 @@ function SlideCard({
               activeOpacity={0.8}
             >
               {draft.is_active
-                ? <ToggleRight size={22} color={Colors.neonBlue} strokeWidth={2} />
-                : <ToggleLeft size={22} color={Colors.textMuted} strokeWidth={2} />}
+                ? <ToggleRight size={24} color={Colors.neonBlue} strokeWidth={2} />
+                : <ToggleLeft size={24} color={Colors.textMuted} strokeWidth={2} />}
               <Text style={[slidesStyles.toggleLabel, !draft.is_active && { color: Colors.textMuted }]}>
-                {draft.is_active ? 'Slide Active' : 'Slide Hidden'}
+                {draft.is_active ? 'Visible to users' : 'Hidden from users'}
               </Text>
             </TouchableOpacity>
 
             <View style={slidesStyles.sortRow}>
-              <Text style={slidesStyles.fieldLabel}>Order</Text>
+              <Text style={slidesStyles.fieldLabel}>Order #</Text>
               <TextInput
                 style={slidesStyles.sortInput}
                 value={String(draft.sort_order)}
@@ -465,14 +510,24 @@ function SlideCard({
 
           {/* Action buttons */}
           <View style={slidesStyles.actionRow}>
-            <TouchableOpacity
-              style={slidesStyles.deleteBtn}
-              onPress={() => onDelete(draft.id)}
-              activeOpacity={0.8}
-            >
-              <Trash2 size={13} color={Colors.error} strokeWidth={2} />
-              <Text style={slidesStyles.deleteBtnText}>Delete</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={slidesStyles.deleteBtn}
+                onPress={() => onDelete(draft.id)}
+                activeOpacity={0.8}
+              >
+                <Trash2 size={13} color={Colors.error} strokeWidth={2} />
+                <Text style={slidesStyles.deleteBtnText}>Delete</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={slidesStyles.dupBtn}
+                onPress={() => onDuplicate(draft)}
+                activeOpacity={0.8}
+              >
+                <Layers size={13} color={Colors.textSecondary} strokeWidth={2} />
+                <Text style={slidesStyles.dupBtnText}>Duplicate</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
               style={[slidesStyles.saveBtn, saving && { opacity: 0.6 }]}
               onPress={() => onSave(draft)}
@@ -644,6 +699,18 @@ const slidesStyles = StyleSheet.create({
     backgroundColor: Colors.errorDim,
   },
   deleteBtnText: { color: Colors.error, fontSize: FontSize.xs, fontWeight: '700' },
+  dupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.backgroundCard,
+  },
+  dupBtnText: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '700' },
   saveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1101,8 +1168,8 @@ function ContentScreen() {
   const { t } = useLanguage();
   const TABS = [
     { id: 'branding' as Tab, label: t.tabBranding },
-    { id: 'hero' as Tab, label: t.tabHero },
-    { id: 'slides' as Tab, label: 'Slides' },
+    { id: 'slides' as Tab, label: 'Hero Slides' },
+    { id: 'hero' as Tab, label: 'Banner (Legacy)' },
     { id: 'featured' as Tab, label: t.tabFeatured },
     { id: 'canopy' as Tab, label: t.tabCanopy },
     { id: 'testimonials' as Tab, label: t.tabTestimonials },
@@ -1352,17 +1419,26 @@ function ContentScreen() {
         </View>
       )}
 
-      {/* === HERO === */}
-      {activeTab === 'hero' && (
-        <HeroEditorSection
-          language={language}
-          onSaved={() => {}}
-        />
-      )}
-
-      {/* === SLIDES === */}
+      {/* === HERO SLIDES (primary) === */}
       {activeTab === 'slides' && (
         <HeroSlidesEditorSection />
+      )}
+
+      {/* === HERO BANNER LEGACY (fallback when no slides exist) === */}
+      {activeTab === 'hero' && (
+        <View>
+          <View style={[styles.section, { paddingBottom: 0 }]}>
+            <View style={slidesStyles.hint}>
+              <Text style={[slidesStyles.hintText, { lineHeight: 18 }]}>
+                This is the legacy single-banner editor. It is used only when the Hero Slides tab has no active slides. Use the Hero Slides tab to manage the animated slider.
+              </Text>
+            </View>
+          </View>
+          <HeroEditorSection
+            language={language}
+            onSaved={() => {}}
+          />
+        </View>
       )}
 
       {/* === FEATURED === */}
@@ -1451,6 +1527,7 @@ function ContentScreen() {
         <View style={styles.phoneNotch} />
         <ScrollView style={styles.phoneScreen} showsVerticalScrollIndicator={false}>
           {activeTab === 'branding' && <BrandingPreview branding={branding} />}
+          {activeTab === 'slides' && <SlidesPreview />}
           {activeTab === 'hero' && <HeroPreview hero={hero} />}
           {activeTab === 'featured' && <FeaturedPreview featured={featured} />}
           {activeTab === 'canopy' && <CanopyPreview canopy={canopy} />}
@@ -1558,6 +1635,74 @@ function HeroPreview({ hero }: { hero: Record<string, string> }) {
             </View>
           ) : null}
         </View>
+      </View>
+    </View>
+  );
+}
+
+function SlidesPreview() {
+  const [previewSlides, setPreviewSlides] = useState<HeroSlide[]>([]);
+  const [previewIdx, setPreviewIdx] = useState(0);
+
+  useEffect(() => {
+    supabase
+      .from('hero_slides')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => { if (data) setPreviewSlides(data as HeroSlide[]); });
+  }, []);
+
+  if (previewSlides.length === 0) {
+    return (
+      <View style={pv.heroWrap}>
+        <View style={[pv.heroImg, pv.heroImgPlaceholder]}>
+          <Layers size={22} color={Colors.textMuted} strokeWidth={1.5} />
+          <Text style={pv.heroImgPlaceholderText}>No slides yet</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const slide = previewSlides[previewIdx % previewSlides.length];
+  return (
+    <View>
+      <View style={pv.heroWrap}>
+        {slide.image_url ? (
+          <Image source={{ uri: slide.image_url }} style={pv.heroImg} resizeMode="cover" />
+        ) : (
+          <View style={[pv.heroImg, pv.heroImgPlaceholder]}>
+            <ImageIcon size={22} color={Colors.textMuted} strokeWidth={1.5} />
+          </View>
+        )}
+        <View style={[pv.heroOverlay, { backgroundColor: slide.overlay_color || 'rgba(5,10,20,0.45)' }]} />
+        <View style={pv.heroContent}>
+          {slide.badge ? <View style={pv.badge}><Text style={pv.badgeText}>{slide.badge}</Text></View> : null}
+          <Text style={pv.heroTitle}>{slide.title || 'Slide Title'}</Text>
+          {slide.subtitle ? <Text style={pv.heroSubtitle}>{slide.subtitle}</Text> : null}
+          {slide.button_text ? <View style={pv.ctaBtn}><Text style={pv.ctaBtnText}>{slide.button_text}</Text></View> : null}
+        </View>
+        {/* Dot row */}
+        {previewSlides.length > 1 && (
+          <View style={{ position: 'absolute', bottom: 6, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+            {previewSlides.map((_, i) => (
+              <TouchableOpacity key={i} onPress={() => setPreviewIdx(i)} activeOpacity={0.8}>
+                <View style={{ width: i === previewIdx ? 14 : 5, height: 5, borderRadius: 3, backgroundColor: i === previewIdx ? '#00BFFF' : 'rgba(255,255,255,0.35)' }} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 8 }}>
+        {previewSlides.map((s, i) => (
+          <TouchableOpacity
+            key={s.id}
+            onPress={() => setPreviewIdx(i)}
+            activeOpacity={0.8}
+            style={[{ paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: i === previewIdx ? '#00BFFF' : Colors.border }]}
+          >
+            <Text style={{ color: i === previewIdx ? '#00BFFF' : Colors.textMuted, fontSize: 9, fontWeight: '700' }}>{i + 1}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
