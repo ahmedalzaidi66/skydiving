@@ -242,6 +242,9 @@ export default function MarketplaceScreen() {
       const cat = selectedCategory ? l.category === selectedCategory : true;
       const avail = availFilter === 'available' ? l.status !== 'sold' : true;
       if (!cat || !avail) return false;
+      // Price: match plain number string and formatted "$1,234"
+      const price = l.price != null ? String(l.price) : '';
+      const priceFmt = l.price != null ? Number(l.price).toLocaleString() : '';
       return (
         (l.title ?? '').toLowerCase().includes(q) ||
         (l.category ?? '').toLowerCase().includes(q) ||
@@ -249,7 +252,13 @@ export default function MarketplaceScreen() {
         (l.model ?? '').toLowerCase().includes(q) ||
         (l.main_make ?? '').toLowerCase().includes(q) ||
         (l.main_model ?? '').toLowerCase().includes(q) ||
-        (l.description ?? '').toLowerCase().includes(q)
+        (l.reserve_make ?? '').toLowerCase().includes(q) ||
+        (l.reserve_model ?? '').toLowerCase().includes(q) ||
+        (l.aad_make ?? '').toLowerCase().includes(q) ||
+        (l.aad_model ?? '').toLowerCase().includes(q) ||
+        (l.description ?? '').toLowerCase().includes(q) ||
+        price.includes(q) ||
+        priceFmt.includes(q)
       );
     });
   }, [searchQuery, listings, allListings, selectedCategory, availFilter]);

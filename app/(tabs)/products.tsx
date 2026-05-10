@@ -37,13 +37,18 @@ function matchesSearch(product: Product, query: string, language: string): boole
   const cat = (product.category ?? '').toLowerCase();
   const sku = (product.sku ?? '').toLowerCase();
   const desc = (product.description ?? '').toLowerCase();
+  // Price: match both plain number string and formatted "$1,234"
+  const price = product.price != null ? String(product.price) : '';
+  const priceFmt = product.price != null ? product.price.toLocaleString() : '';
   return (
     name.includes(q) ||
     nameEn.includes(q) ||
     nameAr.includes(q) ||
     cat.includes(q) ||
     sku.includes(q) ||
-    desc.includes(q)
+    desc.includes(q) ||
+    price.includes(q) ||
+    priceFmt.includes(q)
   );
 }
 
