@@ -570,15 +570,20 @@ const resultsStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   card: {
-    backgroundColor: '#0D1E35',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.15)',
+    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardImg: {
     width: '100%',
-    backgroundColor: '#0A1628',
+    backgroundColor: '#F0F4F8',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -593,7 +598,7 @@ const resultsStyles = StyleSheet.create({
   badgeText: { fontSize: 8, fontWeight: '800' },
   cardBody: { padding: 7, gap: 2 },
   cardName: {
-    color: '#E8F4FD',
+    color: '#1A2332',
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 14,
@@ -850,7 +855,7 @@ function FeaturedCard({
         >
           <Heart
             size={11}
-            color={saved ? '#FF4D6D' : 'rgba(255,255,255,0.85)'}
+            color={saved ? '#FF4D6D' : '#6B7E96'}
             fill={saved ? '#FF4D6D' : 'transparent'}
             strokeWidth={2}
           />
@@ -1077,22 +1082,22 @@ const styles = StyleSheet.create({
   },
   featuredCard: {
     width: 124,
-    backgroundColor: '#0D1E35',
+    backgroundColor: '#FFFFFF',
     borderRadius: 9,
     borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.18)',
+    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
     flexShrink: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 3,
   },
   featuredCardImageWrap: {
     width: '100%',
     height: 90,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#F0F4F8',
     overflow: 'hidden',
     position: 'relative',
   },
@@ -1104,7 +1109,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   featuredCardName: {
-    color: '#E8F4FD',
+    color: '#1A2332',
     fontSize: 10,
     fontWeight: '700',
     lineHeight: 14,
@@ -1121,12 +1126,17 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: 'rgba(6,12,24,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(0,0,0,0.10)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   featuredCardActions: {
     flexDirection: 'row',
@@ -1138,9 +1148,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: 'rgba(0,191,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.4)',
+    backgroundColor: '#00BFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },

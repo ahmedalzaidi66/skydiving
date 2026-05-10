@@ -508,7 +508,7 @@ function ListingCard({
           >
             <Heart
               size={16}
-              color={wishlisted ? Colors.error : 'rgba(255,255,255,0.85)'}
+              color={wishlisted ? Colors.error : '#6B7E96'}
               fill={wishlisted ? Colors.error : 'transparent'}
               strokeWidth={2}
             />
@@ -704,12 +704,16 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
-    ...Shadow.card,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 3,
     marginHorizontal: Platform.OS === 'web' ? Spacing.xs : 0,
     marginBottom: Platform.OS === 'web' ? Spacing.xs : 0,
   },
@@ -739,7 +743,7 @@ const styles = StyleSheet.create({
   cardImageWrap: {
     width: '100%',
     height: 180,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F0F4F8',
     position: 'relative',
   },
   cardImage: {
@@ -749,7 +753,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: '#F0F4F8',
   },
   condBadge: {
     position: 'absolute',
@@ -759,7 +763,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    backgroundColor: 'rgba(5,10,20,0.75)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
   },
   condBadgeText: {
     fontSize: 10,
@@ -770,13 +774,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardTitle: {
-    color: Colors.textPrimary,
+    color: '#1A2332',
     fontSize: FontSize.md,
     fontWeight: '700',
     lineHeight: 20,
   },
   cardCategory: {
-    color: Colors.textMuted,
+    color: '#6B7E96',
     fontSize: FontSize.xs,
     fontWeight: '700',
     letterSpacing: 1,
@@ -788,10 +792,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(5,10,20,0.82)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
+    borderColor: 'rgba(0,191,255,0.4)',
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
@@ -808,13 +812,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(5,10,20,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderRadius: Radius.full,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
   viewCountText: {
-    color: 'rgba(255,255,255,0.75)',
+    color: '#1A2332',
     fontSize: 9,
     fontWeight: '700',
   },
@@ -825,11 +829,16 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(5,10,20,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(0,0,0,0.10)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardRatingRow: {
     flexDirection: 'row',
@@ -854,7 +863,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   cardDate: {
-    color: Colors.textMuted,
+    color: '#6B7E96',
     fontSize: FontSize.xs,
   },
   fab: {
@@ -876,7 +885,7 @@ const styles = StyleSheet.create({
   },
   cardSold: {
     opacity: 0.72,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(0,0,0,0.06)',
   },
   cardImageSold: {
     opacity: 0.55,

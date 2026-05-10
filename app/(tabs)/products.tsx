@@ -328,7 +328,7 @@ function ProductCard({
         >
           <Heart
             size={13}
-            color={saved ? '#FF4D6D' : 'rgba(255,255,255,0.85)'}
+            color={saved ? '#FF4D6D' : '#6B7E96'}
             fill={saved ? '#FF4D6D' : 'transparent'}
             strokeWidth={2}
           />
@@ -443,16 +443,21 @@ const styles = StyleSheet.create({
   grid: { paddingBottom: 16 },
 
   card: {
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: '#FFFFFF',
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
     marginBottom: 7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardImageWrap: {
     width: '100%',
-    backgroundColor: '#0A1628',
+    backgroundColor: '#F0F4F8',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -474,7 +479,7 @@ const styles = StyleSheet.create({
   },
   cardBody: { padding: 7, gap: 2 },
   cardName: {
-    color: Colors.textPrimary,
+    color: '#1A2332',
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 14,
@@ -497,12 +502,17 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: 'rgba(6,12,24,0.65)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(0,0,0,0.10)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   cardActions: {
     flexDirection: 'row',
