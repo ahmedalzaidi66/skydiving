@@ -210,6 +210,9 @@ export default function ProductDetailScreen() {
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewError, setReviewError] = useState('');
 
+  // Share
+  const [shareCopied, setShareCopied] = useState(false);
+
   // Footer add-to-cart success fade animation
   const successOpacity = useRef(new Animated.Value(0)).current;
 
@@ -408,8 +411,6 @@ export default function ProductDetailScreen() {
     : stockStatus === 'low'
     ? t.onlyLeft.replace('{{n}}', String(effectiveStock))
     : t.outOfStock;
-
-  const [shareCopied, setShareCopied] = useState(false);
 
   const handleShare = async () => {
     const slug = product.slug || product.id;
