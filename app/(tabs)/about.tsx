@@ -29,7 +29,8 @@ import AppHeader from '@/components/AppHeader';
 import { Radius, Spacing, FontSize } from '@/constants/theme';
 import { useTheme, useThemeColors } from '@/context/ThemeContext';
 
-const LOGO = require('../../assets/images/logo.png');
+const LOGO_DARK = require('../../assets/images/logo.png');
+const LOGO_LIGHT = require('../../assets/images/skydiver-logo-light.png');
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ export default function AboutScreen() {
   const C = useThemeColors();
   const { preset } = useTheme();
   const isLight = preset === 'light';
+  const LOGO = isLight ? LOGO_LIGHT : LOGO_DARK;
 
   const [data, setData] = useState<AboutData>({});
   const [loading, setLoading] = useState(true);

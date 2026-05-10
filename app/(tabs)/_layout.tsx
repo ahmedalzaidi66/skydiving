@@ -18,7 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/ThemeContext';
 import { Colors } from '@/constants/theme';
 
-const LOGO = require('../../assets/images/logo.png');
+const LOGO_DARK = require('../../assets/images/logo.png');
+const LOGO_LIGHT = require('../../assets/images/skydiver-logo-light.png');
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 
@@ -149,6 +150,8 @@ function TabItem({
 // ─── Center logo button ───────────────────────────────────────────────────────
 
 function CenterTabItem({ active, onPress, accent, bgColor }: { active: boolean; onPress: () => void; accent: string; bgColor: string; inactiveColor: string }) {
+  const { preset } = useTheme();
+  const LOGO = preset === 'light' ? LOGO_LIGHT : LOGO_DARK;
   const scale = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(active ? 1 : 0.4)).current;
 

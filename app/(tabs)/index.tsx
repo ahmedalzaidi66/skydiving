@@ -45,7 +45,8 @@ type HomeSectionWithProducts = HomeSection & {
   products: Product[];
 };
 
-const LOGO = require('../../assets/images/logo.png');
+const LOGO_DARK = require('../../assets/images/logo.png');
+const LOGO_LIGHT = require('../../assets/images/skydiver-logo-light.png');
 
 type Review = {
   id: string;
@@ -897,6 +898,7 @@ function CanopyFinderSection({ title, ctaText, t }: { title: string; ctaText: st
   const colors = useThemeColors();
   const { preset } = useTheme();
   const isLight = preset === 'light';
+  const LOGO = isLight ? LOGO_LIGHT : LOGO_DARK;
   const [weight, setWeight] = useState('175');
   const [jumps, setJumps] = useState('150');
 

@@ -21,7 +21,8 @@ import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 import { useUISize } from '@/context/UISizeContext';
 import { useTheme } from '@/context/ThemeContext';
 
-const LOGO = require('../assets/images/logo.png');
+const LOGO_DARK = require('../assets/images/logo.png');
+const LOGO_LIGHT = require('../assets/images/skydiver-logo-light.png');
 
 type Props = {
   showBack?: boolean;
@@ -38,7 +39,8 @@ export default function AppHeader({ showBack = false, title }: Props) {
   const wishlistCount = productWishlistCount + gearWishlistCount;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { headerSizes } = useUISize();
-  const { colors } = useTheme();
+  const { colors, preset } = useTheme();
+  const LOGO = preset === 'light' ? LOGO_LIGHT : LOGO_DARK;
   const backScale = useRef(new Animated.Value(1)).current;
 
   const handleBackPress = () => {
