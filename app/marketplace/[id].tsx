@@ -1363,7 +1363,7 @@ const styles = StyleSheet.create({
   },
   boostBanner: {
     position: 'absolute',
-    top: 0,
+    top: Platform.OS === 'ios' ? 104 : 60,
     left: 0,
     right: 0,
     zIndex: 5,
@@ -1424,7 +1424,7 @@ const styles = StyleSheet.create({
   },
   condBadge: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 36,
+    top: Platform.OS === 'ios' ? 112 : 68,
     right: Spacing.md,
     borderWidth: 1,
     borderRadius: Radius.sm,

@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 30,
+    top: Platform.OS === 'ios' ? 112 : 68,
     right: Spacing.md,
     backgroundColor: Colors.neonBlue,
     borderRadius: Radius.sm,
@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
   },
   discountBadge: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 30,
+    top: Platform.OS === 'ios' ? 112 : 68,
     right: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1023,7 +1023,7 @@ const styles = StyleSheet.create({
   },
   imageCount: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 32,
+    top: Platform.OS === 'ios' ? 112 : 68,
     left: 0,
     right: 0,
     alignItems: 'center',
