@@ -26,7 +26,8 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useCMS } from '@/context/CMSContext';
 import { supabase } from '@/lib/supabase';
 import AppHeader from '@/components/AppHeader';
-import { Colors, Radius, Spacing, FontSize } from '@/constants/theme';
+import { useThemeColors, ThemeColors } from '@/context/ThemeContext';
+import { Radius, Spacing, FontSize } from '@/constants/theme';
 
 const LOGO = require('../../assets/images/logo.png');
 
@@ -57,7 +58,6 @@ async function fetchAboutContent(language: string): Promise<AboutData> {
   const enData = build((enRes as any).data ?? []);
   const langData = build(langRes.data ?? []);
 
-  // Merge: selected language wins, English fills gaps
   const merged: AboutData = {};
   const allSections = new Set([...Object.keys(enData), ...Object.keys(langData)]);
   allSections.forEach((section) => {
@@ -69,10 +69,14 @@ async function fetchAboutContent(language: string): Promise<AboutData> {
 // ─── Section card wrapper ─────────────────────────────────────────────────────
 
 function SectionCard({ children }: { children: React.ReactNode }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return <View style={styles.card}>{children}</View>;
 }
 
 function SectionHeading({ icon, title }: { icon: React.ReactNode; title: string }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <View style={styles.sectionHeadingRow}>
       <View style={styles.sectionHeadingIcon}>{icon}</View>
@@ -82,6 +86,8 @@ function SectionHeading({ icon, title }: { icon: React.ReactNode; title: string 
 }
 
 function PolicyRow({ label, value }: { label: string; value: string }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   if (!value) return null;
   return (
     <View style={styles.policyRow}>
@@ -94,6 +100,8 @@ function PolicyRow({ label, value }: { label: string; value: string }) {
 // ─── Main screen ─────────────────────────────────────────────────────────────
 
 export default function AboutScreen() {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const { language, t } = useLanguage();
   const { branding } = useCMS();
 
@@ -148,10 +156,6 @@ export default function AboutScreen() {
 
   return (
     <View style={styles.screen}>
-      <LinearGradient
-        colors={['#020810', '#050D1A', '#050A14']}
-        style={StyleSheet.absoluteFill}
-      />
       <AppHeader />
 
       <ScrollView
@@ -170,7 +174,7 @@ export default function AboutScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator color={Colors.neonBlue} style={{ marginTop: 40 }} />
+          <ActivityIndicator color={C.neonBlue} style={{ marginTop: 40 }} />
         ) : (
           <>
             {/* ── Brand info ────────────────────────────────────────────── */}
@@ -190,7 +194,7 @@ export default function AboutScreen() {
             {/* ── Social links ──────────────────────────────────────────── */}
             <SectionCard>
               <SectionHeading
-                icon={<Instagram size={16} color={Colors.neonBlue} strokeWidth={2} />}
+                icon={<Instagram size={16} color={C.neonBlue} strokeWidth={2} />}
                 title={t.followUs}
               />
               <Text style={styles.cardSubtitle}>{t.followSub}</Text>
@@ -246,7 +250,7 @@ export default function AboutScreen() {
               <SectionCard>
                 {contactEmail ? (
                   <ContactRow
-                    icon={<Mail size={18} color={Colors.neonBlue} strokeWidth={2} />}
+                    icon={<Mail size={18} color={C.neonBlue} strokeWidth={2} />}
                     label={t.contactEmail}
                     value={contactEmail}
                     onPress={() => Linking.openURL(`mailto:${contactEmail}`).catch(() => {})}
@@ -254,7 +258,7 @@ export default function AboutScreen() {
                 ) : null}
                 {contactPhone ? (
                   <ContactRow
-                    icon={<Phone size={18} color={Colors.neonBlue} strokeWidth={2} />}
+                    icon={<Phone size={18} color={C.neonBlue} strokeWidth={2} />}
                     label={t.contactPhone}
                     value={contactPhone}
                     onPress={() => Linking.openURL(`tel:${contactPhone}`).catch(() => {})}
@@ -268,7 +272,7 @@ export default function AboutScreen() {
             {(shipping.delivery || shipping.areas || shipping.cost) ? (
               <SectionCard>
                 <SectionHeading
-                  icon={<Package size={16} color={Colors.neonBlue} strokeWidth={2} />}
+                  icon={<Package size={16} color={C.neonBlue} strokeWidth={2} />}
                   title={shipping.title || t.shippingPolicy}
                 />
                 <PolicyRow label={t.deliveryTime} value={shipping.delivery} />
@@ -281,7 +285,7 @@ export default function AboutScreen() {
             {(ret.days || ret.conditions || ret.refund) ? (
               <SectionCard>
                 <SectionHeading
-                  icon={<RotateCcw size={16} color={Colors.neonBlue} strokeWidth={2} />}
+                  icon={<RotateCcw size={16} color={C.neonBlue} strokeWidth={2} />}
                   title={ret.title || t.returnPolicy}
                 />
                 <PolicyRow label={t.returnDays} value={ret.days} />
@@ -314,6 +318,8 @@ function SocialButton({
   gradEnd: string;
   onPress: () => void;
 }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <TouchableOpacity
       style={styles.socialBtn}
@@ -348,6 +354,8 @@ function ContactRow({
   onPress: () => void;
   noBorder?: boolean;
 }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <TouchableOpacity
       style={[styles.contactRow, !noBorder && styles.contactRowBorder]}
@@ -359,310 +367,312 @@ function ContactRow({
         <Text style={styles.contactLabel}>{label}</Text>
         <Text style={styles.contactValue}>{value}</Text>
       </View>
-      <ChevronRight size={16} color={Colors.textMuted} strokeWidth={2} />
+      <ChevronRight size={16} color={C.textMuted} strokeWidth={2} />
     </TouchableOpacity>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#020810',
-  },
-  scroll: {
-    paddingBottom: 48,
-  },
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: C.background,
+    },
+    scroll: {
+      paddingBottom: 48,
+    },
 
-  // ── Hero ──────────────────────────────────────────────────────────────────
-  heroSection: {
-    alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 28,
-    paddingHorizontal: 24,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  heroBlobTop: {
-    position: 'absolute',
-    top: -80,
-    width: 320,
-    height: 320,
-    borderRadius: 160,
-    backgroundColor: 'rgba(0,191,255,0.06)',
-    shadowColor: '#00BFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 80,
-  },
-  logoRing: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 2,
-    borderColor: 'rgba(0,191,255,0.5)',
-    backgroundColor: '#060F1E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#00BFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 10,
-    marginBottom: 18,
-    overflow: 'hidden',
-  },
-  logo: {
-    width: 92,
-    height: 92,
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: 5,
-    textAlign: 'center',
-  },
-  heroTagline: {
-    color: Colors.neonBlue,
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 19,
-    maxWidth: 300,
-    opacity: 0.85,
-  },
-  heroAccentLine: {
-    width: 48,
-    height: 2,
-    backgroundColor: Colors.neonBlue,
-    borderRadius: 1,
-    marginTop: 16,
-    shadowColor: Colors.neonBlue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-  },
+    // ── Hero ──────────────────────────────────────────────────────────────────
+    heroSection: {
+      alignItems: 'center',
+      paddingTop: 32,
+      paddingBottom: 28,
+      paddingHorizontal: 24,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    heroBlobTop: {
+      position: 'absolute',
+      top: -80,
+      width: 320,
+      height: 320,
+      borderRadius: 160,
+      backgroundColor: C.neonBlueGlow,
+      shadowColor: C.neonBlue,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.25,
+      shadowRadius: 80,
+    },
+    logoRing: {
+      width: 110,
+      height: 110,
+      borderRadius: 55,
+      borderWidth: 2,
+      borderColor: C.neonBlueBorder,
+      backgroundColor: C.backgroundSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: C.neonBlue,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.45,
+      shadowRadius: 18,
+      elevation: 10,
+      marginBottom: 18,
+      overflow: 'hidden',
+    },
+    logo: {
+      width: 92,
+      height: 92,
+    },
+    heroTitle: {
+      color: C.textPrimary,
+      fontSize: 28,
+      fontWeight: '900',
+      letterSpacing: 5,
+      textAlign: 'center',
+    },
+    heroTagline: {
+      color: C.neonBlue,
+      fontSize: 13,
+      fontWeight: '500',
+      textAlign: 'center',
+      marginTop: 6,
+      lineHeight: 19,
+      maxWidth: 300,
+      opacity: 0.85,
+    },
+    heroAccentLine: {
+      width: 48,
+      height: 2,
+      backgroundColor: C.neonBlue,
+      borderRadius: 1,
+      marginTop: 16,
+      shadowColor: C.neonBlue,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 6,
+    },
 
-  // ── Cards ─────────────────────────────────────────────────────────────────
-  card: {
-    marginHorizontal: 14,
-    marginTop: 14,
-    backgroundColor: '#0A1628',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.12)',
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  cardSubtitle: {
-    color: Colors.textMuted,
-    fontSize: 12,
-    marginBottom: 14,
-    marginTop: 2,
-  },
+    // ── Cards ─────────────────────────────────────────────────────────────────
+    card: {
+      marginHorizontal: 14,
+      marginTop: 14,
+      backgroundColor: C.backgroundCard,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: C.border,
+      padding: 18,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+    cardSubtitle: {
+      color: C.textMuted,
+      fontSize: 12,
+      marginBottom: 14,
+      marginTop: 2,
+    },
 
-  // ── Section heading ────────────────────────────────────────────────────────
-  sectionHeadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  sectionHeadingIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,191,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionHeadingText: {
-    color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
+    // ── Section heading ────────────────────────────────────────────────────────
+    sectionHeadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    sectionHeadingIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: C.neonBlueGlow,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    sectionHeadingText: {
+      color: C.textPrimary,
+      fontSize: 13,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+    },
 
-  // ── Brand ─────────────────────────────────────────────────────────────────
-  brandName: {
-    color: Colors.neonBlue,
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 3,
-    marginBottom: 10,
-    textShadowColor: 'rgba(0,191,255,0.4)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 8,
-  },
-  brandDesc: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 14,
-  },
-  missionBox: {
-    backgroundColor: 'rgba(0,191,255,0.06)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.15)',
-    padding: 14,
-    gap: 6,
-  },
-  missionLabel: {
-    color: Colors.neonBlue,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 2,
-  },
-  missionText: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-  },
+    // ── Brand ─────────────────────────────────────────────────────────────────
+    brandName: {
+      color: C.neonBlue,
+      fontSize: 16,
+      fontWeight: '900',
+      letterSpacing: 3,
+      marginBottom: 10,
+      textShadowColor: C.neonBlueGlow,
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 8,
+    },
+    brandDesc: {
+      color: C.textSecondary,
+      fontSize: 14,
+      lineHeight: 22,
+      marginBottom: 14,
+    },
+    missionBox: {
+      backgroundColor: C.neonBlueGlow,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      padding: 14,
+      gap: 6,
+    },
+    missionLabel: {
+      color: C.neonBlue,
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 2,
+    },
+    missionText: {
+      color: C.textSecondary,
+      fontSize: 13,
+      lineHeight: 20,
+    },
 
-  // ── Social ─────────────────────────────────────────────────────────────────
-  socialBtn: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  socialGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    gap: 13,
-  },
-  socialIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  socialTextWrap: {
-    flex: 1,
-  },
-  socialLabel: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  socialHandle: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 11,
-    marginTop: 1,
-  },
+    // ── Social ─────────────────────────────────────────────────────────────────
+    socialBtn: {
+      borderRadius: 12,
+      overflow: 'hidden',
+      marginBottom: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    socialGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+      gap: 13,
+    },
+    socialIconCircle: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    socialTextWrap: {
+      flex: 1,
+    },
+    socialLabel: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '800',
+      letterSpacing: 0.2,
+    },
+    socialHandle: {
+      color: 'rgba(255,255,255,0.65)',
+      fontSize: 11,
+      marginTop: 1,
+    },
 
-  // ── WhatsApp CTA ──────────────────────────────────────────────────────────
-  whatsappBtn: {
-    marginHorizontal: 14,
-    marginTop: 14,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#25D366',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  whatsappGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    gap: 14,
-  },
-  whatsappText: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
+    // ── WhatsApp CTA ──────────────────────────────────────────────────────────
+    whatsappBtn: {
+      marginHorizontal: 14,
+      marginTop: 14,
+      borderRadius: 16,
+      overflow: 'hidden',
+      shadowColor: '#25D366',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.45,
+      shadowRadius: 14,
+      elevation: 8,
+    },
+    whatsappGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 18,
+      paddingHorizontal: 20,
+      gap: 14,
+    },
+    whatsappText: {
+      flex: 1,
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
 
-  // ── Contact rows ──────────────────────────────────────────────────────────
-  contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
-  },
-  contactRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,191,255,0.08)',
-  },
-  contactIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,191,255,0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  contactTextWrap: {
-    flex: 1,
-  },
-  contactLabel: {
-    color: Colors.textMuted,
-    fontSize: 11,
-    marginBottom: 2,
-  },
-  contactValue: {
-    color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+    // ── Contact rows ──────────────────────────────────────────────────────────
+    contactRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      gap: 12,
+    },
+    contactRowBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: C.borderLight,
+    },
+    contactIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: C.neonBlueGlow,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    contactTextWrap: {
+      flex: 1,
+    },
+    contactLabel: {
+      color: C.textMuted,
+      fontSize: 11,
+      marginBottom: 2,
+    },
+    contactValue: {
+      color: C.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
 
-  // ── Policy ────────────────────────────────────────────────────────────────
-  policyRow: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,191,255,0.07)',
-    gap: 3,
-  },
-  policyLabel: {
-    color: Colors.neonBlue,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  policyValue: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    lineHeight: 20,
-  },
+    // ── Policy ────────────────────────────────────────────────────────────────
+    policyRow: {
+      paddingVertical: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: C.borderLight,
+      gap: 3,
+    },
+    policyLabel: {
+      color: C.neonBlue,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+    },
+    policyValue: {
+      color: C.textSecondary,
+      fontSize: 13,
+      lineHeight: 20,
+    },
 
-  // ── Footer ────────────────────────────────────────────────────────────────
-  footer: {
-    alignItems: 'center',
-    marginTop: 32,
-    marginBottom: 8,
-    gap: 8,
-  },
-  footerLogo: {
-    width: 48,
-    height: 48,
-    opacity: 0.4,
-  },
-  footerCopyright: {
-    color: '#1E3A50',
-    fontSize: 11,
-    textAlign: 'center',
-  },
-});
+    // ── Footer ────────────────────────────────────────────────────────────────
+    footer: {
+      alignItems: 'center',
+      marginTop: 32,
+      marginBottom: 8,
+      gap: 8,
+    },
+    footerLogo: {
+      width: 48,
+      height: 48,
+      opacity: 0.4,
+    },
+    footerCopyright: {
+      color: C.textMuted,
+      fontSize: 11,
+      textAlign: 'center',
+    },
+  });
+}
