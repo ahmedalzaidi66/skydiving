@@ -321,17 +321,41 @@ export default function ProductDetailScreen() {
     ]).start(() => setAddedFeedback(false));
   };
 
+  const refreshReviews = async (productId: string) => {
+    const { data: reviewData } = await supabase
+      .from('reviews')
+      .select('id, customer_name, rating, body, created_at')
+      .eq('product_id', productId)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(8);
+    setApprovedReviews(reviewData ?? []);
+
+    const { data: productData } = await supabase
+      .from('products')
+      .select('rating, review_count')
+      .eq('id', productId)
+      .maybeSingle();
+    if (productData && product) {
+      setProduct({ ...product, rating: productData.rating, review_count: productData.review_count });
+    }
+  };
+
   const handleSubmitReview = async () => {
+    if (!user) {
+      setReviewError('Please log in to write a review.');
+      return;
+    }
     if (reviewRating === 0) { setReviewError('Please select a star rating.'); return; }
-    const name = reviewName.trim() || (user?.email?.split('@')[0] ?? 'Anonymous');
+    const name = reviewName.trim() || (user.email?.split('@')[0] ?? 'Anonymous');
     if (reviewBody.trim().length < 10) { setReviewError('Review must be at least 10 characters.'); return; }
     setReviewError('');
     setReviewSubmitting(true);
     const { error } = await supabase.from('reviews').insert({
       product_id: id,
-      user_id: user?.id ?? null,
+      user_id: user.id,
       customer_name: name,
-      customer_email: user?.email ?? '',
+      customer_email: user.email ?? '',
       rating: reviewRating,
       body: reviewBody.trim(),
       status: 'pending',
@@ -339,12 +363,14 @@ export default function ProductDetailScreen() {
     });
     setReviewSubmitting(false);
     if (error) {
-      setReviewError('Failed to submit review. Please try again.');
+      console.error('[review submit] Supabase error:', error);
+      setReviewError(error.message ?? 'Failed to submit review. Please try again.');
     } else {
       setReviewSubmitted(true);
       setReviewRating(0);
       setReviewBody('');
       setReviewName('');
+      refreshReviews(id as string);
     }
   };
 
