@@ -26,6 +26,7 @@ import { useLayout, SectionId, SpacingBreakpoint } from '@/context/LayoutContext
 import { Radius } from '@/constants/theme';
 import { useTheme, useThemeColors } from '@/context/ThemeContext';
 import HeroVideo from '@/components/HeroVideo';
+import HeroSlider, { HeroSlide } from '@/components/HeroSlider';
 import { fetchProducts, fetchCategories, getProductName, getProductImage, getCategoryName, Category } from '@/lib/supabase';
 import StarRating from '@/components/StarRating';
 import { useCart } from '@/context/CartContext';
@@ -112,6 +113,7 @@ export default function ShopScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [homeSections, setHomeSections] = useState<HomeSectionWithProducts[]>([]);
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
 
   // ── Search state ────────────────────────────────────────────────────────────
   const [rawSearch, setRawSearch] = useState('');
@@ -149,12 +151,13 @@ export default function ShopScreen() {
   const committedLanguage = useRef(language);
 
   const fetchAll = useCallback(async (fetchLang: string) => {
-    const [productsResult, categoriesResult, layoutRes, reviewsRes, sectionsRes] = await Promise.allSettled([
+    const [productsResult, categoriesResult, layoutRes, reviewsRes, sectionsRes, slidesRes] = await Promise.allSettled([
       fetchProducts({ language: fetchLang }),
       fetchCategories(fetchLang),
       supabase.from('page_layouts').select('id').eq('page', 'home').maybeSingle(),
       supabase.from('reviews').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(12),
       supabase.from('home_sections').select('*').eq('enabled', true).order('sort_order', { ascending: true }),
+      supabase.from('hero_slides').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
     ]);
 
     // Drop stale results if language changed while fetch was in-flight
@@ -164,6 +167,9 @@ export default function ShopScreen() {
     if (categoriesResult.status === 'fulfilled') setCategories(categoriesResult.value);
     if (reviewsRes.status === 'fulfilled' && !reviewsRes.value.error && reviewsRes.value.data) {
       setReviews(reviewsRes.value.data);
+    }
+    if (slidesRes.status === 'fulfilled' && !slidesRes.value.error && slidesRes.value.data) {
+      setHeroSlides(slidesRes.value.data as HeroSlide[]);
     }
 
     if (layoutRes.status === 'fulfilled' && layoutRes.value.data) {
@@ -330,7 +336,7 @@ export default function ShopScreen() {
           />
         ) : (
           <>
-            <HeroVideo heroContent={heroContent} />
+            <HeroSlider slides={heroSlides} fallback={heroContent} />
             {categories.length > 0 && (
               <ShopByCategorySection categories={categories} language={language} t={t} />
             )}

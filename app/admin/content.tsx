@@ -31,6 +31,14 @@ import {
   EyeOff,
   Smartphone,
   SlidersHorizontal,
+  Layers,
+  Plus,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  Link,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react-native';
 import { useAdmin } from '@/context/AdminContext';
 import AdminWebDashboard from '@/components/admin/AdminWebDashboard';
@@ -44,6 +52,7 @@ import { useCMS, CMSContent, DEFAULT_BRANDING } from '@/context/CMSContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 import HeroLivePreview, { HeroPreviewState } from '@/components/admin/HeroLivePreview';
+import { HeroSlide } from '@/components/HeroSlider';
 
 type BrandingMap = Record<string, string>;
 
@@ -55,8 +64,8 @@ const LANGUAGES = [
   { code: 'ru', label: 'RU', full: 'Русский' },
 ];
 
-type Tab = 'branding' | 'hero' | 'featured' | 'canopy' | 'testimonials' | 'footer';
-const TAB_IDS: Tab[] = ['branding', 'hero', 'featured', 'canopy', 'testimonials', 'footer'];
+type Tab = 'branding' | 'hero' | 'slides' | 'featured' | 'canopy' | 'testimonials' | 'footer';
+const TAB_IDS: Tab[] = ['branding', 'hero', 'slides', 'featured', 'canopy', 'testimonials', 'footer'];
 
 const DEFAULT_CONTENT_EN: CMSContent = {
   hero: {
@@ -149,6 +158,512 @@ const sliderStyles = StyleSheet.create({
   presetActive: { borderColor: Colors.neonBlue, backgroundColor: 'rgba(0,191,255,0.1)' },
   presetText: { color: Colors.textMuted, fontSize: 11, fontWeight: '600' },
   presetTextActive: { color: Colors.neonBlue },
+});
+
+// ─── Hero Slides Editor ───────────────────────────────────────────────────────
+
+const BLANK_SLIDE: Omit<HeroSlide, 'id' | 'created_at' | 'updated_at'> = {
+  image_url: '',
+  title: '',
+  subtitle: '',
+  badge: '',
+  button_text: 'Shop Now',
+  button_url: '/(tabs)/products',
+  sort_order: 0,
+  is_active: true,
+};
+
+function HeroSlidesEditorSection() {
+  const [slides, setSlides] = useState<HeroSlide[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveMsgType, setSaveMsgType] = useState<'ok' | 'err'>('ok');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Load
+  useEffect(() => {
+    setLoading(true);
+    supabase
+      .from('hero_slides')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) setSlides(data as HeroSlide[]);
+        setLoading(false);
+      });
+  }, []);
+
+  function flash(msg: string, type: 'ok' | 'err' = 'ok') {
+    setSaveMsg(msg);
+    setSaveMsgType(type);
+    setTimeout(() => setSaveMsg(null), 3500);
+  }
+
+  async function handleAddSlide() {
+    const maxOrder = slides.reduce((m, s) => Math.max(m, s.sort_order), -1);
+    const db = adminSupabase();
+    const { data, error } = await db
+      .from('hero_slides')
+      .insert({ ...BLANK_SLIDE, sort_order: maxOrder + 1 })
+      .select()
+      .maybeSingle();
+    if (error || !data) { flash('Failed to add slide', 'err'); return; }
+    const newSlide = data as HeroSlide;
+    setSlides(prev => [...prev, newSlide]);
+    setExpandedId(newSlide.id);
+  }
+
+  async function handleDelete(id: string) {
+    const db = adminSupabase();
+    const { error } = await db.from('hero_slides').delete().eq('id', id);
+    if (error) { flash('Failed to delete slide', 'err'); return; }
+    setSlides(prev => prev.filter(s => s.id !== id));
+    if (expandedId === id) setExpandedId(null);
+    flash('Slide deleted');
+  }
+
+  async function handleSaveSlide(slide: HeroSlide) {
+    setSaving(true);
+    const db = adminSupabase();
+    const { error } = await db
+      .from('hero_slides')
+      .update({
+        image_url: slide.image_url,
+        title: slide.title,
+        subtitle: slide.subtitle,
+        badge: slide.badge,
+        button_text: slide.button_text,
+        button_url: slide.button_url,
+        sort_order: slide.sort_order,
+        is_active: slide.is_active,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', slide.id);
+    setSaving(false);
+    if (error) { flash('Failed to save slide', 'err'); return; }
+    setSlides(prev => prev.map(s => (s.id === slide.id ? slide : s)));
+    flash('Slide saved!');
+  }
+
+  async function moveSlide(id: string, dir: 'up' | 'down') {
+    const idx = slides.findIndex(s => s.id === id);
+    if (idx < 0) return;
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= slides.length) return;
+
+    const updated = [...slides];
+    const tmp = updated[idx].sort_order;
+    updated[idx] = { ...updated[idx], sort_order: updated[swapIdx].sort_order };
+    updated[swapIdx] = { ...updated[swapIdx], sort_order: tmp };
+    [updated[idx], updated[swapIdx]] = [updated[swapIdx], updated[idx]];
+    setSlides(updated);
+
+    const db = adminSupabase();
+    await Promise.all([
+      db.from('hero_slides').update({ sort_order: updated[idx].sort_order }).eq('id', updated[idx].id),
+      db.from('hero_slides').update({ sort_order: updated[swapIdx].sort_order }).eq('id', updated[swapIdx].id),
+    ]);
+  }
+
+  if (loading) {
+    return (
+      <View style={{ padding: 40, alignItems: 'center' }}>
+        <ActivityIndicator color={Colors.neonBlue} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.section}>
+      <View style={slidesStyles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Layers size={18} color={Colors.neonBlue} strokeWidth={2} />
+          <Text style={styles.sectionTitle}>Hero Slides</Text>
+          <View style={slidesStyles.countBadge}>
+            <Text style={slidesStyles.countText}>{slides.length}</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={slidesStyles.addBtn} onPress={handleAddSlide} activeOpacity={0.8}>
+          <Plus size={14} color={Colors.background} strokeWidth={2.5} />
+          <Text style={slidesStyles.addBtnText}>Add Slide</Text>
+        </TouchableOpacity>
+      </View>
+
+      {saveMsg && (
+        <View style={[slidesStyles.toast, saveMsgType === 'err' && slidesStyles.toastErr]}>
+          <Text style={[slidesStyles.toastText, saveMsgType === 'err' && slidesStyles.toastTextErr]}>{saveMsg}</Text>
+        </View>
+      )}
+
+      {slides.length === 0 ? (
+        <View style={slidesStyles.empty}>
+          <Layers size={32} color={Colors.textMuted} strokeWidth={1.5} />
+          <Text style={slidesStyles.emptyTitle}>No slides yet</Text>
+          <Text style={slidesStyles.emptySubtext}>Add your first hero slide to replace the static banner.</Text>
+        </View>
+      ) : (
+        slides.map((slide, idx) => (
+          <SlideCard
+            key={slide.id}
+            slide={slide}
+            index={idx}
+            total={slides.length}
+            expanded={expandedId === slide.id}
+            saving={saving}
+            onToggleExpand={() => setExpandedId(expandedId === slide.id ? null : slide.id)}
+            onSave={handleSaveSlide}
+            onDelete={handleDelete}
+            onMoveUp={() => moveSlide(slide.id, 'up')}
+            onMoveDown={() => moveSlide(slide.id, 'down')}
+          />
+        ))
+      )}
+
+      <View style={slidesStyles.hint}>
+        <Text style={slidesStyles.hintText}>
+          When slides exist, they replace the static hero banner. Only active slides are shown to users.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function SlideCard({
+  slide, index, total, expanded, saving,
+  onToggleExpand, onSave, onDelete, onMoveUp, onMoveDown,
+}: {
+  slide: HeroSlide; index: number; total: number; expanded: boolean; saving: boolean;
+  onToggleExpand: () => void;
+  onSave: (s: HeroSlide) => void;
+  onDelete: (id: string) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const [draft, setDraft] = useState<HeroSlide>(slide);
+
+  useEffect(() => { setDraft(slide); }, [slide]);
+
+  function upd(key: keyof HeroSlide, val: any) {
+    setDraft(prev => ({ ...prev, [key]: val }));
+  }
+
+  const hasImage = !!draft.image_url;
+
+  return (
+    <View style={[slidesStyles.card, !draft.is_active && slidesStyles.cardInactive]}>
+      {/* Card header row */}
+      <TouchableOpacity style={slidesStyles.cardHeader} onPress={onToggleExpand} activeOpacity={0.8}>
+        {hasImage ? (
+          <Image source={{ uri: draft.image_url }} style={slidesStyles.thumb} resizeMode="cover" />
+        ) : (
+          <View style={[slidesStyles.thumb, slidesStyles.thumbEmpty]}>
+            <ImageIcon size={14} color={Colors.textMuted} strokeWidth={1.5} />
+          </View>
+        )}
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={slidesStyles.cardTitle} numberOfLines={1}>
+            {draft.title || `Slide ${index + 1}`}
+          </Text>
+          {draft.badge ? <Text style={slidesStyles.cardBadge}>{draft.badge}</Text> : null}
+        </View>
+        <View style={slidesStyles.cardMeta}>
+          <View style={[slidesStyles.activePill, draft.is_active ? slidesStyles.activePillOn : slidesStyles.activePillOff]}>
+            <Text style={[slidesStyles.activePillText, !draft.is_active && { color: Colors.textMuted }]}>
+              {draft.is_active ? 'Active' : 'Hidden'}
+            </Text>
+          </View>
+          <View style={slidesStyles.orderBtns}>
+            <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onMoveUp(); }} disabled={index === 0} activeOpacity={0.7}>
+              <ChevronUp size={15} color={index === 0 ? Colors.border : Colors.textMuted} strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); onMoveDown(); }} disabled={index === total - 1} activeOpacity={0.7}>
+              <ChevronDown size={15} color={index === total - 1 ? Colors.border : Colors.textMuted} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+          {expanded
+            ? <ChevronUp size={16} color={Colors.neonBlue} strokeWidth={2} />
+            : <ChevronDown size={16} color={Colors.textMuted} strokeWidth={2} />}
+        </View>
+      </TouchableOpacity>
+
+      {/* Expanded editor */}
+      {expanded && (
+        <View style={slidesStyles.editor}>
+          <Divider />
+
+          <ImageUploader
+            label="Slide Background Image"
+            value={draft.image_url}
+            onChange={(v) => upd('image_url', v)}
+            folder="hero-slides"
+            previewHeight={120}
+            hint="Upload an image or paste a URL."
+            allowUrl
+            editorPreset="hero"
+          />
+
+          <View style={{ height: Spacing.md }} />
+
+          <ContentField label="Badge Text" value={draft.badge} onChange={(v) => upd('badge', v)} placeholder="NEW ARRIVAL" />
+          <ContentField label="Title" value={draft.title} onChange={(v) => upd('title', v)} placeholder="Headline text" />
+          <ContentField label="Subtitle" value={draft.subtitle} onChange={(v) => upd('subtitle', v)} placeholder="Supporting description" multiline />
+
+          <Divider />
+
+          <ContentField
+            label="Button Text"
+            value={draft.button_text}
+            onChange={(v) => upd('button_text', v)}
+            placeholder="Shop Now"
+          />
+          <View style={slidesStyles.fieldGroup}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <Link size={12} color={Colors.neonBlue} strokeWidth={2} />
+              <Text style={slidesStyles.fieldLabel}>Button Link</Text>
+            </View>
+            <TextInput
+              style={slidesStyles.urlInput}
+              value={draft.button_url}
+              onChangeText={(v) => upd('button_url', v)}
+              placeholder="/(tabs)/products  or  https://..."
+              placeholderTextColor={Colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Text style={slidesStyles.urlHint}>Use an app path like /(tabs)/products or a full URL.</Text>
+          </View>
+
+          <Divider />
+
+          {/* Active toggle + sort order */}
+          <View style={slidesStyles.bottomRow}>
+            <TouchableOpacity
+              style={slidesStyles.toggleRow}
+              onPress={() => upd('is_active', !draft.is_active)}
+              activeOpacity={0.8}
+            >
+              {draft.is_active
+                ? <ToggleRight size={22} color={Colors.neonBlue} strokeWidth={2} />
+                : <ToggleLeft size={22} color={Colors.textMuted} strokeWidth={2} />}
+              <Text style={[slidesStyles.toggleLabel, !draft.is_active && { color: Colors.textMuted }]}>
+                {draft.is_active ? 'Slide Active' : 'Slide Hidden'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={slidesStyles.sortRow}>
+              <Text style={slidesStyles.fieldLabel}>Order</Text>
+              <TextInput
+                style={slidesStyles.sortInput}
+                value={String(draft.sort_order)}
+                onChangeText={(v) => upd('sort_order', parseInt(v, 10) || 0)}
+                keyboardType="numeric"
+                placeholderTextColor={Colors.textMuted}
+              />
+            </View>
+          </View>
+
+          {/* Action buttons */}
+          <View style={slidesStyles.actionRow}>
+            <TouchableOpacity
+              style={slidesStyles.deleteBtn}
+              onPress={() => onDelete(draft.id)}
+              activeOpacity={0.8}
+            >
+              <Trash2 size={13} color={Colors.error} strokeWidth={2} />
+              <Text style={slidesStyles.deleteBtnText}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[slidesStyles.saveBtn, saving && { opacity: 0.6 }]}
+              onPress={() => onSave(draft)}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              {saving
+                ? <ActivityIndicator size="small" color={Colors.background} />
+                : <><Save size={13} color={Colors.background} strokeWidth={2.5} /><Text style={slidesStyles.saveBtnText}>Save Slide</Text></>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const slidesStyles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.lg,
+  },
+  countBadge: {
+    backgroundColor: Colors.neonBlueGlow,
+    borderRadius: Radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: Colors.neonBlueBorder,
+  },
+  countText: { color: Colors.neonBlue, fontSize: 10, fontWeight: '700' },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.neonBlue,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: Radius.md,
+  },
+  addBtnText: { color: Colors.background, fontSize: FontSize.sm, fontWeight: '700' },
+
+  toast: {
+    backgroundColor: 'rgba(0,191,255,0.10)',
+    borderWidth: 1,
+    borderColor: Colors.neonBlueBorder,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  toastErr: { backgroundColor: Colors.errorDim, borderColor: Colors.error },
+  toastText: { color: Colors.neonBlue, fontSize: FontSize.sm, fontWeight: '600' },
+  toastTextErr: { color: Colors.error },
+
+  empty: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: Spacing.xl,
+  },
+  emptyTitle: { color: Colors.textSecondary, fontSize: FontSize.md, fontWeight: '700' },
+  emptySubtext: { color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center', lineHeight: 18 },
+
+  card: {
+    backgroundColor: Colors.backgroundCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
+  },
+  cardInactive: { opacity: 0.65 },
+
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    padding: Spacing.md,
+  },
+  thumb: {
+    width: 52,
+    height: 36,
+    borderRadius: Radius.sm,
+    overflow: 'hidden',
+  },
+  thumbEmpty: {
+    backgroundColor: Colors.backgroundSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cardTitle: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+  cardBadge: { color: Colors.neonBlue, fontSize: 9, fontWeight: '700', letterSpacing: 1 },
+  cardMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  activePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+  },
+  activePillOn: { backgroundColor: 'rgba(0,230,118,0.10)', borderColor: 'rgba(0,230,118,0.35)' },
+  activePillOff: { backgroundColor: Colors.backgroundSecondary, borderColor: Colors.border },
+  activePillText: { color: '#00E676', fontSize: 9, fontWeight: '700' },
+
+  orderBtns: { flexDirection: 'row', gap: 2 },
+
+  editor: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.md },
+
+  fieldGroup: { marginBottom: Spacing.md },
+  fieldLabel: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  urlInput: {
+    backgroundColor: Colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    color: Colors.textPrimary,
+    fontSize: FontSize.sm,
+  },
+  urlHint: { color: Colors.textMuted, fontSize: 10, marginTop: 4, lineHeight: 14 },
+
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  toggleLabel: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '600' },
+  sortRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sortInput: {
+    backgroundColor: Colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    color: Colors.textPrimary,
+    fontSize: FontSize.sm,
+    width: 60,
+    textAlign: 'center',
+  },
+
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.sm,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.error,
+    backgroundColor: Colors.errorDim,
+  },
+  deleteBtnText: { color: Colors.error, fontSize: FontSize.xs, fontWeight: '700' },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.neonBlue,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: Radius.md,
+  },
+  saveBtnText: { color: Colors.background, fontSize: FontSize.sm, fontWeight: '700' },
+
+  hint: {
+    backgroundColor: Colors.backgroundSecondary,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  hintText: { color: Colors.textMuted, fontSize: FontSize.xs, lineHeight: 16 },
 });
 
 // ─── Hero Editor Section ──────────────────────────────────────────────────────
@@ -587,6 +1102,7 @@ function ContentScreen() {
   const TABS = [
     { id: 'branding' as Tab, label: t.tabBranding },
     { id: 'hero' as Tab, label: t.tabHero },
+    { id: 'slides' as Tab, label: 'Slides' },
     { id: 'featured' as Tab, label: t.tabFeatured },
     { id: 'canopy' as Tab, label: t.tabCanopy },
     { id: 'testimonials' as Tab, label: t.tabTestimonials },
@@ -842,6 +1358,11 @@ function ContentScreen() {
           language={language}
           onSaved={() => {}}
         />
+      )}
+
+      {/* === SLIDES === */}
+      {activeTab === 'slides' && (
+        <HeroSlidesEditorSection />
       )}
 
       {/* === FEATURED === */}
