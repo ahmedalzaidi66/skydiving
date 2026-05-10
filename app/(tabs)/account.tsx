@@ -24,7 +24,8 @@ import AppHeader from '@/components/AppHeader';
 import GlossyButton from '@/components/GlossyButton';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { useThemeColors, ThemeColors } from '@/context/ThemeContext';
 import { UsedGearListing } from '@/app/(tabs)/marketplace';
 
 const SHIPPING_THRESHOLD = 500;
@@ -49,10 +50,12 @@ export default function AccountScreen() {
 }
 
 function SignupConfirmation({ email, onGoToLogin }: { email: string; onGoToLogin: () => void }) {
+  const C = useThemeColors();
+  const scStyles = makeScStyles(C);
   return (
     <View style={scStyles.container}>
       <View style={scStyles.iconWrap}>
-        <MailCheck size={52} color={Colors.neonBlue} strokeWidth={1.5} />
+        <MailCheck size={52} color={C.neonBlue} strokeWidth={1.5} />
       </View>
       <Text style={scStyles.title}>Account created successfully!</Text>
       <Text style={scStyles.body}>
@@ -81,6 +84,8 @@ function SignupConfirmation({ email, onGoToLogin }: { email: string; onGoToLogin
 
 function SignupConfirmationScreen({ email, onDone }: { email: string; onDone: () => void }) {
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -100,64 +105,68 @@ function SignupConfirmationScreen({ email, onDone }: { email: string; onDone: ()
   );
 }
 
-const scStyles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    gap: Spacing.md,
-    paddingVertical: Spacing.lg,
-  },
-  iconWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(0,191,255,0.08)',
-    borderWidth: 1.5,
-    borderColor: Colors.neonBlueBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-  title: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-    textAlign: 'center',
-    lineHeight: 26,
-  },
-  body: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  emailHighlight: {
-    color: Colors.neonBlue,
-    fontWeight: '700',
-  },
-  warnBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.xs,
-    backgroundColor: 'rgba(245,158,11,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
-    borderRadius: Radius.md,
-    padding: Spacing.md,
-    width: '100%',
-  },
-  warnText: {
-    flex: 1,
-    color: '#F59E0B',
-    fontSize: FontSize.xs,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-});
+function makeScStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      alignItems: 'center',
+      gap: Spacing.md,
+      paddingVertical: Spacing.lg,
+    },
+    iconWrap: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: C.neonBlueGlow,
+      borderWidth: 1.5,
+      borderColor: C.neonBlueBorder,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: Spacing.xs,
+    },
+    title: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '800',
+      textAlign: 'center',
+      lineHeight: 26,
+    },
+    body: {
+      color: C.textSecondary,
+      fontSize: FontSize.sm,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    emailHighlight: {
+      color: C.neonBlue,
+      fontWeight: '700',
+    },
+    warnBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.xs,
+      backgroundColor: 'rgba(245,158,11,0.08)',
+      borderWidth: 1,
+      borderColor: 'rgba(245,158,11,0.3)',
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      width: '100%',
+    },
+    warnText: {
+      flex: 1,
+      color: '#F59E0B',
+      fontSize: FontSize.xs,
+      lineHeight: 18,
+      fontWeight: '500',
+    },
+  });
+}
 
 function AuthView({ onSignupSuccess }: { onSignupSuccess: (email: string) => void }) {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const { t } = useLanguage();
   const router = useRouter();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
 
   return (
     <KeyboardAvoidingView
@@ -172,7 +181,7 @@ function AuthView({ onSignupSuccess }: { onSignupSuccess: (email: string) => voi
       >
         <View style={styles.authInner}>
           <View style={styles.authHeader}>
-            <User size={40} color={Colors.neonBlue} strokeWidth={1.5} />
+            <User size={40} color={C.neonBlue} strokeWidth={1.5} />
             <Text style={styles.authTitle}>
               {tab === 'login' ? t.welcomeBack : t.createAccount}
             </Text>
@@ -231,7 +240,7 @@ function AuthView({ onSignupSuccess }: { onSignupSuccess: (email: string) => voi
             onPress={() => router.push('/admin')}
             activeOpacity={0.8}
           >
-            <ShieldCheck size={14} color={Colors.textMuted} strokeWidth={2} />
+            <ShieldCheck size={14} color={C.textMuted} strokeWidth={2} />
             <Text style={styles.adminLinkBtnText}>Admin Panel</Text>
           </TouchableOpacity>
         </View>
@@ -241,6 +250,8 @@ function AuthView({ onSignupSuccess }: { onSignupSuccess: (email: string) => voi
 }
 
 function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const C = useThemeColors();
+  const fpStyles = makeFpStyles(C);
   const { forgotPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -276,18 +287,18 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
         <View style={fpStyles.modal}>
           <View style={fpStyles.header}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <KeyRound size={18} color={Colors.neonBlue} strokeWidth={2} />
+              <KeyRound size={18} color={C.neonBlue} strokeWidth={2} />
               <Text style={fpStyles.title}>Reset Password</Text>
             </View>
             <TouchableOpacity onPress={handleClose} activeOpacity={0.8}>
-              <X size={20} color={Colors.textMuted} strokeWidth={2} />
+              <X size={20} color={C.textMuted} strokeWidth={2} />
             </TouchableOpacity>
           </View>
           {sent ? (
             <View style={fpStyles.sentWrap}>
               <Text style={fpStyles.sentText}>
                 A password reset link has been sent to{'\n'}
-                <Text style={{ color: Colors.neonBlue }}>{email}</Text>
+                <Text style={{ color: C.neonBlue }}>{email}</Text>
               </Text>
               <Text style={fpStyles.sentHint}>Check your inbox and follow the link to set a new password.</Text>
               <GlossyButton title="Done" onPress={handleClose} fullWidth size="md" />
@@ -300,7 +311,7 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
                 label="Email"
                 value={email}
                 onChange={setEmail}
-                icon={<Mail size={16} color={Colors.textMuted} />}
+                icon={<Mail size={16} color={C.textMuted} />}
                 keyboardType="email-address"
                 placeholder="your@email.com"
               />
@@ -321,7 +332,8 @@ function ForgotPasswordModal({ visible, onClose }: { visible: boolean; onClose: 
   );
 }
 
-const fpStyles = StyleSheet.create({
+function makeFpStyles(C: ThemeColors) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.72)',
@@ -332,12 +344,12 @@ const fpStyles = StyleSheet.create({
   modal: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
     gap: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
+    borderColor: C.neonBlueBorder,
   },
   header: {
     flexDirection: 'row',
@@ -345,12 +357,12 @@ const fpStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.md,
     fontWeight: '700',
   },
   desc: {
-    color: Colors.textSecondary,
+    color: C.textSecondary,
     fontSize: FontSize.sm,
     lineHeight: 20,
   },
@@ -358,22 +370,25 @@ const fpStyles = StyleSheet.create({
     gap: Spacing.md,
   },
   sentText: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.sm,
     lineHeight: 22,
     textAlign: 'center',
   },
   sentHint: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
     textAlign: 'center',
     lineHeight: 18,
   },
-});
+  });
+}
 
 function LoginForm() {
   const { login } = useAuth();
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -406,7 +421,7 @@ function LoginForm() {
         label={t.email}
         value={email}
         onChange={setEmail}
-        icon={<Mail size={16} color={Colors.textMuted} />}
+        icon={<Mail size={16} color={C.textMuted} />}
         keyboardType="email-address"
         placeholder={t.emailPlaceholder}
       />
@@ -414,15 +429,15 @@ function LoginForm() {
         label={t.password}
         value={password}
         onChange={setPassword}
-        icon={<Lock size={16} color={Colors.textMuted} />}
+        icon={<Lock size={16} color={C.textMuted} />}
         secureTextEntry={!showPw}
         placeholder="••••••••"
         right={
           <TouchableOpacity onPress={() => setShowPw((p) => !p)}>
             {showPw ? (
-              <EyeOff size={16} color={Colors.textMuted} />
+              <EyeOff size={16} color={C.textMuted} />
             ) : (
-              <Eye size={16} color={Colors.textMuted} />
+              <Eye size={16} color={C.textMuted} />
             )}
           </TouchableOpacity>
         }
@@ -478,13 +493,15 @@ function BirthdayFields({
   day: string; month: string; year: string;
   onDay: (v: string) => void; onMonth: (v: string) => void; onYear: (v: string) => void;
 }) {
+  const C = useThemeColors();
+  const bdInputStyles = makeBdInputStyles(C);
   const { isRTL } = useLanguage();
   const label = isRTL ? 'تاريخ الميلاد' : 'Birthday';
 
   return (
     <View style={bdInputStyles.wrapper}>
       <View style={bdInputStyles.labelRow}>
-        <Calendar size={14} color={Colors.neonBlue} strokeWidth={2} />
+        <Calendar size={14} color={C.neonBlue} strokeWidth={2} />
         <Text style={bdInputStyles.label}>{label}</Text>
         <Text style={bdInputStyles.required}>*</Text>
       </View>
@@ -496,7 +513,7 @@ function BirthdayFields({
             value={day}
             onChangeText={(v) => onDay(v.replace(/\D/g, '').slice(0, 2))}
             placeholder="DD"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={C.textMuted}
             keyboardType="number-pad"
             maxLength={2}
             textAlign="center"
@@ -510,7 +527,7 @@ function BirthdayFields({
             value={month}
             onChangeText={(v) => onMonth(v.replace(/\D/g, '').slice(0, 2))}
             placeholder="MM"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={C.textMuted}
             keyboardType="number-pad"
             maxLength={2}
             textAlign="center"
@@ -524,7 +541,7 @@ function BirthdayFields({
             value={year}
             onChangeText={(v) => onYear(v.replace(/\D/g, '').slice(0, 4))}
             placeholder="YYYY"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={C.textMuted}
             keyboardType="number-pad"
             maxLength={4}
             textAlign="center"
@@ -535,72 +552,76 @@ function BirthdayFields({
   );
 }
 
-const bdInputStyles = StyleSheet.create({
-  wrapper: {
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.backgroundSecondary,
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  label: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  required: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  col: {
-    flex: 1,
-    gap: 4,
-  },
-  subLabel: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: 0.3,
-  },
-  input: {
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.xs,
-    paddingVertical: Spacing.sm,
-    color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
-    height: 38,
-    textAlignVertical: 'center',
-  },
-  sep: {
-    color: Colors.textMuted,
-    fontSize: FontSize.lg,
-    fontWeight: '300',
-    paddingBottom: 6,
-  },
-});
+function makeBdInputStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    wrapper: {
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      borderRadius: Radius.md,
+      backgroundColor: C.backgroundSecondary,
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    labelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    label: {
+      color: C.textSecondary,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    required: {
+      color: C.error,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 4,
+    },
+    col: {
+      flex: 1,
+      gap: 4,
+    },
+    subLabel: {
+      color: C.textMuted,
+      fontSize: 10,
+      fontWeight: '600',
+      textAlign: 'center',
+      letterSpacing: 0.3,
+    },
+    input: {
+      backgroundColor: C.backgroundInput,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: C.border,
+      paddingHorizontal: Spacing.xs,
+      paddingVertical: Spacing.sm,
+      color: C.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+      height: 38,
+      textAlignVertical: 'center',
+    },
+    sep: {
+      color: C.textMuted,
+      fontSize: FontSize.lg,
+      fontWeight: '300',
+      paddingBottom: 6,
+    },
+  });
+}
 
 function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
   const { register } = useAuth();
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -659,7 +680,7 @@ function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
         label={t.email}
         value={email}
         onChange={setEmail}
-        icon={<Mail size={16} color={Colors.textMuted} />}
+        icon={<Mail size={16} color={C.textMuted} />}
         keyboardType="email-address"
         placeholder={t.emailPlaceholder}
       />
@@ -667,12 +688,12 @@ function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
         label={t.password}
         value={password}
         onChange={setPassword}
-        icon={<Lock size={16} color={Colors.textMuted} />}
+        icon={<Lock size={16} color={C.textMuted} />}
         secureTextEntry={!showPw}
         placeholder={t.passwordPlaceholder}
         right={
           <TouchableOpacity onPress={() => setShowPw((p) => !p)}>
-            {showPw ? <EyeOff size={16} color={Colors.textMuted} /> : <Eye size={16} color={Colors.textMuted} />}
+            {showPw ? <EyeOff size={16} color={C.textMuted} /> : <Eye size={16} color={C.textMuted} />}
           </TouchableOpacity>
         }
       />
@@ -680,7 +701,7 @@ function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
         label={t.confirmPassword}
         value={confirm}
         onChange={setConfirm}
-        icon={<Lock size={16} color={Colors.textMuted} />}
+        icon={<Lock size={16} color={C.textMuted} />}
         secureTextEntry={!showPw}
         placeholder={t.confirmPassword}
       />
@@ -704,6 +725,8 @@ function RegisterForm({ onSuccess }: { onSuccess: (email: string) => void }) {
 
 function WhatsAppContactCard() {
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <TouchableOpacity
       style={styles.whatsappCard}
@@ -735,6 +758,8 @@ function EditBirthdayModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const C = useThemeColors();
+  const bdStyles = makeBdStyles(C);
   const { updateProfile } = useAuth();
   const parsed = current ? parseBirthdayISO(current) : { day: '', month: '', year: '' };
   const [day, setDay] = useState(parsed.day);
@@ -769,11 +794,11 @@ function EditBirthdayModal({
         <View style={bdStyles.modal}>
           <View style={bdStyles.header}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Calendar size={18} color={Colors.neonBlue} strokeWidth={2} />
+              <Calendar size={18} color={C.neonBlue} strokeWidth={2} />
               <Text style={bdStyles.title}>Edit Birthday</Text>
             </View>
             <TouchableOpacity onPress={onClose} activeOpacity={0.8}>
-              <X size={20} color={Colors.textMuted} strokeWidth={2} />
+              <X size={20} color={C.textMuted} strokeWidth={2} />
             </TouchableOpacity>
           </View>
           {error ? <ErrorBanner message={error} /> : null}
@@ -797,6 +822,9 @@ function EditBirthdayModal({
 function ProfileView() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const bdStyles = makeBdStyles(C);
+  const styles = makeStyles(C);
   const { count: wishlistCount } = useWishlist();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -836,7 +864,7 @@ function ProfileView() {
             <Text style={styles.profileEmail}>{user?.email}</Text>
           </View>
           <TouchableOpacity onPress={() => { logout(); }} style={styles.logoutBtn} activeOpacity={0.8}>
-            <LogOut size={18} color={Colors.error} strokeWidth={2} />
+            <LogOut size={18} color={C.error} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
@@ -846,7 +874,7 @@ function ProfileView() {
           onPress={() => setEditBdVisible(true)}
           activeOpacity={0.8}
         >
-          <Calendar size={16} color={Colors.neonBlue} strokeWidth={2} />
+          <Calendar size={16} color={C.neonBlue} strokeWidth={2} />
           <View style={{ flex: 1 }}>
             <Text style={bdStyles.rowLabel}>Birthday</Text>
             {user?.birthday ? (
@@ -857,7 +885,7 @@ function ProfileView() {
               <Text style={bdStyles.rowEmpty}>Tap to add your birthday</Text>
             )}
           </View>
-          <Pencil size={14} color={Colors.textMuted} strokeWidth={2} />
+          <Pencil size={14} color={C.textMuted} strokeWidth={2} />
         </TouchableOpacity>
 
         <View style={styles.statsRow}>
@@ -892,7 +920,7 @@ function ProfileView() {
           onPress={() => router.push('/admin')}
           activeOpacity={0.8}
         >
-          <ShieldCheck size={18} color={Colors.neonBlue} strokeWidth={2} />
+          <ShieldCheck size={18} color={C.neonBlue} strokeWidth={2} />
           <Text style={styles.adminPanelBtnText}>Admin Panel</Text>
         </TouchableOpacity>
 
@@ -901,7 +929,7 @@ function ProfileView() {
         <MyGearListings />
 
         <View style={styles.sectionHeader}>
-          <Package size={18} color={Colors.neonBlue} strokeWidth={2} />
+          <Package size={18} color={C.neonBlue} strokeWidth={2} />
           <Text style={styles.sectionTitle}>{t.orderHistory}</Text>
         </View>
 
@@ -911,7 +939,7 @@ function ProfileView() {
           </View>
         ) : orders.length === 0 ? (
           <View style={styles.emptyOrders}>
-            <Package size={40} color={Colors.textMuted} strokeWidth={1.5} />
+            <Package size={40} color={C.textMuted} strokeWidth={1.5} />
             <Text style={styles.emptyOrdersText}>{t.noOrdersYet}</Text>
             <Text style={styles.emptyOrdersSubtext}>{t.purchasesWillAppear}</Text>
           </View>
@@ -944,15 +972,15 @@ function ProfileView() {
   );
 }
 
-function getStatusColor(status: string): string {
+function getStatusColor(status: string, C: ThemeColors): string {
   switch (status) {
-    case 'pending':    return Colors.warning;
-    case 'confirmed':  return Colors.success;
-    case 'processing': return Colors.neonBlue;
+    case 'pending':    return C.warning;
+    case 'confirmed':  return C.success;
+    case 'processing': return C.neonBlue;
     case 'shipped':    return '#7C83FF';
-    case 'delivered':  return Colors.success;
-    case 'cancelled':  return Colors.error;
-    default:           return Colors.textMuted;
+    case 'delivered':  return C.success;
+    case 'cancelled':  return C.error;
+    default:           return C.textMuted;
   }
 }
 
@@ -964,6 +992,8 @@ function OrderCard({
   onOrderChanged: (updated: Order) => void;
 }) {
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const [order, setOrder] = useState<Order>(initialOrder);
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -973,7 +1003,7 @@ function OrderCard({
 
   const isPending = order.status === 'pending';
   const canEdit = isPending;
-  const statusColor = getStatusColor(order.status);
+  const statusColor = getStatusColor(order.status, C);
 
   const date = new Date(order.created_at).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -1111,8 +1141,8 @@ function OrderCard({
           </View>
           <Text style={styles.orderTotal}>${Number(order.total).toFixed(2)}</Text>
           {expanded
-            ? <ChevronUp size={16} color={Colors.textMuted} strokeWidth={2} />
-            : <ChevronDown size={16} color={Colors.textMuted} strokeWidth={2} />
+            ? <ChevronUp size={16} color={C.textMuted} strokeWidth={2} />
+            : <ChevronDown size={16} color={C.textMuted} strokeWidth={2} />
           }
         </View>
       </TouchableOpacity>
@@ -1124,14 +1154,14 @@ function OrderCard({
           {/* Locked notice for non-pending orders */}
           {!canEdit && order.status !== 'cancelled' && (
             <View style={styles.lockedNotice}>
-              <AlertTriangle size={14} color={Colors.warning} strokeWidth={2} />
+              <AlertTriangle size={14} color={C.warning} strokeWidth={2} />
               <Text style={styles.lockedNoticeText}>{t.cannotEditOrder}</Text>
             </View>
           )}
 
           {/* Items */}
           {loadingItems ? (
-            <ActivityIndicator color={Colors.neonBlue} size="small" style={{ marginVertical: 12 }} />
+            <ActivityIndicator color={C.neonBlue} size="small" style={{ marginVertical: 12 }} />
           ) : items.length === 0 ? (
             <Text style={styles.noItemsText}>{t.noItems}</Text>
           ) : (
@@ -1151,7 +1181,7 @@ function OrderCard({
                         activeOpacity={0.7}
                         disabled={saving}
                       >
-                        <Minus size={12} color={Colors.textPrimary} strokeWidth={2.5} />
+                        <Minus size={12} color={C.textPrimary} strokeWidth={2.5} />
                       </TouchableOpacity>
                       <Text style={styles.qtyValue}>{item.quantity}</Text>
                       <TouchableOpacity
@@ -1160,7 +1190,7 @@ function OrderCard({
                         activeOpacity={0.7}
                         disabled={saving}
                       >
-                        <Plus size={12} color={Colors.textPrimary} strokeWidth={2.5} />
+                        <Plus size={12} color={C.textPrimary} strokeWidth={2.5} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.removeBtn}
@@ -1168,7 +1198,7 @@ function OrderCard({
                         activeOpacity={0.7}
                         disabled={saving}
                       >
-                        <Trash2 size={14} color={Colors.error} strokeWidth={2} />
+                        <Trash2 size={14} color={C.error} strokeWidth={2} />
                       </TouchableOpacity>
                     </View>
                   ) : (
@@ -1207,7 +1237,7 @@ function OrderCard({
               disabled={saving}
             >
               {saving ? (
-                <ActivityIndicator size="small" color={Colors.error} />
+                <ActivityIndicator size="small" color={C.error} />
               ) : (
                 <Text style={styles.cancelOrderBtnText}>
                   {t.cancelOrder}
@@ -1221,12 +1251,14 @@ function OrderCard({
   );
 }
 
-const GEAR_STATUS_COLORS: Record<string, string> = {
-  pending:  Colors.warning,
-  approved: Colors.success,
-  rejected: Colors.error,
-  sold:     Colors.textMuted,
-};
+function getGearStatusColors(C: ThemeColors): Record<string, string> {
+  return {
+    pending:  C.warning,
+    approved: C.success,
+    rejected: C.error,
+    sold:     C.textMuted,
+  };
+}
 
 const GEAR_STATUS_LABELS: Record<string, string> = {
   pending:  'Pending Review',
@@ -1248,6 +1280,8 @@ type BoostRecord = {
 function MyGearListings() {
   const { user } = useAuth();
   const router = useRouter();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const [listings, setListings] = useState<UsedGearListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingSold, setMarkingSold] = useState<string | null>(null);
@@ -1396,7 +1430,7 @@ function MyGearListings() {
       {/* 30-day reminder banner */}
       {reminderItem && (
         <View style={styles.reminderBanner}>
-          <AlertTriangle size={14} color={Colors.warning} strokeWidth={2} />
+          <AlertTriangle size={14} color={C.warning} strokeWidth={2} />
           <Text style={styles.reminderText}>
             Is "{reminderItem.title}" still available, or has it sold?
           </Text>
@@ -1421,7 +1455,7 @@ function MyGearListings() {
 
       <View style={styles.gearSectionHeader}>
         <View style={styles.sectionHeader}>
-          <Tag size={18} color={Colors.neonBlue} strokeWidth={2} />
+          <Tag size={18} color={C.neonBlue} strokeWidth={2} />
           <Text style={styles.sectionTitle}>My Gear Listings</Text>
         </View>
         <TouchableOpacity
@@ -1429,16 +1463,16 @@ function MyGearListings() {
           onPress={() => router.push('/marketplace/create' as any)}
           activeOpacity={0.8}
         >
-          <Plus size={14} color={Colors.neonBlue} strokeWidth={2.5} />
+          <Plus size={14} color={C.neonBlue} strokeWidth={2.5} />
           <Text style={styles.newListingBtnText}>New</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={Colors.neonBlue} size="small" style={{ paddingVertical: Spacing.md }} />
+        <ActivityIndicator color={C.neonBlue} size="small" style={{ paddingVertical: Spacing.md }} />
       ) : listings.length === 0 ? (
         <View style={styles.gearEmpty}>
-          <Tag size={32} color={Colors.textMuted} strokeWidth={1.5} />
+          <Tag size={32} color={C.textMuted} strokeWidth={1.5} />
           <Text style={styles.gearEmptyText}>No gear listings yet</Text>
           <TouchableOpacity
             style={styles.gearEmptyBtn}
@@ -1451,7 +1485,7 @@ function MyGearListings() {
       ) : (
         <View style={styles.gearList}>
           {listings.map((item) => {
-            const statusColor = GEAR_STATUS_COLORS[item.status] ?? Colors.textMuted;
+            const statusColor = getGearStatusColors(C)[item.status] ?? C.textMuted;
             const statusLabel = GEAR_STATUS_LABELS[item.status] ?? item.status;
             const thumb = item.main_image_url || item.images?.[0];
             const isSold = item.status === 'sold';
@@ -1468,7 +1502,7 @@ function MyGearListings() {
                       <Image source={{ uri: thumb }} style={[styles.gearThumb, isSold && { opacity: 0.5 }]} resizeMode="cover" />
                     ) : (
                       <View style={[styles.gearThumb, styles.gearThumbPlaceholder]}>
-                        <Tag size={18} color={Colors.textMuted} strokeWidth={1.5} />
+                        <Tag size={18} color={C.textMuted} strokeWidth={1.5} />
                       </View>
                     )}
                     {isSold && (
@@ -1508,10 +1542,10 @@ function MyGearListings() {
                                 ? styles.boostStatusPending
                                 : styles.boostStatusExpired,
                             ]}>
-                              <Zap size={9} color={boostStatus === 'boosted' ? Colors.gold : Colors.textMuted} strokeWidth={2.5} />
+                              <Zap size={9} color={boostStatus === 'boosted' ? C.gold : C.textMuted} strokeWidth={2.5} />
                               <Text style={[
                                 styles.boostStatusText,
-                                { color: boostStatus === 'boosted' ? Colors.gold : Colors.textMuted },
+                                { color: boostStatus === 'boosted' ? C.gold : C.textMuted },
                               ]}>
                                 {boostStatus === 'boosted' ? 'Boosted'
                                   : boostStatus === 'pending_approval' ? 'Boost Pending'
@@ -1528,7 +1562,7 @@ function MyGearListings() {
                                 onPress={() => router.push(`/marketplace/edit/${item.id}` as any)}
                                 activeOpacity={0.8}
                               >
-                                <Pencil size={13} color={Colors.neonBlue} strokeWidth={2.5} />
+                                <Pencil size={13} color={C.neonBlue} strokeWidth={2.5} />
                               </TouchableOpacity>
                               {canBoost && !canReboost(item.id) && (
                                 <TouchableOpacity
@@ -1536,7 +1570,7 @@ function MyGearListings() {
                                   onPress={() => openBoostModal(item, false)}
                                   activeOpacity={0.8}
                                 >
-                                  <Zap size={11} color={Colors.gold} strokeWidth={2.5} />
+                                  <Zap size={11} color={C.gold} strokeWidth={2.5} />
                                   <Text style={styles.gearBoostBtnText}>Boost (${boostPrice})</Text>
                                 </TouchableOpacity>
                               )}
@@ -1546,7 +1580,7 @@ function MyGearListings() {
                                   onPress={() => openBoostModal(item, true)}
                                   activeOpacity={0.8}
                                 >
-                                  <Zap size={11} color={Colors.gold} strokeWidth={2.5} />
+                                  <Zap size={11} color={C.gold} strokeWidth={2.5} />
                                   <Text style={styles.gearReboostBtnText}>Re-Boost (${reboostPrice(boostPrice)})</Text>
                                 </TouchableOpacity>
                               )}
@@ -1558,7 +1592,7 @@ function MyGearListings() {
                                   disabled={markingSold === item.id}
                                 >
                                   {markingSold === item.id ? (
-                                    <ActivityIndicator size="small" color={Colors.textMuted} />
+                                    <ActivityIndicator size="small" color={C.textMuted} />
                                   ) : (
                                     <Text style={styles.gearSoldBtnText}>Sold</Text>
                                   )}
@@ -1575,7 +1609,7 @@ function MyGearListings() {
                 {/* Rejection note */}
                 {isRejected && !!item.admin_note && (
                   <View style={styles.rejectionNote}>
-                    <AlertTriangle size={12} color={Colors.error} strokeWidth={2} />
+                    <AlertTriangle size={12} color={C.error} strokeWidth={2} />
                     <View style={{ flex: 1, gap: 4 }}>
                       <Text style={styles.rejectionNoteText}>{item.admin_note}</Text>
                       <TouchableOpacity
@@ -1604,17 +1638,17 @@ function MyGearListings() {
           <View style={styles.boostModal}>
             <View style={styles.boostModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Zap size={18} color={Colors.gold} strokeWidth={2.5} />
+                <Zap size={18} color={C.gold} strokeWidth={2.5} />
                 <Text style={styles.boostModalTitle}>{isReboost ? 'Re-boost Listing' : 'Boost Listing'}</Text>
               </View>
               <TouchableOpacity onPress={() => setBoostTarget(null)} activeOpacity={0.8}>
-                <X size={20} color={Colors.textMuted} strokeWidth={2} />
+                <X size={20} color={C.textMuted} strokeWidth={2} />
               </TouchableOpacity>
             </View>
 
             {boostSuccess ? (
               <View style={styles.boostSuccessWrap}>
-                <Zap size={36} color={Colors.gold} strokeWidth={2} />
+                <Zap size={36} color={C.gold} strokeWidth={2} />
                 <Text style={styles.boostSuccessTitle}>{isReboost ? 'Re-boost Requested!' : 'Boost Requested!'}</Text>
                 <Text style={styles.boostSuccessText}>
                   {isReboost
@@ -1633,7 +1667,7 @@ function MyGearListings() {
               <>
                 {isReboost && (
                   <View style={styles.reboostBanner}>
-                    <Zap size={13} color={Colors.gold} strokeWidth={2.5} />
+                    <Zap size={13} color={C.gold} strokeWidth={2.5} />
                     <Text style={styles.reboostBannerText}>
                       Returning customer discount: {reboostDiscountPct}% off — only ${reboostPrice(boostPrice)} (was ${boostPrice})
                     </Text>
@@ -1684,7 +1718,7 @@ function MyGearListings() {
                     value={boostPaymentNote}
                     onChangeText={setBoostPaymentNote}
                     placeholder="e.g. Paid via bank transfer on April 30"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={C.textMuted}
                     multiline
                     numberOfLines={2}
                   />
@@ -1700,10 +1734,10 @@ function MyGearListings() {
                   disabled={boostSubmitting}
                 >
                   {boostSubmitting ? (
-                    <ActivityIndicator size="small" color={Colors.background} />
+                    <ActivityIndicator size="small" color={C.background} />
                   ) : (
                     <>
-                      <Zap size={16} color={Colors.background} strokeWidth={2.5} />
+                      <Zap size={16} color={C.background} strokeWidth={2.5} />
                       <Text style={styles.boostConfirmBtnText}>
                         {isReboost
                           ? `Request Re-boost — $${reboostPrice(boostPrice)}`
@@ -1722,6 +1756,8 @@ function MyGearListings() {
 }
 
 function StatCard({ label, value }: { label: string; value: string }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <View style={styles.statCard}>
       <Text style={styles.statValue}>{value}</Text>
@@ -1749,6 +1785,8 @@ function AuthField({
   secureTextEntry?: boolean;
   right?: React.ReactNode;
 }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <View style={styles.fieldWrapper}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -1760,7 +1798,7 @@ function AuthField({
           onChangeText={onChange}
           keyboardType={keyboardType}
           placeholder={placeholder}
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={C.textMuted}
           secureTextEntry={secureTextEntry}
           autoCapitalize="none"
           autoCorrect={false}
@@ -1772,6 +1810,8 @@ function AuthField({
 }
 
 function ErrorBanner({ message }: { message: string }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <View style={styles.errorBanner}>
       <Text style={styles.errorText}>{message}</Text>
@@ -1779,10 +1819,11 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: C.background,
   },
   authContent: {
     padding: Spacing.md,
@@ -1800,23 +1841,23 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   authTitle: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: 20,
     fontWeight: '800',
     textAlign: 'center',
   },
   authSubtitle: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
   },
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: C.backgroundSecondary,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: C.borderLight,
     padding: 2,
     gap: 2,
     height: 36,
@@ -1829,13 +1870,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   authTabText: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
   authTabTextActive: {
-    color: Colors.white,
+    color: C.white,
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 0.1,
@@ -1852,7 +1893,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   fieldLabel: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -1861,28 +1902,28 @@ const styles = StyleSheet.create({
   fieldRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundInput,
+    backgroundColor: C.backgroundInput,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     paddingHorizontal: 10,
     height: 42,
   },
   fieldInput: {
     flex: 1,
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: 13,
     padding: 0,
   },
   errorBanner: {
-    backgroundColor: Colors.errorDim,
+    backgroundColor: C.errorDim,
     borderRadius: Radius.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.error,
+    borderColor: C.error,
   },
   errorText: {
-    color: Colors.error,
+    color: C.error,
     fontSize: FontSize.sm,
     fontWeight: '600',
     textAlign: 'center',
@@ -1895,10 +1936,10 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     padding: Spacing.md,
     gap: Spacing.md,
     ...Shadow.card,
@@ -1907,14 +1948,14 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.neonBlueDim,
+    backgroundColor: C.neonBlueDim,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: Colors.neonBlue,
+    borderColor: C.neonBlue,
   },
   avatarText: {
-    color: Colors.white,
+    color: C.white,
     fontSize: FontSize.xl,
     fontWeight: '900',
   },
@@ -1923,23 +1964,23 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   profileName: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.lg,
     fontWeight: '800',
   },
   profileEmail: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.sm,
   },
   logoutBtn: {
     width: 40,
     height: 40,
-    backgroundColor: Colors.errorDim,
+    backgroundColor: C.errorDim,
     borderRadius: Radius.full,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.error,
+    borderColor: C.error,
   },
   statsRow: {
     flexDirection: 'row',
@@ -1947,21 +1988,21 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     padding: Spacing.md,
     alignItems: 'center',
     gap: 4,
   },
   statValue: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.xl,
     fontWeight: '900',
   },
   statLabel: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -1970,15 +2011,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
   langLabel: {
-    color: Colors.textSecondary,
+    color: C.textSecondary,
     fontSize: FontSize.md,
     fontWeight: '600',
   },
@@ -2022,15 +2063,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    backgroundColor: Colors.neonBlueGlow,
+    backgroundColor: C.neonBlueGlow,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
+    borderColor: C.neonBlueBorder,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
   },
   adminPanelBtnText: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.md,
     fontWeight: '700',
     flex: 1,
@@ -2041,7 +2082,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   sectionTitle: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.lg,
     fontWeight: '700',
   },
@@ -2050,7 +2091,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xl,
   },
   loadingText: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.md,
   },
   emptyOrders: {
@@ -2059,22 +2100,22 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   emptyOrdersText: {
-    color: Colors.textSecondary,
+    color: C.textSecondary,
     fontSize: FontSize.lg,
     fontWeight: '700',
   },
   emptyOrdersSubtext: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.md,
   },
   ordersList: {
     gap: Spacing.sm,
   },
   orderCard: {
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     overflow: 'hidden',
     ...Shadow.card,
   },
@@ -2098,7 +2139,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   orderId: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.md,
     fontWeight: '800',
     letterSpacing: 1,
@@ -2114,11 +2155,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   orderDate: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
   },
   orderTotal: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.md,
     fontWeight: '900',
   },
@@ -2128,7 +2169,7 @@ const styles = StyleSheet.create({
   },
   orderDivider: {
     height: 1,
-    backgroundColor: Colors.borderLight,
+    backgroundColor: C.borderLight,
     marginBottom: Spacing.sm,
   },
   lockedNotice: {
@@ -2144,13 +2185,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   lockedNoticeText: {
-    color: Colors.warning,
+    color: C.warning,
     fontSize: FontSize.xs,
     fontWeight: '600',
     flex: 1,
   },
   noItemsText: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.sm,
     textAlign: 'center',
     paddingVertical: Spacing.sm,
@@ -2163,12 +2204,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: Colors.background,
+    backgroundColor: C.background,
     borderRadius: Radius.sm,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: C.borderLight,
     gap: Spacing.sm,
   },
   itemInfo: {
@@ -2176,13 +2217,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   itemName: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.xs,
     fontWeight: '600',
     lineHeight: 16,
   },
   itemPrice: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: 10,
     fontWeight: '500',
   },
@@ -2195,14 +2236,14 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
   qtyValue: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.sm,
     fontWeight: '700',
     minWidth: 20,
@@ -2212,15 +2253,15 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: Colors.errorDim,
+    backgroundColor: C.errorDim,
     borderWidth: 1,
-    borderColor: Colors.error,
+    borderColor: C.error,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 2,
   },
   itemQtyStatic: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.sm,
     fontWeight: '700',
     minWidth: 28,
@@ -2231,16 +2272,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   orderTotalsLabel: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
     fontWeight: '500',
   },
   orderTotalsValue: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontWeight: '700',
   },
   feedbackBanner: {
-    backgroundColor: Colors.success + '18',
+    backgroundColor: C.success + '18',
     borderRadius: Radius.sm,
     paddingVertical: 6,
     paddingHorizontal: Spacing.sm,
@@ -2248,22 +2289,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   feedbackText: {
-    color: Colors.success,
+    color: C.success,
     fontSize: FontSize.xs,
     fontWeight: '700',
   },
   cancelOrderBtn: {
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorDim,
+    borderColor: C.error,
+    backgroundColor: C.errorDim,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 40,
   },
   cancelOrderBtnText: {
-    color: Colors.error,
+    color: C.error,
     fontSize: FontSize.sm,
     fontWeight: '700',
   },
@@ -2275,7 +2316,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   forgotBtnText: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -2288,7 +2329,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   adminLinkBtnText: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -2326,7 +2367,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   whatsappCardSub: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
   },
   whatsappArrow: {
@@ -2355,11 +2396,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    backgroundColor: Colors.neonBlueGlow,
+    borderColor: C.neonBlueBorder,
+    backgroundColor: C.neonBlueGlow,
   },
   newListingBtnText: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.xs,
     fontWeight: '700',
   },
@@ -2367,13 +2408,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.xl,
     gap: Spacing.sm,
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
   },
   gearEmptyText: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.md,
   },
   gearEmptyBtn: {
@@ -2381,12 +2422,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    backgroundColor: Colors.neonBlueGlow,
+    borderColor: C.neonBlueBorder,
+    backgroundColor: C.neonBlueGlow,
     marginTop: 4,
   },
   gearEmptyBtnText: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.sm,
     fontWeight: '700',
   },
@@ -2394,10 +2435,10 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   gearCard: {
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     overflow: 'hidden',
   },
   gearCardInner: {
@@ -2418,7 +2459,7 @@ const styles = StyleSheet.create({
     height: 64,
   },
   gearThumbPlaceholder: {
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: C.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2427,18 +2468,18 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   gearTitle: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.sm,
     fontWeight: '700',
     lineHeight: 18,
   },
   gearPrice: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.sm,
     fontWeight: '800',
   },
   gearDate: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
   },
   gearRight: {
@@ -2466,8 +2507,8 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    backgroundColor: Colors.neonBlueGlow,
+    borderColor: C.neonBlueBorder,
+    backgroundColor: C.neonBlueGlow,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2476,8 +2517,8 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorDim,
+    borderColor: C.error,
+    backgroundColor: C.errorDim,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2492,20 +2533,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   rejectionNoteText: {
-    color: Colors.error,
+    color: C.error,
     fontSize: FontSize.xs,
     fontWeight: '600',
     lineHeight: 16,
   },
   rejectionEditLink: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.xs,
     fontWeight: '700',
   },
   // Sold state
   gearCardSold: {
     opacity: 0.7,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: C.borderLight,
   },
   gearSoldOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -2515,17 +2556,17 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   gearSoldOverlayText: {
-    color: Colors.white,
+    color: C.white,
     fontSize: FontSize.xs,
     fontWeight: '900',
     letterSpacing: 2,
   },
   gearTitleSold: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     textDecorationLine: 'line-through' as const,
   },
   gearPriceSold: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     textDecorationLine: 'line-through' as const,
   },
   gearSoldBtn: {
@@ -2533,11 +2574,11 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: Radius.full,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: Colors.backgroundSecondary,
+    borderColor: C.borderLight,
+    backgroundColor: C.backgroundSecondary,
   },
   gearSoldBtnText: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -2554,7 +2595,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,215,0,0.1)',
   },
   gearReboostBtnText: {
-    color: Colors.gold,
+    color: C.gold,
     fontSize: 10,
     fontWeight: '800',
   },
@@ -2571,7 +2612,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,215,0,0.1)',
   },
   gearBoostBtnText: {
-    color: Colors.gold,
+    color: C.gold,
     fontSize: 10,
     fontWeight: '800',
   },
@@ -2611,7 +2652,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   boostModal: {
-    backgroundColor: Colors.backgroundCard,
+    backgroundColor: C.backgroundCard,
     borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: 'rgba(255,215,0,0.25)',
@@ -2626,7 +2667,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   boostModalTitle: {
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.lg,
     fontWeight: '800',
   },
@@ -2642,25 +2683,25 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   reboostBannerText: {
-    color: Colors.gold,
+    color: C.gold,
     fontSize: FontSize.xs,
     fontWeight: '700',
     flex: 1,
   },
   boostOriginalPrice: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.sm,
     fontWeight: '600',
     textDecorationLine: 'line-through' as const,
   },
   boostListingName: {
-    color: Colors.textSecondary,
+    color: C.textSecondary,
     fontSize: FontSize.sm,
     fontWeight: '600',
     lineHeight: 18,
   },
   boostPricingCard: {
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: C.backgroundSecondary,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: 'rgba(255,215,0,0.2)',
@@ -2673,12 +2714,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   boostPricingLabel: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.sm,
     fontWeight: '600',
   },
   boostPricingValue: {
-    color: Colors.gold,
+    color: C.gold,
     fontSize: FontSize.md,
     fontWeight: '800',
   },
@@ -2686,13 +2727,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   boostBenefitsTitle: {
-    color: Colors.textSecondary,
+    color: C.textSecondary,
     fontSize: FontSize.sm,
     fontWeight: '700',
     marginBottom: 2,
   },
   boostBenefitItem: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
     lineHeight: 16,
   },
@@ -2700,16 +2741,16 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   boostPaymentLabel: {
-    color: Colors.textSecondary,
+    color: C.textSecondary,
     fontSize: FontSize.sm,
     fontWeight: '700',
   },
   boostPaymentInput: {
-    backgroundColor: Colors.backgroundInput,
+    backgroundColor: C.backgroundInput,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
-    color: Colors.textPrimary,
+    borderColor: C.border,
+    color: C.textPrimary,
     fontSize: FontSize.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
@@ -2717,7 +2758,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   boostPaymentDisclaimer: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.xs,
     lineHeight: 16,
   },
@@ -2726,12 +2767,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: Colors.gold,
+    backgroundColor: C.gold,
     borderRadius: Radius.md,
     paddingVertical: 14,
   },
   boostConfirmBtnText: {
-    color: Colors.background,
+    color: C.background,
     fontSize: FontSize.md,
     fontWeight: '800',
   },
@@ -2741,12 +2782,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
   },
   boostSuccessTitle: {
-    color: Colors.gold,
+    color: C.gold,
     fontSize: FontSize.lg,
     fontWeight: '800',
   },
   boostSuccessText: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.sm,
     lineHeight: 20,
     textAlign: 'center',
@@ -2761,7 +2802,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   boostSuccessBtnText: {
-    color: Colors.gold,
+    color: C.gold,
     fontSize: FontSize.md,
     fontWeight: '700',
   },
@@ -2775,18 +2816,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   birthdayInput: {
-    backgroundColor: Colors.backgroundInput,
+    backgroundColor: C.backgroundInput,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: C.border,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.sm + 2,
-    color: Colors.textPrimary,
+    color: C.textPrimary,
     fontSize: FontSize.md,
     textAlign: 'center',
   },
   birthdaySep: {
-    color: Colors.textMuted,
+    color: C.textMuted,
     fontSize: FontSize.lg,
     fontWeight: '300',
     paddingHorizontal: 2,
@@ -2801,7 +2842,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   reminderText: {
-    color: Colors.warning,
+    color: C.warning,
     fontSize: FontSize.sm,
     fontWeight: '600',
     lineHeight: 18,
@@ -2815,12 +2856,12 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorDim,
+    borderColor: C.error,
+    backgroundColor: C.errorDim,
     alignItems: 'center',
   },
   reminderSoldBtnText: {
-    color: Colors.error,
+    color: C.error,
     fontSize: FontSize.sm,
     fontWeight: '700',
   },
@@ -2829,73 +2870,76 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    backgroundColor: Colors.neonBlueGlow,
+    borderColor: C.neonBlueBorder,
+    backgroundColor: C.neonBlueGlow,
     alignItems: 'center',
   },
   reminderStillAvailableBtnText: {
-    color: Colors.neonBlue,
+    color: C.neonBlue,
     fontSize: FontSize.sm,
     fontWeight: '700',
   },
-});
+  });
+}
 
-const bdStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-  },
-  rowLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  rowValue: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  rowEmpty: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    fontStyle: 'italic',
-    marginTop: 2,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(5,10,20,0.88)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.lg,
-  },
-  modal: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    padding: Spacing.lg,
-    width: '100%',
-    maxWidth: 380,
-    gap: Spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-  },
-});
+function makeBdStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.md,
+    },
+    rowLabel: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    rowValue: {
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    rowEmpty: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+      fontStyle: 'italic',
+      marginTop: 2,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(5,10,20,0.88)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: Spacing.lg,
+    },
+    modal: {
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.xl,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      padding: Spacing.lg,
+      width: '100%',
+      maxWidth: 380,
+      gap: Spacing.md,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    title: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '800',
+    },
+  });
+}
