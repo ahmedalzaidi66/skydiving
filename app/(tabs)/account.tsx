@@ -26,7 +26,6 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
 import { useThemeColors, useTheme, ThemeColors, UserThemeChoice } from '@/context/ThemeContext';
-import { useAdmin } from '@/context/AdminContext';
 import { UsedGearListing } from '@/app/(tabs)/marketplace';
 
 const SHIPPING_THRESHOLD = 500;
@@ -854,17 +853,23 @@ function ThemeSelector() {
 }
 
 function ProfileView() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const { t } = useLanguage();
   const C = useThemeColors();
   const bdStyles = makeBdStyles(C);
   const styles = makeStyles(C);
   const { count: wishlistCount } = useWishlist();
   const router = useRouter();
-  const { admin } = useAdmin();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [editBdVisible, setEditBdVisible] = useState(false);
+
+  // Name editing
+  const [editingName, setEditingName] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.email) {
@@ -882,8 +887,32 @@ function ProfileView() {
       });
   }, [user]);
 
+  const startEditName = useCallback(() => {
+    setFirstName(user?.firstName ?? '');
+    setLastName(user?.lastName ?? '');
+    setNameError(null);
+    setEditingName(true);
+  }, [user]);
+
+  const cancelEditName = useCallback(() => {
+    setEditingName(false);
+    setNameError(null);
+  }, []);
+
+  const saveName = useCallback(async () => {
+    const trimFirst = firstName.trim();
+    const trimLast = lastName.trim();
+    if (!trimFirst) { setNameError('First name is required.'); return; }
+    setSavingName(true);
+    setNameError(null);
+    const result = await updateProfile({ firstName: trimFirst, lastName: trimLast });
+    setSavingName(false);
+    if (!result.success) { setNameError(result.error ?? 'Failed to save.'); return; }
+    setEditingName(false);
+  }, [firstName, lastName, updateProfile]);
+
   const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
-  const isAdmin = !!admin;
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Your Name';
 
   return (
     <View style={styles.container}>
@@ -896,14 +925,54 @@ function ProfileView() {
             <Text style={styles.avatarText}>{initials || 'SG'}</Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>
-              {user?.firstName} {user?.lastName}
-            </Text>
+            {editingName ? (
+              <View style={styles.nameEditRow}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="First"
+                  placeholderTextColor={C.textMuted}
+                  autoFocus
+                  returnKeyType="next"
+                />
+                <TextInput
+                  style={styles.nameInput}
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Last"
+                  placeholderTextColor={C.textMuted}
+                  returnKeyType="done"
+                  onSubmitEditing={saveName}
+                />
+              </View>
+            ) : (
+              <Text style={styles.profileName}>{displayName}</Text>
+            )}
             <Text style={styles.profileEmail}>{user?.email}</Text>
+            {nameError && <Text style={styles.nameError}>{nameError}</Text>}
           </View>
-          <TouchableOpacity onPress={() => logout()} style={styles.logoutBtn} activeOpacity={0.8}>
-            <LogOut size={18} color={C.error} strokeWidth={2} />
-          </TouchableOpacity>
+
+          {editingName ? (
+            <View style={styles.nameEditActions}>
+              {savingName ? (
+                <ActivityIndicator size="small" color={C.neonBlue} />
+              ) : (
+                <>
+                  <TouchableOpacity onPress={saveName} style={styles.nameActionBtn} activeOpacity={0.8}>
+                    <Text style={styles.nameActionSave}>Save</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={cancelEditName} style={[styles.nameActionBtn, styles.nameActionCancelBtn]} activeOpacity={0.8}>
+                    <X size={14} color={C.textMuted} strokeWidth={2} />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity onPress={startEditName} style={styles.nameEditTrigger} activeOpacity={0.8}>
+              <Pencil size={15} color={C.textMuted} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Birthday ─────────────────────────────────── */}
@@ -947,7 +1016,7 @@ function ProfileView() {
           <TouchableOpacity
             style={styles.quickLinkBtn}
             onPress={() => {
-              const el = document?.getElementById?.('orders-section');
+              const el = (document as any)?.getElementById?.('orders-section');
               el?.scrollIntoView?.({ behavior: 'smooth' });
             }}
             activeOpacity={0.85}
@@ -977,21 +1046,6 @@ function ProfileView() {
 
           <ThemeSelector />
         </View>
-
-        {/* ── Admin Panel (admins only) ─────────────────── */}
-        {isAdmin && (
-          <TouchableOpacity
-            style={styles.adminPanelBtn}
-            onPress={() => router.push('/admin')}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.quickLinkIcon, { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder }]}>
-              <ShieldCheck size={18} color={C.neonBlue} strokeWidth={2} />
-            </View>
-            <Text style={styles.adminPanelBtnText}>Admin Panel</Text>
-            <Text style={styles.adminPanelArrow}>›</Text>
-          </TouchableOpacity>
-        )}
 
         {/* ── Support ──────────────────────────────────── */}
         <WhatsAppContactCard />
@@ -2064,6 +2118,64 @@ function makeStyles(C: ThemeColors) {
     alignItems: 'center',
     borderWidth: 1,
     borderColor: C.error,
+  },
+  // Name editing
+  nameEditRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flex: 1,
+  },
+  nameInput: {
+    flex: 1,
+    backgroundColor: C.backgroundInput,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: C.neonBlueBorder,
+    color: C.textPrimary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    paddingHorizontal: 8,
+    paddingVertical: Platform.OS === 'web' ? 4 : 6,
+    minWidth: 0,
+  },
+  nameEditActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 4,
+  },
+  nameActionBtn: {
+    backgroundColor: C.neonBlue,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nameActionCancelBtn: {
+    backgroundColor: C.backgroundInput,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  nameActionSave: {
+    color: C.white,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  nameEditTrigger: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.full,
+    backgroundColor: C.backgroundInput,
+    borderWidth: 1,
+    borderColor: C.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nameError: {
+    color: C.error,
+    fontSize: FontSize.xs,
+    marginTop: 2,
   },
   statsRow: {
     flexDirection: 'row',

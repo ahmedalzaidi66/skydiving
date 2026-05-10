@@ -10,6 +10,12 @@ export type UserProfile = {
   birthday: string | null;
 };
 
+type ProfileUpdates = {
+  firstName?: string;
+  lastName?: string;
+  birthday?: string;
+};
+
 type AuthContextType = {
   user: UserProfile | null;
   session: Session | null;
@@ -17,7 +23,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (firstName: string, lastName: string, email: string, password: string, birthday: string) => Promise<{ success: boolean; error?: string }>;
-  updateProfile: (updates: { birthday?: string }) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: ProfileUpdates) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   resetPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
@@ -149,16 +155,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateProfile = useCallback(async (
-    updates: { birthday?: string },
+    updates: ProfileUpdates,
   ): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'Not authenticated' };
-    const { error } = await supabase.from('user_profiles').upsert({
-      id: user.id,
-      ...updates,
-      updated_at: new Date().toISOString(),
-    });
-    if (error) return { success: false, error: error.message };
-    setUser((prev) => prev ? { ...prev, ...updates } : prev);
+
+    // Save firstName/lastName to Supabase auth user_metadata.
+    if (updates.firstName !== undefined || updates.lastName !== undefined) {
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          ...(updates.firstName !== undefined ? { first_name: updates.firstName } : {}),
+          ...(updates.lastName !== undefined ? { last_name: updates.lastName } : {}),
+        },
+      });
+      if (authError) return { success: false, error: authError.message };
+    }
+
+    // Save birthday (and any future profile-table fields) to user_profiles.
+    if (updates.birthday !== undefined) {
+      const { error } = await supabase.from('user_profiles').upsert({
+        id: user.id,
+        birthday: updates.birthday,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) return { success: false, error: error.message };
+    }
+
+    setUser((prev) => prev ? {
+      ...prev,
+      ...(updates.firstName !== undefined ? { firstName: updates.firstName } : {}),
+      ...(updates.lastName !== undefined ? { lastName: updates.lastName } : {}),
+      ...(updates.birthday !== undefined ? { birthday: updates.birthday } : {}),
+    } : prev);
     return { success: true };
   }, [user]);
 
