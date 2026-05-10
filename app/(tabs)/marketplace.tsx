@@ -21,6 +21,7 @@ import AppHeader from '@/components/AppHeader';
 import SearchBar from '@/components/SearchBar';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 import { useTheme, useThemeColors } from '@/context/ThemeContext';
+import { useSearchSuggestions, addRecentSearch, clearAllRecent, type SuggestionSource } from '@/hooks/useSearchSuggestions';
 
 export type UsedGearListing = {
   id: string;
@@ -118,10 +119,31 @@ export default function MarketplaceScreen() {
   const [rawSearch, setRawSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingSearch, setLoadingSearch] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchingRef = useRef(false);
   const pageRef = useRef(0);
+
+  // Suggestion source built from loaded listings
+  const suggestionSource = useMemo<SuggestionSource>(() => {
+    const pool = allListings.length > 0 ? allListings : listings;
+    return {
+      productNames: [],
+      categoryNames: allCategories,
+      gearTerms: pool.map((l) => ({
+        title: l.title,
+        make: l.make ?? l.main_make ?? null,
+        model: l.model ?? l.main_model ?? null,
+      })),
+    };
+  }, [allListings, listings, allCategories]);
+
+  const { suggestions, recentSearches, loading: suggestionsLoading, refreshRecent } = useSearchSuggestions(
+    rawSearch,
+    suggestionSource,
+    showDropdown,
+  );
 
   const buildQuery = useCallback((offset: number, category: string | null, sortKey: SortKey, avail: AvailFilter) => {
     let q = supabase
@@ -140,6 +162,7 @@ export default function MarketplaceScreen() {
 
   const handleSearchChange = useCallback((text: string) => {
     setRawSearch(text);
+    setShowDropdown(true);
     if (text.trim()) setLoadingSearch(true);
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     searchDebounceRef.current = setTimeout(() => {
@@ -148,12 +171,27 @@ export default function MarketplaceScreen() {
     }, 300);
   }, []);
 
+  const commitSearch = useCallback((term: string) => {
+    const trimmed = term.trim();
+    setRawSearch(trimmed);
+    setSearchQuery(trimmed);
+    setShowDropdown(false);
+    setLoadingSearch(false);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (trimmed) addRecentSearch(trimmed).then(() => refreshRecent());
+  }, [refreshRecent]);
+
   const clearSearch = useCallback(() => {
     setRawSearch('');
     setSearchQuery('');
+    setShowDropdown(false);
     setLoadingSearch(false);
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
   }, []);
+
+  const handleClearRecent = useCallback(() => {
+    clearAllRecent().then(() => refreshRecent());
+  }, [refreshRecent]);
 
   const loadSellerProfiles = useCallback(async (rows: UsedGearListing[]) => {
     const sellerIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean)));
@@ -313,6 +351,12 @@ export default function MarketplaceScreen() {
           value={rawSearch}
           onChangeText={handleSearchChange}
           placeholder={t.searchGear ?? 'Search gear, make, model…'}
+          suggestions={suggestions}
+          recentSearches={recentSearches}
+          suggestionsLoading={suggestionsLoading}
+          showDropdown={showDropdown}
+          onSuggestionSelect={commitSearch}
+          onClearRecent={handleClearRecent}
         />
       </View>
 

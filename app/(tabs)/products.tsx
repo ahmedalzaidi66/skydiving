@@ -22,6 +22,7 @@ import SearchBar from '@/components/SearchBar';
 import StarRating from '@/components/StarRating';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 import { useTheme, useThemeColors, ThemeColors } from '@/context/ThemeContext';
+import { useSearchSuggestions, addRecentSearch, clearAllRecent, type SuggestionSource } from '@/hooks/useSearchSuggestions';
 
 const PAGE_SIZE = 10;
 
@@ -71,10 +72,28 @@ export default function ProductsScreen() {
 
   const [rawSearch, setRawSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchingRef = useRef(false);
   const pageRef = useRef(0);
+
+  // Build suggestion source from loaded products + categories
+  const suggestionSource = useMemo<SuggestionSource>(() => ({
+    productNames: (allProducts.length > 0 ? allProducts : products).map((p) => ({
+      en: p.name,
+      ar: p.name_ar,
+      category: p.category,
+    })),
+    categoryNames: categories.map((c) => getCategoryName(c, language)),
+    gearTerms: [],
+  }), [allProducts, products, categories, language]);
+
+  const { suggestions, recentSearches, loading: suggestionsLoading, refreshRecent } = useSearchSuggestions(
+    rawSearch,
+    suggestionSource,
+    showDropdown,
+  );
 
   useEffect(() => {
     setSelectedCategory(categoryParam ?? null);
@@ -82,6 +101,7 @@ export default function ProductsScreen() {
 
   const handleSearchChange = useCallback((text: string) => {
     setRawSearch(text);
+    setShowDropdown(true);
     if (text.trim()) setLoadingSearch(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -90,12 +110,27 @@ export default function ProductsScreen() {
     }, 300);
   }, []);
 
+  const commitSearch = useCallback((term: string) => {
+    const trimmed = term.trim();
+    setRawSearch(trimmed);
+    setSearchQuery(trimmed);
+    setShowDropdown(false);
+    setLoadingSearch(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (trimmed) addRecentSearch(trimmed).then(() => refreshRecent());
+  }, [refreshRecent]);
+
   const clearSearch = useCallback(() => {
     setRawSearch('');
     setSearchQuery('');
+    setShowDropdown(false);
     setLoadingSearch(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
   }, []);
+
+  const handleClearRecent = useCallback(() => {
+    clearAllRecent().then(() => refreshRecent());
+  }, [refreshRecent]);
 
   const resetAndLoad = useCallback(async (lang: string, cat: string | null) => {
     setLoading(true);
@@ -205,6 +240,12 @@ export default function ProductsScreen() {
           value={rawSearch}
           onChangeText={handleSearchChange}
           placeholder={t.searchProducts ?? 'Search products…'}
+          suggestions={suggestions}
+          recentSearches={recentSearches}
+          suggestionsLoading={suggestionsLoading}
+          showDropdown={showDropdown}
+          onSuggestionSelect={commitSearch}
+          onClearRecent={handleClearRecent}
         />
       </View>
 
