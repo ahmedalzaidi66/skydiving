@@ -24,7 +24,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { validateImageFile } from '@/lib/imageUpload';
 import GlossyButton from '@/components/GlossyButton';
-import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
+import { Spacing, FontSize, Radius } from '@/constants/theme';
+import { useThemeColors } from '@/context/ThemeContext';
 import { UsedGearListing } from '@/app/(tabs)/marketplace';
 
 const CONDITIONS = ['new', 'like_new', 'good', 'fair', 'poor'] as const;
@@ -114,6 +115,7 @@ export default function EditListingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
+  const C = useThemeColors();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [form, setForm] = useState<FormState | null>(null);
@@ -160,17 +162,21 @@ export default function EditListingScreen() {
 
   if (!isAuthenticated) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-            <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <View style={[s.header, { backgroundColor: C.background, borderBottomColor: C.border }]}>
+          <TouchableOpacity
+            style={[s.backBtn, { backgroundColor: C.navy, borderColor: C.neonBlueBorder }]}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={22} color={C.textPrimary} strokeWidth={2.5} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Listing</Text>
+          <Text style={[s.headerTitle, { color: C.textPrimary }]}>Edit Listing</Text>
           <View style={{ width: 48 }} />
         </View>
-        <View style={styles.centeredState}>
-          <AlertTriangle size={48} color={Colors.warning} strokeWidth={1.5} />
-          <Text style={styles.stateTitle}>Sign in required</Text>
+        <View style={s.centeredState}>
+          <AlertTriangle size={48} color={C.warning} strokeWidth={1.5} />
+          <Text style={[s.stateTitle, { color: C.textPrimary }]}>Sign in required</Text>
         </View>
       </View>
     );
@@ -178,9 +184,9 @@ export default function EditListingScreen() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.centeredState}>
-          <ActivityIndicator color={Colors.neonBlue} size="large" />
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <View style={s.centeredState}>
+          <ActivityIndicator color={C.neonBlue} size="large" />
         </View>
       </View>
     );
@@ -188,19 +194,27 @@ export default function EditListingScreen() {
 
   if (errors.load || !form) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-            <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <View style={[s.header, { backgroundColor: C.background, borderBottomColor: C.border }]}>
+          <TouchableOpacity
+            style={[s.backBtn, { backgroundColor: C.navy, borderColor: C.neonBlueBorder }]}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={22} color={C.textPrimary} strokeWidth={2.5} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Listing</Text>
+          <Text style={[s.headerTitle, { color: C.textPrimary }]}>Edit Listing</Text>
           <View style={{ width: 48 }} />
         </View>
-        <View style={styles.centeredState}>
-          <AlertTriangle size={48} color={Colors.warning} strokeWidth={1.5} />
-          <Text style={styles.stateTitle}>{errors.load ?? 'Error loading listing'}</Text>
-          <TouchableOpacity style={styles.backLink} onPress={() => router.back()} activeOpacity={0.8}>
-            <Text style={styles.backLinkText}>Go back</Text>
+        <View style={s.centeredState}>
+          <AlertTriangle size={48} color={C.warning} strokeWidth={1.5} />
+          <Text style={[s.stateTitle, { color: C.textPrimary }]}>{errors.load ?? 'Error loading listing'}</Text>
+          <TouchableOpacity
+            style={[s.backLink, { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder }]}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.backLinkText, { color: C.neonBlue }]}>Go back</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -209,12 +223,16 @@ export default function EditListingScreen() {
 
   if (success) {
     return (
-      <View style={styles.container}>
-        <View style={styles.centeredState}>
-          <CircleCheck size={72} color={Colors.success} strokeWidth={1.5} />
-          <Text style={styles.stateTitle}>Listing updated!</Text>
-          <TouchableOpacity style={styles.backLink} onPress={() => router.back()} activeOpacity={0.8}>
-            <Text style={styles.backLinkText}>Back to profile</Text>
+      <View style={[s.container, { backgroundColor: C.background }]}>
+        <View style={s.centeredState}>
+          <CircleCheck size={72} color={C.success} strokeWidth={1.5} />
+          <Text style={[s.stateTitle, { color: C.textPrimary }]}>Listing updated!</Text>
+          <TouchableOpacity
+            style={[s.backLink, { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder }]}
+            onPress={() => router.back()}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.backLinkText, { color: C.neonBlue }]}>Back to profile</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -295,7 +313,6 @@ export default function EditListingScreen() {
       return;
     }
 
-    // Upload every image directly to the 'uploads' bucket
     const imageUrls: string[] = [];
     for (const img of images) {
       if (img.isUrl && img.uri.startsWith('http')) {
@@ -385,40 +402,40 @@ export default function EditListingScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[s.container, { backgroundColor: C.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
+      <View style={[s.header, { backgroundColor: C.background, borderBottomColor: C.border }]}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[s.backBtn, { backgroundColor: C.navy, borderColor: C.neonBlueBorder }]}
           onPress={() => router.back()}
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
+          <ArrowLeft size={22} color={C.textPrimary} strokeWidth={2.5} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Listing</Text>
+        <Text style={[s.headerTitle, { color: C.textPrimary }]}>Edit Listing</Text>
         <View style={{ width: 48 }} />
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {originalStatus === 'rejected' && !!originalAdminNote ? (
-          <View style={styles.rejectionBanner}>
-            <AlertTriangle size={13} color={Colors.error} strokeWidth={2} />
+          <View style={[s.rejectionBanner, { backgroundColor: C.errorDim, borderColor: C.error }]}>
+            <AlertTriangle size={13} color={C.error} strokeWidth={2} />
             <View style={{ flex: 1, gap: 3 }}>
-              <Text style={styles.rejectionBannerTitle}>Rejected — reason from admin:</Text>
-              <Text style={styles.rejectionBannerNote}>{originalAdminNote}</Text>
-              <Text style={styles.rejectionBannerHint}>Fix the issue above and save to resubmit for review.</Text>
+              <Text style={[s.rejectionBannerTitle, { color: C.error }]}>Rejected — reason from admin:</Text>
+              <Text style={[s.rejectionBannerNote, { color: C.textPrimary }]}>{originalAdminNote}</Text>
+              <Text style={[s.rejectionBannerHint, { color: C.textMuted }]}>Fix the issue above and save to resubmit for review.</Text>
             </View>
           </View>
         ) : (
-          <View style={styles.pendingBadge}>
-            <AlertTriangle size={13} color={Colors.warning} strokeWidth={2} />
-            <Text style={styles.pendingBadgeText}>
+          <View style={[s.pendingBadge, { backgroundColor: 'rgba(255,179,0,0.08)', borderColor: 'rgba(255,179,0,0.25)' }]}>
+            <AlertTriangle size={13} color={C.warning} strokeWidth={2} />
+            <Text style={[s.pendingBadgeText, { color: C.warning }]}>
               {originalStatus === 'approved'
                 ? 'Editing will hide this listing until admin re-approves it.'
                 : 'Pending review — you can still edit this listing'}
@@ -427,66 +444,82 @@ export default function EditListingScreen() {
         )}
 
         {/* ── Photos ── */}
-        <SectionCard title="Photos">
-          <View style={styles.imageGrid}>
+        <SectionCard title="Photos" C={C}>
+          <View style={s.imageGrid}>
             {images.map((img, idx) => (
-              <View key={idx} style={styles.imgThumbWrap}>
-                <Image source={{ uri: img.uri }} style={styles.imgThumb} resizeMode="cover" />
+              <View key={idx} style={[s.imgThumbWrap, { borderColor: C.border }]}>
+                <Image source={{ uri: img.uri }} style={s.imgThumb} resizeMode="cover" />
                 {idx === 0 && (
-                  <View style={styles.mainBadge}>
-                    <Text style={styles.mainBadgeText}>Main</Text>
+                  <View style={s.mainBadge}>
+                    <Text style={s.mainBadgeText}>Main</Text>
                   </View>
                 )}
-                <TouchableOpacity style={styles.imgRemoveBtn} onPress={() => removeImage(idx)} activeOpacity={0.8}>
-                  <X size={14} color={Colors.white} strokeWidth={2.5} />
+                <TouchableOpacity style={s.imgRemoveBtn} onPress={() => removeImage(idx)} activeOpacity={0.8}>
+                  <X size={14} color="#FFFFFF" strokeWidth={2.5} />
                 </TouchableOpacity>
               </View>
             ))}
-            <TouchableOpacity style={styles.addImgBtn} onPress={pickImage} activeOpacity={0.75}>
+            <TouchableOpacity
+              style={[s.addImgBtn, { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder }]}
+              onPress={pickImage}
+              activeOpacity={0.75}
+            >
               {uploadingImg ? (
-                <ActivityIndicator size="small" color={Colors.neonBlue} />
+                <ActivityIndicator size="small" color={C.neonBlue} />
               ) : (
                 <>
-                  <Camera size={22} color={Colors.neonBlue} strokeWidth={2} />
-                  <Text style={styles.addImgText}>Add Photo</Text>
+                  <Camera size={22} color={C.neonBlue} strokeWidth={2} />
+                  <Text style={[s.addImgText, { color: C.neonBlue }]}>Add Photo</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
           <View style={{ gap: 6, marginTop: Spacing.sm }}>
-            <Text style={styles.fieldLabel}>Image URL (optional)</Text>
-            <View style={styles.urlRow}>
+            <Text style={[s.fieldLabel, { color: C.textMuted }]}>Image URL (optional)</Text>
+            <View style={s.urlRow}>
               <TextInput
-                style={[styles.input, { flex: 1 }]}
+                style={[s.input, { flex: 1, backgroundColor: C.backgroundInput, borderColor: C.border, color: C.textPrimary }]}
                 value={form.imageUrlFallback}
                 onChangeText={(v) => setField('imageUrlFallback', v)}
                 placeholder="https://..."
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={C.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <TouchableOpacity style={styles.urlAddBtn} onPress={addUrlImage} activeOpacity={0.8}>
-                <Plus size={18} color={Colors.neonBlue} strokeWidth={2.5} />
+              <TouchableOpacity
+                style={[s.urlAddBtn, { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder }]}
+                onPress={addUrlImage}
+                activeOpacity={0.8}
+              >
+                <Plus size={18} color={C.neonBlue} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           </View>
         </SectionCard>
 
         {/* ── Listing Details ── */}
-        <SectionCard title="Listing Details">
-          <Field label="Title *" value={form.title} onChange={(v) => setField('title', v)} error={errors.title} placeholder="e.g. Javelin J4K Complete Rig" />
+        <SectionCard title="Listing Details" C={C}>
+          <Field label="Title *" value={form.title} onChange={(v) => setField('title', v)} error={errors.title} placeholder="e.g. Javelin J4K Complete Rig" C={C} />
 
-          <View style={styles.fieldWrap}>
-            <Text style={styles.fieldLabel}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
+          <View style={s.fieldWrap}>
+            <Text style={[s.fieldLabel, { color: C.textMuted }]}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillRow}>
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.pill, form.category === cat && styles.pillActive]}
+                  style={[
+                    s.pill,
+                    { backgroundColor: C.backgroundCard, borderColor: C.border },
+                    form.category === cat && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+                  ]}
                   onPress={() => setField('category', cat)}
                   activeOpacity={0.75}
                 >
-                  <Text style={[styles.pillText, form.category === cat && styles.pillTextActive]}>
+                  <Text style={[
+                    s.pillText,
+                    { color: C.textMuted },
+                    form.category === cat && { color: C.neonBlue, fontWeight: '700' },
+                  ]}>
                     {CATEGORY_LABELS[cat]}
                   </Text>
                 </TouchableOpacity>
@@ -494,17 +527,25 @@ export default function EditListingScreen() {
             </ScrollView>
           </View>
 
-          <View style={styles.fieldWrap}>
-            <Text style={styles.fieldLabel}>Condition</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillRow}>
+          <View style={s.fieldWrap}>
+            <Text style={[s.fieldLabel, { color: C.textMuted }]}>Condition</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillRow}>
               {CONDITIONS.map((c) => (
                 <TouchableOpacity
                   key={c}
-                  style={[styles.pill, form.condition === c && styles.pillActive]}
+                  style={[
+                    s.pill,
+                    { backgroundColor: C.backgroundCard, borderColor: C.border },
+                    form.condition === c && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+                  ]}
                   onPress={() => setField('condition', c)}
                   activeOpacity={0.75}
                 >
-                  <Text style={[styles.pillText, form.condition === c && styles.pillTextActive]}>
+                  <Text style={[
+                    s.pillText,
+                    { color: C.textMuted },
+                    form.condition === c && { color: C.neonBlue, fontWeight: '700' },
+                  ]}>
                     {condLabel(c)}
                   </Text>
                 </TouchableOpacity>
@@ -512,100 +553,116 @@ export default function EditListingScreen() {
             </ScrollView>
           </View>
 
-          <View style={styles.row}>
+          <View style={s.row}>
             <View style={{ flex: 1 }}>
-              <Field label="Price (USD) *" value={form.price} onChange={(v) => setField('price', v)} error={errors.price} placeholder="0" keyboardType="numeric" />
+              <Field label="Price (USD) *" value={form.price} onChange={(v) => setField('price', v)} error={errors.price} placeholder="0" keyboardType="numeric" C={C} />
             </View>
-            <View style={styles.toggleWrap}>
-              <Text style={styles.fieldLabel}>Shipping Included</Text>
+            <View style={s.toggleWrap}>
+              <Text style={[s.fieldLabel, { color: C.textMuted }]}>Shipping Included</Text>
               <TouchableOpacity
-                style={[styles.toggleBtn, form.shipping_included && styles.toggleBtnActive]}
+                style={[
+                  s.toggleBtn,
+                  { backgroundColor: C.backgroundInput, borderColor: C.border },
+                  form.shipping_included && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+                ]}
                 onPress={() => setField('shipping_included', !form.shipping_included)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.toggleBtnText, form.shipping_included && styles.toggleBtnTextActive]}>
+                <Text style={[
+                  s.toggleBtnText,
+                  { color: C.textMuted },
+                  form.shipping_included && { color: C.neonBlue },
+                ]}>
                   {form.shipping_included ? 'Yes' : 'No'}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
-          <Field label="Location" value={form.location} onChange={(v) => setField('location', v)} placeholder="e.g. Perris, CA" />
+          <Field label="Location" value={form.location} onChange={(v) => setField('location', v)} placeholder="e.g. Perris, CA" C={C} />
         </SectionCard>
 
         {/* ── Equipment Details ── */}
-        <SectionCard title="Equipment Details">
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}><Field label="Make / Brand" value={form.make} onChange={(v) => setField('make', v)} placeholder="e.g. Sunpath" /></View>
-            <View style={{ flex: 1 }}><Field label="Model" value={form.model} onChange={(v) => setField('model', v)} placeholder="e.g. Javelin" /></View>
+        <SectionCard title="Equipment Details" C={C}>
+          <View style={s.row}>
+            <View style={{ flex: 1 }}><Field label="Make / Brand" value={form.make} onChange={(v) => setField('make', v)} placeholder="e.g. Sunpath" C={C} /></View>
+            <View style={{ flex: 1 }}><Field label="Model" value={form.model} onChange={(v) => setField('model', v)} placeholder="e.g. Javelin" C={C} /></View>
           </View>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}><Field label="Size" value={form.size} onChange={(v) => setField('size', v)} placeholder="e.g. J4K" /></View>
-            <View style={{ flex: 1 }}><Field label="Color" value={form.color} onChange={(v) => setField('color', v)} placeholder="e.g. Blue/Black" /></View>
+          <View style={s.row}>
+            <View style={{ flex: 1 }}><Field label="Size" value={form.size} onChange={(v) => setField('size', v)} placeholder="e.g. J4K" C={C} /></View>
+            <View style={{ flex: 1 }}><Field label="Color" value={form.color} onChange={(v) => setField('color', v)} placeholder="e.g. Blue/Black" C={C} /></View>
           </View>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}><Field label="DOM" value={form.dom} onChange={(v) => setField('dom', v)} placeholder="e.g. 2019-06" /></View>
-            <View style={{ flex: 1 }}><Field label="Total Jumps" value={form.total_jumps} onChange={(v) => setField('total_jumps', v)} placeholder="e.g. 200" keyboardType="numeric" /></View>
+          <View style={s.row}>
+            <View style={{ flex: 1 }}><Field label="DOM" value={form.dom} onChange={(v) => setField('dom', v)} placeholder="e.g. 2019-06" C={C} /></View>
+            <View style={{ flex: 1 }}><Field label="Total Jumps" value={form.total_jumps} onChange={(v) => setField('total_jumps', v)} placeholder="e.g. 200" keyboardType="numeric" C={C} /></View>
           </View>
-          <Field label="Serial Number" value={form.serial_number} onChange={(v) => setField('serial_number', v)} placeholder="e.g. J-12345" />
+          <Field label="Serial Number" value={form.serial_number} onChange={(v) => setField('serial_number', v)} placeholder="e.g. J-12345" C={C} />
         </SectionCard>
 
         {/* ── Rig Sub-Components ── */}
         {isRig && (
           <>
-            <SectionCard title="Main Canopy">
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Make" value={form.main_make} onChange={(v) => setField('main_make', v)} placeholder="e.g. Performance Designs" /></View>
-                <View style={{ flex: 1 }}><Field label="Model" value={form.main_model} onChange={(v) => setField('main_model', v)} placeholder="e.g. Sabre2" /></View>
+            <SectionCard title="Main Canopy" C={C}>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Make" value={form.main_make} onChange={(v) => setField('main_make', v)} placeholder="e.g. Performance Designs" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="Model" value={form.main_model} onChange={(v) => setField('main_model', v)} placeholder="e.g. Sabre2" C={C} /></View>
               </View>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Size" value={form.main_size} onChange={(v) => setField('main_size', v)} placeholder="e.g. 170" /></View>
-                <View style={{ flex: 1 }}><Field label="DOM" value={form.main_dom} onChange={(v) => setField('main_dom', v)} placeholder="e.g. 2018-03" /></View>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Size" value={form.main_size} onChange={(v) => setField('main_size', v)} placeholder="e.g. 170" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="DOM" value={form.main_dom} onChange={(v) => setField('main_dom', v)} placeholder="e.g. 2018-03" C={C} /></View>
               </View>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Jumps" value={form.main_jumps} onChange={(v) => setField('main_jumps', v)} placeholder="e.g. 350" keyboardType="numeric" /></View>
-                <View style={{ flex: 1 }}><Field label="Serial" value={form.main_serial} onChange={(v) => setField('main_serial', v)} placeholder="Serial number" /></View>
-              </View>
-            </SectionCard>
-
-            <SectionCard title="Reserve">
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Make" value={form.reserve_make} onChange={(v) => setField('reserve_make', v)} placeholder="e.g. Precision Aerodynamics" /></View>
-                <View style={{ flex: 1 }}><Field label="Model" value={form.reserve_model} onChange={(v) => setField('reserve_model', v)} placeholder="e.g. Raven" /></View>
-              </View>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Size" value={form.reserve_size} onChange={(v) => setField('reserve_size', v)} placeholder="e.g. 176" /></View>
-                <View style={{ flex: 1 }}><Field label="DOM" value={form.reserve_dom} onChange={(v) => setField('reserve_dom', v)} placeholder="e.g. 2017-11" /></View>
-              </View>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Repacks" value={form.reserve_repacks} onChange={(v) => setField('reserve_repacks', v)} placeholder="e.g. 3" keyboardType="numeric" /></View>
-                <View style={{ flex: 1 }}><Field label="Serial" value={form.reserve_serial} onChange={(v) => setField('reserve_serial', v)} placeholder="Serial number" /></View>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Jumps" value={form.main_jumps} onChange={(v) => setField('main_jumps', v)} placeholder="e.g. 350" keyboardType="numeric" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="Serial" value={form.main_serial} onChange={(v) => setField('main_serial', v)} placeholder="Serial number" C={C} /></View>
               </View>
             </SectionCard>
 
-            <SectionCard title="AAD">
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Make" value={form.aad_make} onChange={(v) => setField('aad_make', v)} placeholder="e.g. Cypres" /></View>
-                <View style={{ flex: 1 }}><Field label="Model" value={form.aad_model} onChange={(v) => setField('aad_model', v)} placeholder="e.g. Expert" /></View>
+            <SectionCard title="Reserve" C={C}>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Make" value={form.reserve_make} onChange={(v) => setField('reserve_make', v)} placeholder="e.g. Precision Aerodynamics" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="Model" value={form.reserve_model} onChange={(v) => setField('reserve_model', v)} placeholder="e.g. Raven" C={C} /></View>
               </View>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="DOM" value={form.aad_dom} onChange={(v) => setField('aad_dom', v)} placeholder="e.g. 2020-01" /></View>
-                <View style={{ flex: 1 }}><Field label="EOL" value={form.aad_eol} onChange={(v) => setField('aad_eol', v)} placeholder="e.g. 2028-01" /></View>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Size" value={form.reserve_size} onChange={(v) => setField('reserve_size', v)} placeholder="e.g. 176" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="DOM" value={form.reserve_dom} onChange={(v) => setField('reserve_dom', v)} placeholder="e.g. 2017-11" C={C} /></View>
               </View>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}><Field label="Jumps" value={form.aad_jumps} onChange={(v) => setField('aad_jumps', v)} placeholder="e.g. 180" keyboardType="numeric" /></View>
-                <View style={{ flex: 1 }}><Field label="Serial" value={form.aad_serial} onChange={(v) => setField('aad_serial', v)} placeholder="Serial number" /></View>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Repacks" value={form.reserve_repacks} onChange={(v) => setField('reserve_repacks', v)} placeholder="e.g. 3" keyboardType="numeric" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="Serial" value={form.reserve_serial} onChange={(v) => setField('reserve_serial', v)} placeholder="Serial number" C={C} /></View>
               </View>
-              <View style={styles.fieldWrap}>
-                <Text style={styles.fieldLabel}>Needs Service</Text>
-                <View style={styles.pillRow}>
+            </SectionCard>
+
+            <SectionCard title="AAD" C={C}>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Make" value={form.aad_make} onChange={(v) => setField('aad_make', v)} placeholder="e.g. Cypres" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="Model" value={form.aad_model} onChange={(v) => setField('aad_model', v)} placeholder="e.g. Expert" C={C} /></View>
+              </View>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="DOM" value={form.aad_dom} onChange={(v) => setField('aad_dom', v)} placeholder="e.g. 2020-01" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="EOL" value={form.aad_eol} onChange={(v) => setField('aad_eol', v)} placeholder="e.g. 2028-01" C={C} /></View>
+              </View>
+              <View style={s.row}>
+                <View style={{ flex: 1 }}><Field label="Jumps" value={form.aad_jumps} onChange={(v) => setField('aad_jumps', v)} placeholder="e.g. 180" keyboardType="numeric" C={C} /></View>
+                <View style={{ flex: 1 }}><Field label="Serial" value={form.aad_serial} onChange={(v) => setField('aad_serial', v)} placeholder="Serial number" C={C} /></View>
+              </View>
+              <View style={s.fieldWrap}>
+                <Text style={[s.fieldLabel, { color: C.textMuted }]}>Needs Service</Text>
+                <View style={s.pillRow}>
                   {([false, true] as const).map((val) => (
                     <TouchableOpacity
                       key={String(val)}
-                      style={[styles.pill, form.aad_needs_service === val && styles.pillActive]}
+                      style={[
+                        s.pill,
+                        { backgroundColor: C.backgroundCard, borderColor: C.border },
+                        form.aad_needs_service === val && { backgroundColor: C.neonBlueGlow, borderColor: C.neonBlueBorder },
+                      ]}
                       onPress={() => setField('aad_needs_service', val)}
                       activeOpacity={0.75}
                     >
-                      <Text style={[styles.pillText, form.aad_needs_service === val && styles.pillTextActive]}>
+                      <Text style={[
+                        s.pillText,
+                        { color: C.textMuted },
+                        form.aad_needs_service === val && { color: C.neonBlue, fontWeight: '700' },
+                      ]}>
                         {val ? 'Yes' : 'No'}
                       </Text>
                     </TouchableOpacity>
@@ -617,7 +674,7 @@ export default function EditListingScreen() {
         )}
 
         {/* ── Description & Contact ── */}
-        <SectionCard title="Description & Contact">
+        <SectionCard title="Description & Contact" C={C}>
           <Field
             label="Description"
             value={form.description}
@@ -625,6 +682,7 @@ export default function EditListingScreen() {
             placeholder="Describe the gear..."
             multiline
             numberOfLines={5}
+            C={C}
           />
           <Field
             label="Contact *"
@@ -633,12 +691,13 @@ export default function EditListingScreen() {
             error={errors.contact}
             placeholder="+1 555 000 0000"
             keyboardType="phone-pad"
+            C={C}
           />
         </SectionCard>
 
         {errors.submit && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{errors.submit}</Text>
+          <View style={[s.errorBanner, { backgroundColor: C.errorDim, borderColor: C.error }]}>
+            <Text style={[s.errorText, { color: C.error }]}>{errors.submit}</Text>
           </View>
         )}
 
@@ -657,137 +716,105 @@ export default function EditListingScreen() {
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, children, C }: { title: string; children: React.ReactNode; C: ReturnType<typeof useThemeColors> }) {
   return (
-    <View style={sectionStyles.card}>
-      <Text style={sectionStyles.title}>{title}</Text>
-      <View style={sectionStyles.body}>{children}</View>
+    <View style={[s.sectionCard, { backgroundColor: C.backgroundCard, borderColor: C.border }]}>
+      <Text style={[s.sectionTitle, { color: C.textSecondary, backgroundColor: C.neonBlueGlow, borderBottomColor: C.border }]}>
+        {title}
+      </Text>
+      <View style={s.sectionBody}>{children}</View>
     </View>
   );
 }
 
-const sectionStyles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-  },
-  title: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(0,191,255,0.05)',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  body: {
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-});
-
 function Field({
-  label, value, onChange, error, placeholder, keyboardType, multiline, numberOfLines,
+  label, value, onChange, error, placeholder, keyboardType, multiline, numberOfLines, C,
 }: {
   label: string; value: string; onChange: (v: string) => void;
   error?: string; placeholder?: string; keyboardType?: any;
   multiline?: boolean; numberOfLines?: number;
+  C: ReturnType<typeof useThemeColors>;
 }) {
   return (
-    <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={s.fieldWrap}>
+      <Text style={[s.fieldLabel, { color: C.textMuted }]}>{label}</Text>
       <TextInput
         style={[
-          styles.input,
+          s.input,
+          { backgroundColor: C.backgroundInput, borderColor: C.border, color: C.textPrimary },
           multiline && { height: (numberOfLines ?? 3) * 22 + 24, textAlignVertical: 'top' },
-          !!error && styles.inputError,
+          !!error && { borderColor: C.error },
         ]}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={Colors.textMuted}
+        placeholderTextColor={C.textMuted}
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={numberOfLines}
         autoCapitalize="none"
         autoCorrect={false}
       />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={[s.errorText, { color: C.error }]}>{error}</Text> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+// Layout-only styles — no color values
+const s = StyleSheet.create({
+  container: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
     paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg,
     paddingBottom: Spacing.md,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
   },
   backBtn: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: 'rgba(5,10,20,0.82)',
-    borderWidth: 1.5, borderColor: 'rgba(0,191,255,0.55)',
+    borderWidth: 1.5,
     justifyContent: 'center', alignItems: 'center',
   },
-  headerTitle: { color: Colors.textPrimary, fontSize: FontSize.lg, fontWeight: '700' },
+  headerTitle: { fontSize: FontSize.lg, fontWeight: '700' },
   content: { padding: Spacing.md, gap: Spacing.md },
   pendingBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(255,179,0,0.08)',
     borderRadius: Radius.md, borderWidth: 1,
-    borderColor: 'rgba(255,179,0,0.25)', padding: Spacing.sm,
+    padding: Spacing.sm,
   },
-  pendingBadgeText: { flex: 1, color: Colors.warning, fontSize: FontSize.xs, fontWeight: '600', lineHeight: 17 },
+  pendingBadgeText: { flex: 1, fontSize: FontSize.xs, fontWeight: '600', lineHeight: 17 },
   fieldWrap: { gap: 6 },
-  fieldLabel: { color: Colors.textMuted, fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  fieldLabel: { fontSize: FontSize.xs, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
   input: {
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
-    color: Colors.textPrimary, fontSize: FontSize.md,
+    borderRadius: Radius.md, borderWidth: 1,
+    fontSize: FontSize.md,
     paddingHorizontal: Spacing.md, paddingVertical: 12,
   },
-  inputError: { borderColor: Colors.error },
-  errorText: { color: Colors.error, fontSize: FontSize.xs, fontWeight: '600' },
+  errorText: { fontSize: FontSize.xs, fontWeight: '600' },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, paddingBottom: 4 },
   pill: {
     paddingHorizontal: 14, paddingVertical: 7,
     borderRadius: Radius.full, borderWidth: 1,
-    borderColor: Colors.border, backgroundColor: Colors.backgroundCard,
   },
-  pillActive: { backgroundColor: Colors.neonBlueGlow, borderColor: Colors.neonBlueBorder },
-  pillText: { color: Colors.textMuted, fontSize: FontSize.sm, fontWeight: '600' },
-  pillTextActive: { color: Colors.neonBlue, fontWeight: '700' },
+  pillText: { fontSize: FontSize.sm, fontWeight: '600' },
   row: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
   toggleWrap: { gap: 6, alignItems: 'flex-start', minWidth: 120 },
   toggleBtn: {
     paddingHorizontal: 20, paddingVertical: 12,
     borderRadius: Radius.md, borderWidth: 1,
-    borderColor: Colors.border, backgroundColor: Colors.backgroundInput,
   },
-  toggleBtnActive: { backgroundColor: Colors.neonBlueGlow, borderColor: Colors.neonBlueBorder },
-  toggleBtnText: { color: Colors.textMuted, fontSize: FontSize.md, fontWeight: '700' },
-  toggleBtnTextActive: { color: Colors.neonBlue },
+  toggleBtnText: { fontSize: FontSize.md, fontWeight: '700' },
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   imgThumbWrap: {
     width: 88, height: 88, borderRadius: Radius.md, overflow: 'hidden',
-    position: 'relative', borderWidth: 1, borderColor: Colors.border,
+    position: 'relative', borderWidth: 1,
   },
   imgThumb: { width: '100%', height: '100%' },
   mainBadge: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     backgroundColor: 'rgba(0,191,255,0.8)', paddingVertical: 2, alignItems: 'center',
   },
-  mainBadgeText: { color: Colors.white, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  mainBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   imgRemoveBtn: {
     position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
     backgroundColor: 'rgba(5,10,20,0.85)', borderWidth: 1,
@@ -795,35 +822,51 @@ const styles = StyleSheet.create({
   },
   addImgBtn: {
     width: 88, height: 88, borderRadius: Radius.md,
-    borderWidth: 1.5, borderColor: Colors.neonBlueBorder, borderStyle: 'dashed',
+    borderWidth: 1.5, borderStyle: 'dashed',
     justifyContent: 'center', alignItems: 'center', gap: 4,
-    backgroundColor: Colors.neonBlueGlow,
   },
-  addImgText: { color: Colors.neonBlue, fontSize: 10, fontWeight: '700' },
+  addImgText: { fontSize: 10, fontWeight: '700' },
   urlRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' },
   urlAddBtn: {
     width: 44, height: 44, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.neonBlueBorder,
-    backgroundColor: Colors.neonBlueGlow, justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1,
+    justifyContent: 'center', alignItems: 'center',
   },
   rejectionBanner: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: 'rgba(255,68,68,0.08)',
     borderRadius: Radius.md, borderWidth: 1,
-    borderColor: 'rgba(255,68,68,0.3)', padding: Spacing.md,
+    padding: Spacing.md,
   },
-  rejectionBannerTitle: { color: Colors.error, fontSize: FontSize.xs, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
-  rejectionBannerNote: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '600', lineHeight: 18 },
-  rejectionBannerHint: { color: Colors.textMuted, fontSize: FontSize.xs, fontWeight: '500' },
+  rejectionBannerTitle: { fontSize: FontSize.xs, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  rejectionBannerNote: { fontSize: FontSize.sm, fontWeight: '600', lineHeight: 18 },
+  rejectionBannerHint: { fontSize: FontSize.xs, fontWeight: '500' },
   errorBanner: {
-    backgroundColor: Colors.errorDim, borderRadius: Radius.md,
-    padding: Spacing.md, borderWidth: 1, borderColor: Colors.error, alignItems: 'center',
+    borderRadius: Radius.md,
+    padding: Spacing.md, borderWidth: 1, alignItems: 'center',
   },
   centeredState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl, gap: Spacing.md },
-  stateTitle: { color: Colors.textPrimary, fontSize: FontSize.xl, fontWeight: '700', textAlign: 'center' },
+  stateTitle: { fontSize: FontSize.xl, fontWeight: '700', textAlign: 'center' },
   backLink: {
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.neonBlueBorder, backgroundColor: Colors.neonBlueGlow,
+    borderWidth: 1,
   },
-  backLinkText: { color: Colors.neonBlue, fontSize: FontSize.md, fontWeight: '700' },
+  backLinkText: { fontSize: FontSize.md, fontWeight: '700' },
+  sectionCard: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  sectionTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  sectionBody: {
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
 });
