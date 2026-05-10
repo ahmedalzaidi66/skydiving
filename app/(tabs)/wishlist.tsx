@@ -21,7 +21,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { getProductName, getProductImage } from '@/lib/supabase';
 import AppHeader from '@/components/AppHeader';
-import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { useThemeColors, ThemeColors } from '@/context/ThemeContext';
 
 const PAGE_SIZE = 10;
 
@@ -39,10 +40,11 @@ export default function WishlistScreen() {
   const { t, language } = useLanguage();
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
 
   const totalCount = count + gearCount;
 
-  // Track how many combined rows are visible
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const loadingMoreRef = useRef(false);
 
@@ -101,7 +103,7 @@ export default function WishlistScreen() {
         <AppHeader title={t.myWishlist ?? 'My Wishlist'} />
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
-            <Heart size={40} color={Colors.textMuted} strokeWidth={1.5} />
+            <Heart size={40} color={C.textMuted} strokeWidth={1.5} />
           </View>
           <Text style={styles.emptyTitle}>{t.signInToSave ?? 'Sign in to save favorites'}</Text>
           <Text style={styles.emptySubtitle}>
@@ -126,7 +128,7 @@ export default function WishlistScreen() {
       <View style={styles.container}>
         <AppHeader title={t.myWishlist ?? 'My Wishlist'} showBack />
         <View style={styles.centered}>
-          <ActivityIndicator color={Colors.neonBlue} size="large" />
+          <ActivityIndicator color={C.neonBlue} size="large" />
         </View>
       </View>
     );
@@ -138,7 +140,7 @@ export default function WishlistScreen() {
         <AppHeader title={t.myWishlist ?? 'My Wishlist'} showBack />
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
-            <Heart size={40} color={Colors.textMuted} strokeWidth={1.5} />
+            <Heart size={40} color={C.textMuted} strokeWidth={1.5} />
           </View>
           <Text style={styles.emptyTitle}>{t.wishlistEmpty ?? 'Your wishlist is empty'}</Text>
           <Text style={styles.emptySubtitle}>
@@ -170,7 +172,7 @@ export default function WishlistScreen() {
       if (hasMore) {
         return (
           <View style={styles.footerLoader}>
-            <ActivityIndicator size="small" color={Colors.neonBlue} />
+            <ActivityIndicator size="small" color={C.neonBlue} />
           </View>
         );
       }
@@ -213,7 +215,7 @@ export default function WishlistScreen() {
         </Text>
         {count > 0 && (
           <TouchableOpacity onPress={handleClearAll} activeOpacity={0.7} style={styles.clearBtn}>
-            <Trash2 size={14} color={Colors.error} strokeWidth={2} />
+            <Trash2 size={14} color={C.error} strokeWidth={2} />
             <Text style={styles.clearBtnText}>{t.clearAll ?? 'Clear All'}</Text>
           </TouchableOpacity>
         )}
@@ -252,6 +254,8 @@ function WishlistCard({
   onView: () => void;
   screenWidth: number;
 }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
   const { t } = useLanguage();
@@ -318,14 +322,14 @@ function WishlistCard({
           disabled={product.stock === 0}
           activeOpacity={0.8}
         >
-          <ShoppingCart size={14} color={product.stock === 0 ? Colors.textMuted : Colors.background} strokeWidth={2} />
+          <ShoppingCart size={14} color={product.stock === 0 ? C.textMuted : '#FFFFFF'} strokeWidth={2} />
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionBtn, styles.removeBtn]}
           onPress={handleRemove}
           activeOpacity={0.8}
         >
-          <X size={14} color={Colors.error} strokeWidth={2.5} />
+          <X size={14} color={C.error} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -341,6 +345,8 @@ function GearWishlistCard({
   onRemove: () => void;
   onView: () => void;
 }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -377,7 +383,7 @@ function GearWishlistCard({
           <Image source={{ uri: thumb }} style={styles.cardImage} resizeMode="cover" />
         ) : (
           <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-            <Tag size={24} color={Colors.textMuted} strokeWidth={1.5} />
+            <Tag size={24} color={C.textMuted} strokeWidth={1.5} />
           </View>
         )}
         <View style={styles.gearTypeBadge}>
@@ -409,261 +415,263 @@ function GearWishlistCard({
           onPress={handleRemove}
           activeOpacity={0.8}
         >
-          <X size={14} color={Colors.error} strokeWidth={2.5} />
+          <X size={14} color={C.error} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: 80,
-  },
-  emptyIconWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: Colors.backgroundCard,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  emptyTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: Spacing.xs,
-  },
-  emptySubtitle: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: Spacing.lg,
-  },
-  signInBtn: {
-    backgroundColor: Colors.neonBlue,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: 11,
-    borderRadius: Radius.full,
-  },
-  signInBtnText: {
-    color: Colors.background,
-    fontSize: FontSize.md,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  listCount: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  clearBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-  },
-  clearBtnText: {
-    color: Colors.error,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  list: {
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-  },
-  sectionDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginVertical: Spacing.md,
-  },
-  sectionDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  sectionDividerText: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing.sm,
-    overflow: 'hidden',
-    ...Shadow.card,
-  },
-  cardImageWrap: {
-    position: 'relative',
-    width: 76,
-    height: 84,
-    flexShrink: 0,
-  },
-  cardImage: {
-    width: 76,
-    height: 84,
-    backgroundColor: Colors.backgroundSecondary,
-  },
-  cardImagePlaceholder: {
-    backgroundColor: Colors.backgroundSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    backgroundColor: Colors.neonBlue,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  cardBadgeText: {
-    color: Colors.white,
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  gearTypeBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    backgroundColor: 'rgba(255,179,0,0.85)',
-    borderRadius: Radius.sm,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  gearTypeBadgeText: {
-    color: Colors.background,
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  cardInfo: {
-    flex: 1,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    gap: 2,
-  },
-  cardCategory: {
-    color: Colors.neonBlue,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  cardName: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-  cardPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-    marginTop: 2,
-  },
-  cardPrice: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.md,
-    fontWeight: '800',
-  },
-  cardCompare: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-    textDecorationLine: 'line-through',
-  },
-  outOfStock: {
-    color: Colors.warning,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  cardActions: {
-    flexDirection: 'column',
-    gap: Spacing.xs,
-    paddingRight: Spacing.sm,
-    paddingVertical: Spacing.sm,
-  },
-  actionBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: Radius.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  cartBtn: {
-    backgroundColor: Colors.neonBlue,
-    borderColor: Colors.neonBlue,
-  },
-  contactBtn: {
-    backgroundColor: '#25D366',
-    borderColor: '#25D366',
-  },
-  removeBtn: {
-    backgroundColor: Colors.error + '15',
-    borderColor: Colors.error + '40',
-  },
-  actionBtnDisabled: {
-    backgroundColor: Colors.backgroundSecondary,
-    borderColor: Colors.border,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  footerEnd: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 8,
-    gap: 10,
-  },
-  footerEndLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  footerEndText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-});
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: C.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyState: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.xl,
+      paddingBottom: 80,
+    },
+    emptyIconWrap: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: C.backgroundCard,
+      borderWidth: 1,
+      borderColor: C.border,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: Spacing.md,
+    },
+    emptyTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: Spacing.xs,
+    },
+    emptySubtitle: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+      textAlign: 'center',
+      lineHeight: 20,
+      marginBottom: Spacing.lg,
+    },
+    signInBtn: {
+      backgroundColor: C.neonBlue,
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: 11,
+      borderRadius: Radius.full,
+    },
+    signInBtnText: {
+      color: C.white,
+      fontSize: FontSize.md,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+    listHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    listCount: {
+      color: C.textSecondary,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+    },
+    clearBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 6,
+    },
+    clearBtnText: {
+      color: C.error,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+    },
+    list: {
+      paddingHorizontal: Spacing.md,
+      paddingTop: Spacing.sm,
+    },
+    sectionDivider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginVertical: Spacing.md,
+    },
+    sectionDividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: C.border,
+    },
+    sectionDividerText: {
+      color: C.textMuted,
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+    },
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: C.border,
+      marginBottom: Spacing.sm,
+      overflow: 'hidden',
+      ...Shadow.card,
+    },
+    cardImageWrap: {
+      position: 'relative',
+      width: 76,
+      height: 84,
+      flexShrink: 0,
+    },
+    cardImage: {
+      width: 76,
+      height: 84,
+      backgroundColor: C.backgroundSecondary,
+    },
+    cardImagePlaceholder: {
+      backgroundColor: C.backgroundSecondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    cardBadge: {
+      position: 'absolute',
+      top: 6,
+      left: 6,
+      backgroundColor: C.neonBlue,
+      borderRadius: Radius.sm,
+      paddingHorizontal: 5,
+      paddingVertical: 2,
+    },
+    cardBadgeText: {
+      color: C.white,
+      fontSize: 9,
+      fontWeight: '800',
+    },
+    gearTypeBadge: {
+      position: 'absolute',
+      top: 6,
+      left: 6,
+      backgroundColor: 'rgba(255,179,0,0.85)',
+      borderRadius: Radius.sm,
+      paddingHorizontal: 5,
+      paddingVertical: 2,
+    },
+    gearTypeBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 8,
+      fontWeight: '900',
+      letterSpacing: 0.5,
+    },
+    cardInfo: {
+      flex: 1,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: Spacing.sm,
+      gap: 2,
+    },
+    cardCategory: {
+      color: C.neonBlue,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.8,
+    },
+    cardName: {
+      color: C.textPrimary,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      lineHeight: 18,
+    },
+    cardPriceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 6,
+      marginTop: 2,
+    },
+    cardPrice: {
+      color: C.neonBlue,
+      fontSize: FontSize.md,
+      fontWeight: '800',
+    },
+    cardCompare: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '500',
+      textDecorationLine: 'line-through',
+    },
+    outOfStock: {
+      color: C.warning,
+      fontSize: 10,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+    cardActions: {
+      flexDirection: 'column',
+      gap: Spacing.xs,
+      paddingRight: Spacing.sm,
+      paddingVertical: Spacing.sm,
+    },
+    actionBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: Radius.sm,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+    },
+    cartBtn: {
+      backgroundColor: C.neonBlue,
+      borderColor: C.neonBlue,
+    },
+    contactBtn: {
+      backgroundColor: '#25D366',
+      borderColor: '#25D366',
+    },
+    removeBtn: {
+      backgroundColor: C.errorDim,
+      borderColor: C.error + '40',
+    },
+    actionBtnDisabled: {
+      backgroundColor: C.backgroundSecondary,
+      borderColor: C.border,
+    },
+    footerLoader: {
+      paddingVertical: 20,
+      alignItems: 'center',
+    },
+    footerEnd: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 20,
+      paddingHorizontal: 8,
+      gap: 10,
+    },
+    footerEndLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: C.border,
+    },
+    footerEndText: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
+  });
+}

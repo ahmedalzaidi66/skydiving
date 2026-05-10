@@ -15,18 +15,17 @@ import { useLanguage } from '@/context/LanguageContext';
 import AppHeader from '@/components/AppHeader';
 import GlossyButton from '@/components/GlossyButton';
 import QuantitySelector from '@/components/QuantitySelector';
-import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
-
-// Shipping is calculated dynamically at checkout based on country rules.
-// Cart shows a placeholder message only.
+import { Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { useThemeColors, ThemeColors } from '@/context/ThemeContext';
 
 export default function CartScreen() {
   const router = useRouter();
   const { items, removeFromCart, updateQuantity, subtotal, totalItems } = useCart();
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const [stockWarning, setStockWarning] = useState<string | null>(null);
 
-  // Shipping & tax calculated at checkout based on destination country
   const total = subtotal;
 
   if (items.length === 0) {
@@ -109,6 +108,8 @@ function CartItemCard({
   onRemove: () => void;
   onUpdateQty: (qty: number) => void;
 }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   const lineTotal = item.product.price * item.quantity;
 
   return (
@@ -126,7 +127,7 @@ function CartItemCard({
             {item.product.name}
           </Text>
           <TouchableOpacity onPress={onRemove} activeOpacity={0.7} style={styles.removeBtn}>
-            <Trash2 size={16} color={Colors.error} strokeWidth={2} />
+            <Trash2 size={16} color={C.error} strokeWidth={2} />
           </TouchableOpacity>
         </View>
         <Text style={styles.cardCategory}>
@@ -162,6 +163,8 @@ function SummaryRow({
   value: string;
   highlight?: boolean;
 }) {
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <View style={styles.summaryRow}>
       <Text style={styles.summaryLabel}>{label}</Text>
@@ -175,9 +178,11 @@ function SummaryRow({
 function EmptyCart() {
   const router = useRouter();
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const styles = makeStyles(C);
   return (
     <View style={styles.emptyContainer}>
-      <ShoppingBag size={48} color={Colors.textMuted} strokeWidth={1.5} />
+      <ShoppingBag size={48} color={C.textMuted} strokeWidth={1.5} />
       <Text style={styles.emptyTitle}>{t.cartEmpty}</Text>
       <Text style={styles.emptySubtitle}>{t.cartEmptySubtitle}</Text>
       <View style={{ marginTop: Spacing.lg, width: '60%' }}>
@@ -190,205 +195,207 @@ function EmptyCart() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  listContent: {
-    padding: Spacing.md,
-    paddingBottom: Spacing.xxl,
-    gap: Spacing.sm,
-  },
-  itemCount: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    marginBottom: Spacing.sm,
-  },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-    ...Shadow.card,
-  },
-  cardImageWrap: {
-    width: 82,
-    height: 90,
-    position: 'relative',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  cardImage: {
-    objectFit: 'cover',
-  } as any,
-  cardInfo: {
-    flex: 1,
-    padding: Spacing.sm,
-    justifyContent: 'space-between',
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Spacing.sm,
-  },
-  cardName: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  removeBtn: {
-    padding: 4,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 2,
-  },
-  colorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  colorName: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  stockWarnBanner: {
-    backgroundColor: 'rgba(255,179,0,0.12)',
-    borderRadius: Radius.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,179,0,0.35)',
-  },
-  stockWarnText: {
-    color: Colors.warning,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  cardCategory: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  cardBottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  lineTotal: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.md,
-    fontWeight: '800',
-  },
-  summary: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    marginTop: Spacing.md,
-    gap: Spacing.sm,
-  },
-  summaryTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-  },
-  summaryValue: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontWeight: '600',
-  },
-  summaryHighlight: {
-    color: Colors.success,
-    fontWeight: '700',
-  },
-  shippingHint: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontStyle: 'italic',
-  },
-  shippingNote: {
-    backgroundColor: 'rgba(0,191,255,0.06)',
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    padding: Spacing.sm,
-    marginVertical: 4,
-  },
-  shippingNoteText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    textAlign: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: Spacing.sm,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-  },
-  totalValue: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xl,
-    fontWeight: '900',
-  },
-  footer: {
-    padding: Spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? 28 : Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-    gap: Spacing.sm,
-  },
-  emptyTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: C.background,
+    },
+    listContent: {
+      padding: Spacing.md,
+      paddingBottom: Spacing.xxl,
+      gap: Spacing.sm,
+    },
+    itemCount: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      marginBottom: Spacing.sm,
+    },
+    card: {
+      flexDirection: 'row',
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.border,
+      overflow: 'hidden',
+      ...Shadow.card,
+    },
+    cardImageWrap: {
+      width: 82,
+      height: 90,
+      position: 'relative',
+      overflow: 'hidden',
+      flexShrink: 0,
+    },
+    cardImage: {
+      objectFit: 'cover',
+    } as any,
+    cardInfo: {
+      flex: 1,
+      padding: Spacing.sm,
+      justifyContent: 'space-between',
+    },
+    cardTopRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: Spacing.sm,
+    },
+    cardName: {
+      flex: 1,
+      color: C.textPrimary,
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      lineHeight: 18,
+    },
+    removeBtn: {
+      padding: 4,
+    },
+    colorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginTop: 2,
+    },
+    colorDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      borderWidth: 1,
+      borderColor: C.borderLight,
+    },
+    colorName: {
+      color: C.textSecondary,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+    },
+    stockWarnBanner: {
+      backgroundColor: 'rgba(255,179,0,0.12)',
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
+      marginBottom: Spacing.sm,
+      borderWidth: 1,
+      borderColor: 'rgba(255,179,0,0.35)',
+    },
+    stockWarnText: {
+      color: C.warning,
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    cardCategory: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+      letterSpacing: 1,
+    },
+    cardBottomRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    lineTotal: {
+      color: C.neonBlue,
+      fontSize: FontSize.md,
+      fontWeight: '800',
+    },
+    summary: {
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.border,
+      padding: Spacing.md,
+      marginTop: Spacing.md,
+      gap: Spacing.sm,
+    },
+    summaryTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      marginBottom: 2,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    summaryLabel: {
+      color: C.textSecondary,
+      fontSize: FontSize.md,
+    },
+    summaryValue: {
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      fontWeight: '600',
+    },
+    summaryHighlight: {
+      color: C.success,
+      fontWeight: '700',
+    },
+    shippingHint: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontStyle: 'italic',
+    },
+    shippingNote: {
+      backgroundColor: C.neonBlueGlow,
+      borderRadius: Radius.sm,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      padding: Spacing.sm,
+      marginVertical: 4,
+    },
+    shippingNoteText: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      textAlign: 'center',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: C.borderLight,
+      marginVertical: Spacing.sm,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    totalLabel: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '800',
+    },
+    totalValue: {
+      color: C.neonBlue,
+      fontSize: FontSize.xl,
+      fontWeight: '900',
+    },
+    footer: {
+      padding: Spacing.sm,
+      paddingBottom: Platform.OS === 'ios' ? 28 : Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: C.border,
+      backgroundColor: C.background,
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: Spacing.xl,
+      gap: Spacing.sm,
+    },
+    emptyTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    emptySubtitle: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+  });
+}

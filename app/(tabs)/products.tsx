@@ -20,8 +20,8 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useWishlistToast } from '@/context/WishlistToastContext';
 import AppHeader from '@/components/AppHeader';
 import StarRating from '@/components/StarRating';
-import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
-import { useTheme } from '@/context/ThemeContext';
+import { Spacing, FontSize, Radius } from '@/constants/theme';
+import { useTheme, useThemeColors, ThemeColors } from '@/context/ThemeContext';
 
 const PAGE_SIZE = 10;
 
@@ -52,8 +52,8 @@ export default function ProductsScreen() {
   const { category: categoryParam } = useLocalSearchParams<{ category?: string }>();
   const { language, t } = useLanguage();
   const { width } = useWindowDimensions();
-  const { preset: themePreset } = useTheme();
-  const isLight = themePreset === 'light';
+  const C = useThemeColors();
+  const styles = makeStyles(C);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -74,7 +74,6 @@ export default function ProductsScreen() {
     setSelectedCategory(categoryParam ?? null);
   }, [categoryParam]);
 
-  // Debounce search input
   const handleSearchChange = useCallback((text: string) => {
     setRawSearch(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -129,9 +128,8 @@ export default function ProductsScreen() {
     }
   }, [hasMore, language, selectedCategory, searchQuery]);
 
-  // When search is active, load ALL products for this filter into allProducts
   const loadAllForSearch = useCallback(async (lang: string, cat: string | null) => {
-    if (allProducts.length > 0) return; // already loaded
+    if (allProducts.length > 0) return;
     const all = await fetchProducts({ language: lang, category: cat ?? undefined });
     setAllProducts(all);
   }, [allProducts.length]);
@@ -169,7 +167,7 @@ export default function ProductsScreen() {
     if (!isSearching && loadingMore) {
       return (
         <View style={styles.footerLoader}>
-          <ActivityIndicator size="small" color={Colors.neonBlue} />
+          <ActivityIndicator size="small" color={C.neonBlue} />
         </View>
       );
     }
@@ -189,14 +187,13 @@ export default function ProductsScreen() {
     <View style={styles.container}>
       <AppHeader title={activeLabel} showBack />
 
-      {/* Search bar */}
       <View style={styles.searchWrap}>
         <View style={styles.searchBar}>
-          <Search size={15} color={Colors.textMuted} strokeWidth={2} />
+          <Search size={15} color={C.textMuted} strokeWidth={2} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search products…"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={C.textMuted}
             value={rawSearch}
             onChangeText={handleSearchChange}
             returnKeyType="search"
@@ -205,13 +202,12 @@ export default function ProductsScreen() {
           />
           {rawSearch.length > 0 && (
             <TouchableOpacity onPress={clearSearch} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <X size={14} color={Colors.textMuted} strokeWidth={2.5} />
+              <X size={14} color={C.textMuted} strokeWidth={2.5} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Category filter chips */}
       <View style={styles.filterWrap}>
         <FlatList
           horizontal
@@ -232,7 +228,7 @@ export default function ProductsScreen() {
                 onPress={() => setSelectedCategory(item)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive, !active && isLight && styles.chipTextLight]}>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
                   {label}
                 </Text>
               </TouchableOpacity>
@@ -243,11 +239,11 @@ export default function ProductsScreen() {
 
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={Colors.neonBlue} />
+          <ActivityIndicator size="large" color={C.neonBlue} />
         </View>
       ) : displayedProducts.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <ShoppingBag size={48} color={Colors.textMuted} strokeWidth={1.5} />
+          <ShoppingBag size={48} color={C.textMuted} strokeWidth={1.5} />
           <Text style={styles.emptyText}>
             {isSearching ? `No results for "${searchQuery}"` : 'No products found'}
           </Text>
@@ -291,8 +287,10 @@ function ProductCard({
   const { addToCart } = useCart();
   const { isWishlisted, toggle } = useWishlist();
   const { showCartToast, showWishlistToast } = useWishlistToast();
-  const { preset: themePreset } = useTheme();
-  const isLight = themePreset === 'light';
+  const C = useThemeColors();
+  const { preset } = useTheme();
+  const isLight = preset === 'light';
+  const styles = makeStyles(C);
   const imgH = Math.round(cardW * 0.65);
   const saved = isWishlisted(product.id);
 
@@ -310,11 +308,11 @@ function ProductCard({
 
   return (
     <TouchableOpacity
-      style={[styles.card, !isLight && styles.cardDark, { width: cardW }]}
+      style={[styles.card, { width: cardW }]}
       onPress={onPress}
       activeOpacity={0.88}
     >
-      <View style={[styles.cardImageWrap, { height: imgH, backgroundColor: isLight ? '#F0F4F8' : Colors.backgroundSecondary }]}>
+      <View style={[styles.cardImageWrap, { height: imgH }]}>
         <Image
           source={{ uri: getProductImage(product) }}
           style={[StyleSheet.absoluteFillObject, styles.cardImage]}
@@ -326,14 +324,14 @@ function ProductCard({
           </View>
         )}
         <TouchableOpacity
-          style={[styles.heartBtn, isLight && styles.heartBtnLight]}
+          style={styles.heartBtn}
           onPress={handleWishlist}
           activeOpacity={0.75}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
           <Heart
             size={13}
-            color={saved ? '#FF4D6D' : (isLight ? '#2E5F85' : 'rgba(255,255,255,0.85)')}
+            color={saved ? '#FF4D6D' : (isLight ? C.neonBlue : 'rgba(255,255,255,0.85)')}
             fill={saved ? '#FF4D6D' : 'transparent'}
             strokeWidth={2}
           />
@@ -352,7 +350,7 @@ function ProductCard({
               activeOpacity={0.85}
               onPress={handleAddToCart}
             >
-              <ShoppingCart size={11} color={Colors.white} strokeWidth={2} />
+              <ShoppingCart size={11} color="#FFFFFF" strokeWidth={2} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.viewBtn}
@@ -368,217 +366,200 @@ function ProductCard({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.background },
 
-  searchWrap: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: Colors.backgroundSecondary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 9,
-    paddingVertical: Platform.OS === 'ios' ? 7 : 5,
-    gap: 7,
-  },
-  searchInput: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    padding: 0,
-    margin: 0,
-  },
+    searchWrap: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: C.backgroundSecondary,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: C.border,
+      paddingHorizontal: 9,
+      paddingVertical: Platform.OS === 'ios' ? 7 : 5,
+      gap: 7,
+    },
+    searchInput: {
+      flex: 1,
+      color: C.textPrimary,
+      fontSize: FontSize.sm,
+      padding: 0,
+      margin: 0,
+    },
 
-  filterWrap: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.backgroundSecondary,
-  },
-  filterContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 6,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: 'transparent',
-  },
-  chipActive: {
-    backgroundColor: Colors.neonBlue,
-    borderColor: Colors.neonBlue,
-  },
-  chipText: {
-    color: Colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: Colors.background,
-    fontWeight: '700',
-  },
-  chipTextLight: {
-    color: '#1A2332',
-  },
+    filterWrap: {
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+      backgroundColor: C.backgroundSecondary,
+    },
+    filterContent: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      gap: 6,
+    },
+    chip: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: C.border,
+      backgroundColor: 'transparent',
+    },
+    chipActive: {
+      backgroundColor: C.neonBlue,
+      borderColor: C.neonBlue,
+    },
+    chipText: {
+      color: C.textSecondary,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    chipTextActive: {
+      color: C.white,
+      fontWeight: '700',
+    },
 
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  emptyText: { color: Colors.textMuted, fontSize: FontSize.md, textAlign: 'center', paddingHorizontal: 24 },
-  clearSearchBtn: {
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    borderRadius: Radius.full,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-  },
-  clearSearchBtnText: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-  },
+    loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+    emptyText: { color: C.textMuted, fontSize: FontSize.md, textAlign: 'center', paddingHorizontal: 24 },
+    clearSearchBtn: {
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      borderRadius: Radius.full,
+      paddingHorizontal: 16,
+      paddingVertical: 7,
+    },
+    clearSearchBtnText: {
+      color: C.neonBlue,
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+    },
 
-  grid: { paddingBottom: 16 },
+    grid: { paddingBottom: 16 },
 
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(0,119,182,0.22)',
-    overflow: 'hidden',
-    marginBottom: 7,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardDark: {
-    backgroundColor: Colors.backgroundCard,
-    borderColor: Colors.border,
-    shadowOpacity: 0.35,
-  },
-  cardImageWrap: {
-    width: '100%',
-    backgroundColor: '#F0F4F8',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  cardImage: { objectFit: 'cover' } as any,
-  badge: {
-    position: 'absolute',
-    top: 5,
-    left: 5,
-    backgroundColor: Colors.neonBlue,
-    borderRadius: 3,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-  },
-  badgeText: {
-    color: Colors.background,
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  cardBody: { padding: 7, gap: 2 },
-  cardName: {
-    color: Colors.textPrimary,
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 14,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 3,
-  },
-  cardPrice: {
-    color: Colors.neonBlue,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  heartBtn: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(6,12,24,0.65)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  heartBtnLight: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderColor: 'rgba(0,0,0,0.10)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  cartBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,191,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(0,191,255,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewBtn: {
-    backgroundColor: Colors.neonBlue,
-    borderRadius: Radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  viewBtnText: {
-    color: Colors.background,
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
+    card: {
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.sm,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      overflow: 'hidden',
+      marginBottom: 7,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.10,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    cardImageWrap: {
+      width: '100%',
+      backgroundColor: C.backgroundSecondary,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    cardImage: { objectFit: 'cover' } as any,
+    badge: {
+      position: 'absolute',
+      top: 5,
+      left: 5,
+      backgroundColor: C.neonBlue,
+      borderRadius: 3,
+      paddingHorizontal: 4,
+      paddingVertical: 1,
+    },
+    badgeText: {
+      color: C.white,
+      fontSize: 8,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
+    cardBody: { padding: 7, gap: 2 },
+    cardName: {
+      color: C.textPrimary,
+      fontSize: 11,
+      fontWeight: '700',
+      lineHeight: 14,
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 3,
+    },
+    cardPrice: {
+      color: C.neonBlue,
+      fontSize: 12,
+      fontWeight: '900',
+    },
+    heartBtn: {
+      position: 'absolute',
+      top: 5,
+      right: 5,
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: C.overlay,
+      borderWidth: 1,
+      borderColor: C.borderLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+    },
+    cardActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    cartBtn: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: C.neonBlue,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    viewBtn: {
+      backgroundColor: C.neonBlue,
+      borderRadius: Radius.full,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    viewBtnText: {
+      color: C.white,
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: 1,
+    },
 
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  footerEnd: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    gap: 10,
-  },
-  footerEndLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  footerEndText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-});
+    footerLoader: {
+      paddingVertical: 20,
+      alignItems: 'center',
+    },
+    footerEnd: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 20,
+      paddingHorizontal: 24,
+      gap: 10,
+    },
+    footerEndLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: C.border,
+    },
+    footerEndText: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
+  });
+}
