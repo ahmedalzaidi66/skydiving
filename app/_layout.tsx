@@ -8,7 +8,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { AdminProvider } from '@/context/AdminContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { CMSProvider } from '@/context/CMSContext';
-import { ThemeProvider } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { LayoutProvider } from '@/context/LayoutContext';
 import { UISizeProvider } from '@/context/UISizeContext';
 import { WishlistProvider } from '@/context/WishlistContext';
@@ -20,6 +20,7 @@ import GlobalBackButton from '@/components/GlobalBackButton';
 function AppShell() {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
+  const { preset } = useTheme();
 
   return (
     <View style={{ flex: 1 }}>
@@ -33,7 +34,7 @@ function AppShell() {
         <Stack.Screen name="reset-password" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="light" />
+      <StatusBar style={preset === 'light' ? 'dark' : 'light'} />
       {!isAdmin && <WhatsAppButton />}
       {!isAdmin && <GlobalBackButton />}
     </View>

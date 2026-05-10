@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { useCMS } from '@/context/CMSContext';
 
@@ -121,9 +121,14 @@ function writeCachedPreset(preset: string): void {
 type ThemeContextType = {
   colors: ThemeColors;
   preset: string;
+  setThemePreset: (preset: string) => void;
 };
 
-const ThemeContext = createContext<ThemeContextType>({ colors: DARK, preset: 'dark' });
+const ThemeContext = createContext<ThemeContextType>({
+  colors: DARK,
+  preset: 'dark',
+  setThemePreset: () => {},
+});
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme } = useCMS();
@@ -159,10 +164,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     writeCachedPreset(normalized);
   }, [theme?.active_preset]);
 
+  const setThemePreset = useCallback((newPreset: string) => {
+    const normalized = newPreset === 'midnight-blue' ? 'dark' : newPreset;
+    if (!THEME_PRESETS[normalized]) return;
+    setPreset(normalized);
+    writeCachedPreset(normalized);
+  }, []);
+
   const colors = useMemo(() => THEME_PRESETS[preset] ?? DARK, [preset]);
 
   return (
-    <ThemeContext.Provider value={{ colors, preset }}>
+    <ThemeContext.Provider value={{ colors, preset, setThemePreset }}>
       {children}
     </ThemeContext.Provider>
   );
