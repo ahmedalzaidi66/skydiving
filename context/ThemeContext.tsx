@@ -147,12 +147,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When the DB value arrives or changes, adopt it and persist locally so the
-  // next cold-start uses the correct preset without waiting for the network.
+  // When the DB value arrives, only apply it if the user has no locally saved preference.
+  // localStorage is the authoritative source of truth — the DB value seeds first-time users only.
   useEffect(() => {
     if (!theme?.active_preset) return;
     const normalized = theme.active_preset === 'midnight-blue' ? 'dark' : theme.active_preset;
     if (!THEME_PRESETS[normalized]) return;
+    const cached = readCachedPreset();
+    if (cached && THEME_PRESETS[cached]) return; // user has a saved preference — never override it
     setPreset(normalized);
     writeCachedPreset(normalized);
   }, [theme?.active_preset]);

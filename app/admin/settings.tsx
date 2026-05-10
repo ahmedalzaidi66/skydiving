@@ -18,6 +18,7 @@ import { supabase, adminSupabase } from '@/lib/supabase';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCMS } from '@/context/CMSContext';
+import { Platform } from 'react-native';
 
 type SettingsMap = Record<string, string>;
 
@@ -149,6 +150,15 @@ function SettingsScreen() {
 
   const handleThemeSave = async (preset: string) => {
     setActivePreset(preset);
+    // Persist locally first so the theme survives any reload immediately.
+    const THEME_KEY = 'app_theme_preset';
+    if (Platform.OS === 'web') {
+      try { if (typeof localStorage !== 'undefined') localStorage.setItem(THEME_KEY, preset); } catch {}
+    } else {
+      import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+        AsyncStorage.setItem(THEME_KEY, preset).catch(() => {});
+      });
+    }
     setThemeSaving(true);
     const db = adminSupabase();
     await db.from('site_settings').upsert(
