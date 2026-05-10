@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import { useCMS } from '@/context/CMSContext';
 
 export type ThemeColors = {
@@ -92,6 +93,31 @@ export const THEME_PRESETS: Record<string, ThemeColors> = {
   'midnight-blue': DARK,
 };
 
+const STORAGE_KEY = 'app_theme_preset';
+
+function readCachedPreset(): string | null {
+  if (Platform.OS === 'web') {
+    try {
+      return typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function writeCachedPreset(preset: string): void {
+  if (Platform.OS === 'web') {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, preset);
+    } catch {}
+  } else {
+    import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+      AsyncStorage.setItem(STORAGE_KEY, preset).catch(() => {});
+    });
+  }
+}
+
 type ThemeContextType = {
   colors: ThemeColors;
   preset: string;
@@ -102,7 +128,35 @@ const ThemeContext = createContext<ThemeContextType>({ colors: DARK, preset: 'da
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme } = useCMS();
 
-  const preset = theme?.active_preset ?? 'dark';
+  // Initialise synchronously from localStorage on web so there is no flash-of-wrong-theme.
+  const [preset, setPreset] = useState<string>(() => {
+    const cached = readCachedPreset();
+    if (cached && THEME_PRESETS[cached]) return cached;
+    return 'dark';
+  });
+
+  // On native AsyncStorage is async — apply cached value after first render.
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
+        AsyncStorage.getItem(STORAGE_KEY).then((cached) => {
+          if (cached && THEME_PRESETS[cached]) setPreset(cached);
+        }).catch(() => {});
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When the DB value arrives or changes, adopt it and persist locally so the
+  // next cold-start uses the correct preset without waiting for the network.
+  useEffect(() => {
+    if (!theme?.active_preset) return;
+    const normalized = theme.active_preset === 'midnight-blue' ? 'dark' : theme.active_preset;
+    if (!THEME_PRESETS[normalized]) return;
+    setPreset(normalized);
+    writeCachedPreset(normalized);
+  }, [theme?.active_preset]);
+
   const colors = useMemo(() => THEME_PRESETS[preset] ?? DARK, [preset]);
 
   return (
