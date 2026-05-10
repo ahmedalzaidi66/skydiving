@@ -19,9 +19,10 @@ import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
 import AppHeader from '@/components/AppHeader';
 import SearchBar from '@/components/SearchBar';
+import SearchOverlay from '@/components/SearchOverlay';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 import { useTheme, useThemeColors } from '@/context/ThemeContext';
-import { useSearchSuggestions, addRecentSearch, clearAllRecent, type SuggestionSource } from '@/hooks/useSearchSuggestions';
+import { type SuggestionSource } from '@/hooks/useSearchSuggestions';
 
 export type UsedGearListing = {
   id: string;
@@ -116,11 +117,8 @@ export default function MarketplaceScreen() {
   const [sort, setSort] = useState<SortKey>('newest');
   const [availFilter, setAvailFilter] = useState<AvailFilter>('available');
 
-  const [rawSearch, setRawSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loadingSearch, setLoadingSearch] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
 
   const fetchingRef = useRef(false);
   const pageRef = useRef(0);
@@ -139,12 +137,6 @@ export default function MarketplaceScreen() {
     };
   }, [allListings, listings, allCategories]);
 
-  const { suggestions, recentSearches, loading: suggestionsLoading, refreshRecent } = useSearchSuggestions(
-    rawSearch,
-    suggestionSource,
-    showDropdown,
-  );
-
   const buildQuery = useCallback((offset: number, category: string | null, sortKey: SortKey, avail: AvailFilter) => {
     let q = supabase
       .from('used_gear_listings')
@@ -160,38 +152,14 @@ export default function MarketplaceScreen() {
     return q.range(offset, offset + PAGE_SIZE - 1);
   }, []);
 
-  const handleSearchChange = useCallback((text: string) => {
-    setRawSearch(text);
-    setShowDropdown(true);
-    if (text.trim()) setLoadingSearch(true);
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      setSearchQuery(text.trim());
-      setLoadingSearch(false);
-    }, 300);
-  }, []);
-
   const commitSearch = useCallback((term: string) => {
-    const trimmed = term.trim();
-    setRawSearch(trimmed);
-    setSearchQuery(trimmed);
-    setShowDropdown(false);
-    setLoadingSearch(false);
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    if (trimmed) addRecentSearch(trimmed).then(() => refreshRecent());
-  }, [refreshRecent]);
+    setSearchQuery(term.trim());
+    setOverlayOpen(false);
+  }, []);
 
   const clearSearch = useCallback(() => {
-    setRawSearch('');
     setSearchQuery('');
-    setShowDropdown(false);
-    setLoadingSearch(false);
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
   }, []);
-
-  const handleClearRecent = useCallback(() => {
-    clearAllRecent().then(() => refreshRecent());
-  }, [refreshRecent]);
 
   const loadSellerProfiles = useCallback(async (rows: UsedGearListing[]) => {
     const sellerIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean)));
@@ -345,33 +313,34 @@ export default function MarketplaceScreen() {
         <Text style={{ flex: 1, color: C.warning, fontSize: FontSize.xs, fontWeight: '600', lineHeight: 16 }}>{t.usedGearSafetyWarning}</Text>
       </View>
 
-      {/* Search bar */}
+      {/* Search bar (tap to open overlay) */}
       <View style={ms.searchWrap}>
         <SearchBar
-          value={rawSearch}
-          onChangeText={handleSearchChange}
+          activeQuery={searchQuery}
           placeholder={t.searchGear ?? 'Search gear, make, model…'}
-          suggestions={suggestions}
-          recentSearches={recentSearches}
-          suggestionsLoading={suggestionsLoading}
-          showDropdown={showDropdown}
-          onSuggestionSelect={commitSearch}
-          onClearRecent={handleClearRecent}
+          onOpen={() => setOverlayOpen(true)}
+          onClear={clearSearch}
         />
       </View>
+
+      {/* Search overlay */}
+      <SearchOverlay
+        visible={overlayOpen}
+        source={suggestionSource}
+        initialQuery={searchQuery}
+        placeholder={t.searchGear ?? 'Search gear, make, model…'}
+        onClose={() => setOverlayOpen(false)}
+        onCommit={commitSearch}
+      />
 
       {/* Search meta row */}
       {isSearching && !loading && (
         <View style={ms.searchMeta}>
-          {loadingSearch ? (
-            <ActivityIndicator size="small" color={C.neonBlue} style={{ marginRight: 6 }} />
-          ) : (
-            <Text style={ms.searchMetaText}>
-              {displayedListings.length === 0
-                ? (t.noResultsFor ?? 'No results for') + ` "${searchQuery}"`
-                : `${displayedListings.length} ${displayedListings.length === 1 ? 'result' : 'results'} for "${searchQuery}"`}
-            </Text>
-          )}
+          <Text style={ms.searchMetaText}>
+            {displayedListings.length === 0
+              ? (t.noResultsFor ?? 'No results for') + ` "${searchQuery}"`
+              : `${displayedListings.length} ${displayedListings.length === 1 ? 'result' : 'results'} for "${searchQuery}"`}
+          </Text>
           <TouchableOpacity onPress={clearSearch} activeOpacity={0.7} style={ms.searchMetaClear}>
             <Text style={ms.searchMetaClearText}>{t.clearSearch ?? 'Clear'}</Text>
           </TouchableOpacity>

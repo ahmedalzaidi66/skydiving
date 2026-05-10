@@ -19,10 +19,11 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useWishlistToast } from '@/context/WishlistToastContext';
 import AppHeader from '@/components/AppHeader';
 import SearchBar from '@/components/SearchBar';
+import SearchOverlay from '@/components/SearchOverlay';
 import StarRating from '@/components/StarRating';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 import { useTheme, useThemeColors, ThemeColors } from '@/context/ThemeContext';
-import { useSearchSuggestions, addRecentSearch, clearAllRecent, type SuggestionSource } from '@/hooks/useSearchSuggestions';
+import { type SuggestionSource } from '@/hooks/useSearchSuggestions';
 
 const PAGE_SIZE = 10;
 
@@ -67,13 +68,10 @@ export default function ProductsScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(categoryParam ?? null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [loadingSearch, setLoadingSearch] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  const [rawSearch, setRawSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
 
   const fetchingRef = useRef(false);
   const pageRef = useRef(0);
@@ -89,48 +87,18 @@ export default function ProductsScreen() {
     gearTerms: [],
   }), [allProducts, products, categories, language]);
 
-  const { suggestions, recentSearches, loading: suggestionsLoading, refreshRecent } = useSearchSuggestions(
-    rawSearch,
-    suggestionSource,
-    showDropdown,
-  );
-
   useEffect(() => {
     setSelectedCategory(categoryParam ?? null);
   }, [categoryParam]);
 
-  const handleSearchChange = useCallback((text: string) => {
-    setRawSearch(text);
-    setShowDropdown(true);
-    if (text.trim()) setLoadingSearch(true);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setSearchQuery(text.trim());
-      setLoadingSearch(false);
-    }, 300);
-  }, []);
-
   const commitSearch = useCallback((term: string) => {
-    const trimmed = term.trim();
-    setRawSearch(trimmed);
-    setSearchQuery(trimmed);
-    setShowDropdown(false);
-    setLoadingSearch(false);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (trimmed) addRecentSearch(trimmed).then(() => refreshRecent());
-  }, [refreshRecent]);
+    setSearchQuery(term.trim());
+    setOverlayOpen(false);
+  }, []);
 
   const clearSearch = useCallback(() => {
-    setRawSearch('');
     setSearchQuery('');
-    setShowDropdown(false);
-    setLoadingSearch(false);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
   }, []);
-
-  const handleClearRecent = useCallback(() => {
-    clearAllRecent().then(() => refreshRecent());
-  }, [refreshRecent]);
 
   const resetAndLoad = useCallback(async (lang: string, cat: string | null) => {
     setLoading(true);
@@ -208,7 +176,7 @@ export default function ProductsScreen() {
   }, [searchQuery, products, allProducts, language]);
 
   const isSearching = searchQuery.length > 0;
-  const showSearchLoading = loadingSearch || (isSearching && searchQuery && allProducts.length === 0 && !loading);
+  const showSearchLoading = isSearching && allProducts.length === 0 && !loading;
 
   const renderFooter = () => {
     if (!isSearching && loadingMore) {
@@ -234,22 +202,27 @@ export default function ProductsScreen() {
     <View style={styles.container}>
       <AppHeader title={activeLabel} showBack />
 
-      {/* ── Search bar ── */}
+      {/* ── Search bar (tap to open overlay) ── */}
       <View style={styles.searchWrap}>
         <SearchBar
-          value={rawSearch}
-          onChangeText={handleSearchChange}
+          activeQuery={searchQuery}
           placeholder={t.searchProducts ?? 'Search products…'}
-          suggestions={suggestions}
-          recentSearches={recentSearches}
-          suggestionsLoading={suggestionsLoading}
-          showDropdown={showDropdown}
-          onSuggestionSelect={commitSearch}
-          onClearRecent={handleClearRecent}
+          onOpen={() => setOverlayOpen(true)}
+          onClear={clearSearch}
         />
       </View>
 
-      {/* ── Search meta row: results count or loading ── */}
+      {/* ── Search overlay ── */}
+      <SearchOverlay
+        visible={overlayOpen}
+        source={suggestionSource}
+        initialQuery={searchQuery}
+        placeholder={t.searchProducts ?? 'Search products…'}
+        onClose={() => setOverlayOpen(false)}
+        onCommit={commitSearch}
+      />
+
+      {/* ── Search meta row: results count ── */}
       {isSearching && !loading && (
         <View style={styles.searchMeta}>
           {showSearchLoading ? (
