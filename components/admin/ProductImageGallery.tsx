@@ -27,7 +27,8 @@ import ImageEditorModal from '@/components/admin/ImageEditorModal';
 
 export type GalleryImage = {
   id: string;
-  url: string;
+  url: string;        // full-res URL (used for detail view and DB storage)
+  thumbUrl?: string;  // optimized thumbnail for grid display
   isMain: boolean;
 };
 
@@ -118,11 +119,13 @@ export default function ProductImageGallery({ images, onChange }: Props) {
         return;
       }
       setCardStatus(s => { const n = { ...s }; delete n[tempId]; return n; });
+      const fullUrl = result.urls?.full ?? result.url!;
+      const thumbUrl = result.urls?.thumb ?? result.url!;
       let nextImages: GalleryImage[];
       if (replaceId) {
-        nextImages = images.map(img => img.id === replaceId ? { ...img, url: result.url! } : img);
+        nextImages = images.map(img => img.id === replaceId ? { ...img, url: fullUrl, thumbUrl } : img);
       } else {
-        nextImages = [...images, { id: tempId, url: result.url!, isMain: images.length === 0 }];
+        nextImages = [...images, { id: tempId, url: fullUrl, thumbUrl, isMain: images.length === 0 }];
       }
       onChange(nextImages);
       showSuccess();
@@ -467,7 +470,7 @@ function ImageCard({
         </View>
       ) : (
         <Image
-          source={{ uri: img.url }}
+          source={{ uri: img.thumbUrl || img.url }}
           style={[StyleSheet.absoluteFillObject, { objectFit: 'cover' } as any]}
           resizeMode="cover"
           onError={() => setImgErr(true)}

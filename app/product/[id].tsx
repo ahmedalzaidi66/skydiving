@@ -26,7 +26,7 @@ import {
 import {
   fetchProductById, Product,
   getProductName, getProductDescription, getProductImage,
-  getProductImages, supabase,
+  getProductImages, toFullUrl, toThumbUrl, supabase,
 } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -409,9 +409,9 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const images = getProductImages(product);
-  const colorImage = selectedColor?.image_url ?? null;
-  const activeImage = colorImage || images[activeImageIndex] || getProductImage(product);
+  const images = getProductImages(product).map(toFullUrl);
+  const colorImage = selectedColor?.image_url ? toFullUrl(selectedColor.image_url) : null;
+  const activeImage = colorImage || images[activeImageIndex] || toFullUrl(getProductImage(product));
 
   const hasDiscount = product.compare_price != null && product.compare_price > product.price;
   const discountPct = hasDiscount
@@ -556,7 +556,7 @@ export default function ProductDetailScreen() {
                   ]}
                 >
                   <Image
-                    source={{ uri: img }}
+                    source={{ uri: toThumbUrl(img) }}
                     style={[StyleSheet.absoluteFillObject, { objectFit: 'cover' } as any]}
                     resizeMode="cover"
                   />

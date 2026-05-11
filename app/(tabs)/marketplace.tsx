@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus, TriangleAlert as AlertTriangle, Tag, Package, Star, BadgeCheck, Eye, Zap, Heart, WifiOff, RefreshCw } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
+import { supabase, toThumbUrl } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
@@ -540,7 +540,7 @@ function ListingCard({
   const { preset: themePreset } = useTheme();
   const C = useThemeColors();
   const isLight = themePreset === 'light';
-  const thumb = listing.main_image_url || listing.images?.[0];
+  const thumb = toThumbUrl(listing.main_image_url || listing.images?.[0] || '');
   const condColor = CONDITION_COLORS[listing.condition] ?? C.textMuted;
   const condLabelText = conditionLabel(listing.condition, t);
   const isVerified = listing.seller_verified || seller?.is_verified;

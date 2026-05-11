@@ -37,7 +37,7 @@ import {
   Heart,
   Share2,
 } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
+import { supabase, toThumbUrl, toFullUrl } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
@@ -325,9 +325,11 @@ export default function ListingDetailScreen() {
   }
 
   const rawImages = listing.images ?? [];
-  const images = listing.main_image_url && !rawImages.includes(listing.main_image_url)
+  const allImages = listing.main_image_url && !rawImages.includes(listing.main_image_url)
     ? [listing.main_image_url, ...rawImages]
     : rawImages.length > 0 ? rawImages : listing.main_image_url ? [listing.main_image_url] : [];
+  // Use full-res for detail view; thumb for thumbnail strip
+  const images = allImages.map(toFullUrl);
   const condColor = CONDITION_COLORS[listing.condition] ?? C.textMuted;
   const isVerified = listing.seller_verified || seller?.is_verified;
   const isRig = RIG_CATEGORIES.includes(listing.category);

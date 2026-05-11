@@ -290,6 +290,24 @@ export function getProductImages(product: Product): string[] {
   return primary ? [primary] : [];
 }
 
+/**
+ * Returns the thumbnail variant of a URL if it follows the optimized naming
+ * convention (*-medium.webp → *-thumb.webp). Falls back to the original URL.
+ */
+export function toThumbUrl(url: string): string {
+  if (!url) return '';
+  if (url.includes('-medium.webp')) return url.replace('-medium.webp', '-thumb.webp');
+  if (url.includes('-full.webp')) return url.replace('-full.webp', '-thumb.webp');
+  return url;
+}
+
+export function toFullUrl(url: string): string {
+  if (!url) return '';
+  if (url.includes('-medium.webp')) return url.replace('-medium.webp', '-full.webp');
+  if (url.includes('-thumb.webp')) return url.replace('-thumb.webp', '-full.webp');
+  return url;
+}
+
 function slugToLabel(slug: string): string {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }

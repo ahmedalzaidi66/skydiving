@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ShoppingCart } from 'lucide-react-native';
-import { Product, getProductName, getProductImage } from '@/lib/supabase';
+import { Product, getProductName, getProductImage, toThumbUrl } from '@/lib/supabase';
 import { useCart } from '@/context/CartContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useThemeColors } from '@/context/ThemeContext';
@@ -44,7 +44,7 @@ export default function ProductCard({ product, onWishlistLoginRequired }: Props)
     >
       <View style={{ height: imageH, width: '100%', backgroundColor: Colors.backgroundSecondary, position: 'relative', overflow: 'hidden', borderTopLeftRadius: cardR, borderTopRightRadius: cardR }}>
         <Image
-          source={{ uri: getProductImage(product) }}
+          source={{ uri: toThumbUrl(getProductImage(product)) }}
           style={[StyleSheet.absoluteFillObject]}
           resizeMode="cover"
         />

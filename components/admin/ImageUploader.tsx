@@ -19,7 +19,7 @@ import {
   Undo2,
 } from 'lucide-react-native';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
-import { uploadImageToSupabase, validateImageFile, readFileAsDataUrl } from '@/lib/imageUpload';
+import { uploadImageToSupabase, validateImageFile, readFileAsDataUrl, type ImageUrls } from '@/lib/imageUpload';
 import ImageEditorModal from '@/components/admin/ImageEditorModal';
 
 export type UploadFolder = 'products' | 'branding' | 'cms' | 'general';
@@ -40,6 +40,7 @@ export type Props = {
 };
 
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
+type UploadedSizes = ImageUrls | null;
 
 function MobileImagePreview({ value, label, hint }: Pick<Props, 'value' | 'label' | 'hint'>) {
   const [imgErr, setImgErr] = useState(false);
@@ -99,6 +100,8 @@ export default function ImageUploader({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingDataUrl, setPendingDataUrl] = useState('');
   const [originalUrl] = useState(savedUrl ?? value);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedSizes, setUploadedSizes] = useState<UploadedSizes>(null);
 
   const handleFile = useCallback(async (file: File) => {
     const validErr = validateImageFile(file);
@@ -114,12 +117,14 @@ export default function ImageUploader({
     setPendingFile(null);
     setPendingDataUrl('');
     setStatus('uploading');
+    setUploadProgress(0);
     setErrorMsg('');
     setImgErr(false);
     try {
-      const result = await uploadImageToSupabase(editedFile, folder);
+      const result = await uploadImageToSupabase(editedFile, folder, setUploadProgress);
       if (result.error) { setStatus('error'); setErrorMsg(result.error); return; }
       onChange(result.url!);
+      setUploadedSizes(result.urls);
       setStatus('success');
       setTimeout(() => setStatus('idle'), 3000);
     } catch (err: unknown) {
@@ -233,8 +238,13 @@ export default function ImageUploader({
             <View style={styles.uploadingIconWrap}>
               <ActivityIndicator color={Colors.neonBlue} size="large" />
             </View>
-            <Text style={styles.uploadingText}>Uploading…</Text>
-            <Text style={styles.uploadingSub}>Please wait</Text>
+            <Text style={styles.uploadingText}>
+              {uploadProgress < 30 ? 'Reading file…' : uploadProgress < 85 ? 'Optimizing & uploading…' : 'Finalizing…'}
+            </Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${uploadProgress}%` as any }]} />
+            </View>
+            <Text style={styles.uploadingSub}>{uploadProgress}%</Text>
           </View>
         ) : hasImage ? (
           <>
@@ -323,7 +333,9 @@ export default function ImageUploader({
       {status === 'success' && (
         <View style={styles.successBanner}>
           <CheckCircle size={13} color={Colors.success} strokeWidth={2.5} />
-          <Text style={styles.successText}>Image uploaded successfully</Text>
+          <Text style={styles.successText}>
+            {uploadedSizes ? 'Optimized & uploaded as WebP (3 sizes)' : 'Image uploaded successfully'}
+          </Text>
         </View>
       )}
 
@@ -435,6 +447,14 @@ const styles = StyleSheet.create({
   },
   uploadingText: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
   uploadingSub: { color: Colors.textMuted, fontSize: FontSize.xs },
+  progressTrack: {
+    width: 160, height: 4, backgroundColor: Colors.border,
+    borderRadius: 2, overflow: 'hidden',
+  },
+  progressFill: {
+    height: 4, backgroundColor: Colors.neonBlue,
+    borderRadius: 2,
+  },
 
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, padding: Spacing.md },
   emptyStateDragOver: { gap: 10 },
