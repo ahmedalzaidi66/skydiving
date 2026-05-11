@@ -62,12 +62,12 @@ type BoostSettings = {
 const RIG_CATEGORIES = ['complete_rig', 'parachute_rig'];
 
 const REPORT_REASONS = [
-  'Fake / scam listing',
-  'Incorrect / misleading info',
-  'Wrong price',
-  'Item already sold',
-  'Dangerous / unsafe gear',
-  'Other',
+  { value: 'scam',            label: 'Scam / احتيال' },
+  { value: 'fake_item',       label: 'Fake item / منتج مزيف' },
+  { value: 'wrong_info',      label: 'Wrong information / معلومات غير صحيحة' },
+  { value: 'unsafe',          label: 'Unsafe item / منتج غير آمن' },
+  { value: 'suspicious_seller', label: 'Suspicious seller / بائع مشبوه' },
+  { value: 'other',           label: 'Other / أخرى' },
 ];
 
 function isBoosted(_listing: UsedGearListing): boolean {
@@ -94,9 +94,9 @@ export default function ListingDetailScreen() {
   const [submittingRating, setSubmittingRating] = useState(false);
 
   const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTarget, setReportTarget] = useState<'listing' | 'seller'>('listing');
   const [reportReason, setReportReason] = useState('');
-  const [reportMessage, setReportMessage] = useState('');
-  const [reportPhone, setReportPhone] = useState('');
+  const [reportNote, setReportNote] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportDone, setReportDone] = useState(false);
   const [reportError, setReportError] = useState('');
@@ -252,24 +252,37 @@ export default function ListingDetailScreen() {
   };
 
   const handleSubmitReport = async () => {
+    if (!user) { setReportError('You must be signed in to submit a report.'); return; }
     if (!reportReason) { setReportError('Please select a reason.'); return; }
     setReportSubmitting(true);
     setReportError('');
-    const { error } = await supabase.from('listing_reports').insert({
+    const { error } = await supabase.from('used_gear_reports').insert({
       listing_id: listing!.id,
-      reporter_id: user?.id ?? null,
-      reporter_email: user?.email ?? null,
+      reported_user_id: listing!.user_id ?? null,
+      reporter_user_id: user.id,
       reason: reportReason,
-      message: reportMessage.trim() || null,
-      reporter_phone: reportPhone.trim() || null,
+      note: reportNote.trim() || null,
     });
     setReportSubmitting(false);
     if (error) {
-      setReportError('Failed to submit report. Please try again.');
+      if (error.code === '23505') {
+        setReportError('You have already reported this listing for that reason.');
+      } else {
+        setReportError('Failed to submit report. Please try again.');
+      }
     } else {
       setReportDone(true);
-      setTimeout(() => setShowReportModal(false), 2000);
+      setTimeout(() => setShowReportModal(false), 2500);
     }
+  };
+
+  const openReport = (target: 'listing' | 'seller') => {
+    setReportTarget(target);
+    setReportDone(false);
+    setReportError('');
+    setReportReason('');
+    setReportNote('');
+    setShowReportModal(true);
   };
 
   const handleRequestBoost = async () => {
@@ -683,14 +696,26 @@ export default function ListingDetailScreen() {
           )}
 
           {!isOwner && (
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing.sm, opacity: 0.6 }}
-              onPress={() => { setReportDone(false); setReportError(''); setReportReason(''); setReportMessage(''); setReportPhone(''); setShowReportModal(true); }}
-              activeOpacity={0.75}
-            >
-              <Flag size={14} color={C.textMuted} strokeWidth={2} />
-              <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }}>Report this listing</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.lg }}>
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: Spacing.sm, opacity: 0.6 }}
+                onPress={() => openReport('listing')}
+                activeOpacity={0.75}
+              >
+                <Flag size={13} color={C.textMuted} strokeWidth={2} />
+                <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }}>Report listing</Text>
+              </TouchableOpacity>
+              {listing.user_id && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: Spacing.sm, opacity: 0.6 }}
+                  onPress={() => openReport('seller')}
+                  activeOpacity={0.75}
+                >
+                  <Flag size={13} color={C.textMuted} strokeWidth={2} />
+                  <Text style={{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }}>Report seller</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -705,7 +730,9 @@ export default function ListingDetailScreen() {
         <View style={s.modalOverlay}>
           <View style={[s.modalSheet, { backgroundColor: C.backgroundCard, borderColor: C.border }]}>
             <View style={s.modalHeader}>
-              <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '800' }}>Report Listing</Text>
+              <Text style={{ color: C.textPrimary, fontSize: FontSize.lg, fontWeight: '800' }}>
+                {reportTarget === 'seller' ? 'Report Seller' : 'Report Listing'}
+              </Text>
               <TouchableOpacity onPress={() => setShowReportModal(false)} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <X size={22} color={C.textMuted} strokeWidth={2} />
               </TouchableOpacity>
@@ -714,56 +741,61 @@ export default function ListingDetailScreen() {
             {reportDone ? (
               <View style={{ alignItems: 'center', paddingVertical: Spacing.xl, gap: Spacing.md }}>
                 <CircleCheck size={48} color={C.success} strokeWidth={1.5} />
-                <Text style={{ color: C.textSecondary, fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 }}>Report submitted. Thank you.</Text>
+                <Text style={{ color: C.success, fontSize: FontSize.lg, fontWeight: '800', textAlign: 'center' }}>Report Submitted</Text>
+                <Text style={{ color: C.textSecondary, fontSize: FontSize.sm, textAlign: 'center', lineHeight: 22 }}>
+                  Thank you. Our team will review this report shortly.
+                </Text>
               </View>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {!user && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.warning + '14', borderRadius: Radius.md, borderWidth: 1, borderColor: C.warning + '40', padding: Spacing.sm, marginBottom: Spacing.md }}>
+                    <AlertTriangle size={14} color={C.warning} strokeWidth={2} />
+                    <Text style={{ flex: 1, color: C.warning, fontSize: FontSize.xs, fontWeight: '600' }}>You must be signed in to submit a report.</Text>
+                  </View>
+                )}
+
                 <Text style={[s.modalLabel, { color: C.textMuted }]}>Reason *</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.sm }}>
+                <View style={{ gap: 8, marginBottom: Spacing.md }}>
                   {REPORT_REASONS.map((r) => (
                     <TouchableOpacity
-                      key={r}
+                      key={r.value}
                       style={[
-                        { paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.full, borderWidth: 1, borderColor: C.border, backgroundColor: C.backgroundSecondary },
-                        reportReason === r && { borderColor: C.error, backgroundColor: C.errorDim },
+                        { paddingHorizontal: Spacing.md, paddingVertical: 10, borderRadius: Radius.md, borderWidth: 1, borderColor: C.border, backgroundColor: C.backgroundSecondary, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+                        reportReason === r.value && { borderColor: C.error, backgroundColor: C.errorDim },
                       ]}
-                      onPress={() => { setReportReason(r); setReportError(''); }}
+                      onPress={() => { setReportReason(r.value); setReportError(''); }}
                       activeOpacity={0.75}
                     >
-                      <Text style={[{ color: C.textMuted, fontSize: FontSize.xs, fontWeight: '600' }, reportReason === r && { color: C.error, fontWeight: '700' }]}>{r}</Text>
+                      <Text style={[{ color: C.textSecondary, fontSize: FontSize.sm, fontWeight: '600' }, reportReason === r.value && { color: C.error, fontWeight: '700' }]}>{r.label}</Text>
+                      {reportReason === r.value && <CircleCheck size={16} color={C.error} strokeWidth={2} />}
                     </TouchableOpacity>
                   ))}
                 </View>
 
-                <Text style={[s.modalLabel, { color: C.textMuted }]}>Additional details</Text>
+                <Text style={[s.modalLabel, { color: C.textMuted }]}>Additional note (optional)</Text>
                 <TextInput
                   style={[s.modalTextArea, { backgroundColor: C.backgroundInput, borderColor: C.border, color: C.textPrimary }]}
-                  value={reportMessage}
-                  onChangeText={setReportMessage}
+                  value={reportNote}
+                  onChangeText={setReportNote}
                   placeholder="Describe the issue..."
                   placeholderTextColor={C.textMuted}
                   multiline
                   numberOfLines={3}
                 />
 
-                <Text style={[s.modalLabel, { color: C.textMuted }]}>Your WhatsApp / phone (optional)</Text>
-                <TextInput
-                  style={[s.modalInput, { backgroundColor: C.backgroundInput, borderColor: C.border, color: C.textPrimary }]}
-                  value={reportPhone}
-                  onChangeText={setReportPhone}
-                  placeholder="+1 555 000 0000"
-                  placeholderTextColor={C.textMuted}
-                  keyboardType="phone-pad"
-                />
-                <Text style={{ color: C.textMuted, fontSize: FontSize.xs, marginBottom: Spacing.md }}>Admin may contact you to follow up.</Text>
-
-                {reportError !== '' && <Text style={{ color: C.error, fontSize: FontSize.xs, fontWeight: '600', marginBottom: Spacing.sm }}>{reportError}</Text>}
+                {reportError !== '' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: Spacing.sm }}>
+                    <AlertTriangle size={13} color={C.error} strokeWidth={2} />
+                    <Text style={{ color: C.error, fontSize: FontSize.xs, fontWeight: '600', flex: 1 }}>{reportError}</Text>
+                  </View>
+                )}
 
                 <TouchableOpacity
-                  style={[s.submitBtn, { backgroundColor: C.neonBlue }, reportSubmitting && { opacity: 0.5 }]}
+                  style={[s.submitBtn, { backgroundColor: C.error }, (reportSubmitting || !user) && { opacity: 0.5 }]}
                   onPress={handleSubmitReport}
                   activeOpacity={0.8}
-                  disabled={reportSubmitting}
+                  disabled={reportSubmitting || !user}
                 >
                   {reportSubmitting ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
@@ -771,6 +803,7 @@ export default function ListingDetailScreen() {
                     <Text style={{ color: '#FFFFFF', fontSize: FontSize.md, fontWeight: '800' }}>Submit Report</Text>
                   )}
                 </TouchableOpacity>
+                <View style={{ height: Spacing.md }} />
               </ScrollView>
             )}
           </View>

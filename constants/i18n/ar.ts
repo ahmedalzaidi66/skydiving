@@ -929,6 +929,7 @@ export default {
   adminNotePlaceholder: 'ملاحظة اختيارية للبائع...',
   listingUpdated: 'تم تحديث الإعلان',
   navUsedGear: 'مستعمل',
+  gearReports: 'تقييمات الزباين للمستعمل',
 
   // Campaigns
   campaigns: 'الحملات',

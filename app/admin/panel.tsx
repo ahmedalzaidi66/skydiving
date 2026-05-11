@@ -23,6 +23,7 @@ import MarketplaceScreenGuarded from '@/app/admin/marketplace';
 import CampaignsScreenGuarded from '@/app/admin/campaigns';
 import ShippingTaxScreen from '@/app/admin/shipping';
 import AdminSectionsScreen from '@/app/admin/sections';
+import GearReportsScreen from '@/app/admin/gear-reports';
 
 const TAB_SCREENS: Record<string, React.ComponentType> = {
   dashboard:   DashboardScreenGuarded,
@@ -42,8 +43,9 @@ const TAB_SCREENS: Record<string, React.ComponentType> = {
   permissions: PermissionsScreenGuarded,
   marketplace: MarketplaceScreenGuarded,
   campaigns:   CampaignsScreenGuarded,
-  shipping:    ShippingTaxScreen,
-  sections:    AdminSectionsScreen,
+  shipping:     ShippingTaxScreen,
+  sections:     AdminSectionsScreen,
+  'gear-reports': GearReportsScreen,
 };
 
 export default function AdminPanel() {

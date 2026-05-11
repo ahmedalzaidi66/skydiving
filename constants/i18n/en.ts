@@ -883,6 +883,9 @@ export default {
   listingUpdated: 'Listing updated',
   navUsedGear: 'Used Gear',
 
+  // Gear Reports
+  gearReports: 'تقييمات الزباين للمستعمل',
+
   // Shipping & Tax
   shippingTax: 'Shipping & Tax',
 

@@ -29,6 +29,7 @@ import {
   Tag,
   ShieldAlert,
   Megaphone,
+  Flag,
 } from 'lucide-react-native';
 import { useAdmin, ROLE_LABELS } from '@/context/AdminContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -52,6 +53,7 @@ const MOBILE_NAV_ITEMS = [
   { key: 'content',     icon: FileEdit,        route: '/admin/content',     permission: 'manage_cms' },
   { key: 'homeSections', icon: Megaphone,        route: '/admin/sections',    permission: 'manage_cms' },
   { key: 'adminMarketplace', icon: Tag,         route: '/admin/marketplace', permission: 'manage_orders' },
+  { key: 'gearReports',  icon: Flag,           route: '/admin/gear-reports', permission: 'manage_orders' },
   { key: 'campaigns',   icon: Megaphone,       route: '/admin/campaigns',   permission: 'manage_customers' },
   { key: 'settings',    icon: Settings,        route: '/admin/settings',    permission: 'manage_settings' },
   { key: 'permissions', icon: ShieldAlert,     route: '/admin/permissions', permission: 'manage_permissions' },

@@ -29,6 +29,7 @@ import {
   Info,
   Megaphone,
   Truck,
+  Flag,
 } from 'lucide-react-native';
 import { useAdmin, ROLE_LABELS } from '@/context/AdminContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -57,6 +58,7 @@ const NAV_ITEMS = [
   { key: 'uiSizes',       icon: Maximize2,       tab: 'sizes',       permission: 'manage_layout',     webOnly: true  },
   { key: 'adminMarketplace', icon: Tag,          tab: 'marketplace', permission: 'manage_orders',     webOnly: false },
   { key: 'campaigns',     icon: Megaphone,       tab: 'campaigns',   permission: 'manage_customers',  webOnly: false },
+  { key: 'gearReports',   icon: Flag,            tab: 'gear-reports', permission: 'manage_orders',    webOnly: false },
   { key: 'shippingTax',   icon: Truck,           tab: 'shipping',    permission: 'manage_settings',   webOnly: false },
   { key: 'settings',      icon: Settings,        tab: 'settings',    permission: 'manage_settings',   webOnly: false },
   { key: 'permissions',   icon: ShieldAlert,     tab: 'permissions', permission: 'manage_permissions',webOnly: false },
