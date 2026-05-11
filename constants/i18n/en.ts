@@ -886,6 +886,9 @@ export default {
   // Gear Reports
   gearReports: 'تقييمات الزباين للمستعمل',
 
+  // Activity Log
+  activityLog: 'Activity Log',
+
   // Shipping & Tax
   shippingTax: 'Shipping & Tax',
 

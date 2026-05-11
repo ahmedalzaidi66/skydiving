@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { Search, X, ChevronRight, CircleCheck, CircleX } from 'lucide-react-native';
 import { useAdmin } from '@/context/AdminContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { logAudit } from '@/lib/audit';
 import AdminWebDashboard from '@/components/admin/AdminWebDashboard';
 import AdminMobileDashboard from '@/components/admin/AdminMobileDashboard';
 import AdminGuard from '@/components/admin/AdminGuard';
@@ -51,6 +52,7 @@ function statusColor(s: string) {
 function OrdersContent() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { admin } = useAdmin();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -86,6 +88,9 @@ function OrdersContent() {
     setUpdatingStatus(true);
     const prevStatus = selectedOrder?.status ?? '';
     await adminSupabase().from('orders').update({ status: newStatus }).eq('id', orderId);
+    if (admin) {
+      logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'order.status_update', entityType: 'order', entityId: orderId, entityLabel: `Order ${orderId.slice(0, 8)}`, oldValues: { status: prevStatus }, newValues: { status: newStatus } });
+    }
 
     // Restore stock when transitioning into cancelled/refunded from a non-restoring status
     const wasRestoring = STOCK_RESTORE_STATUSES.includes(prevStatus);

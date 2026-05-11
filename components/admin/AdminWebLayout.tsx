@@ -30,6 +30,7 @@ import {
   Megaphone,
   Truck,
   Flag,
+  ClipboardList,
 } from 'lucide-react-native';
 import { useAdmin, ROLE_LABELS } from '@/context/AdminContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -62,6 +63,7 @@ const NAV_ITEMS = [
   { key: 'shippingTax',   icon: Truck,           tab: 'shipping',    permission: 'manage_settings',   webOnly: false },
   { key: 'settings',      icon: Settings,        tab: 'settings',    permission: 'manage_settings',   webOnly: false },
   { key: 'permissions',   icon: ShieldAlert,     tab: 'permissions', permission: 'manage_permissions',webOnly: false },
+  { key: 'activityLog',  icon: ClipboardList,   tab: 'activity',    permission: 'view_dashboard',    webOnly: false },
 ] as const;
 
 // Role badge colour map

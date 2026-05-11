@@ -21,6 +21,8 @@ import MobileUnsupported from '@/components/admin/MobileUnsupported';
 import Toast from '@/components/admin/Toast';
 import { useAdminLayout } from '@/hooks/useAdminLayout';
 import { supabase, adminSupabase, getAdminToken, Employee, EMPLOYEE_ROLES, EMPLOYEE_PERMISSIONS } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -75,7 +77,7 @@ async function callEmployeeAuthFn(
 
 function EmployeesScreen() {
   const { isMobile } = useAdminLayout();
-  const { isAdminAuthenticated } = useAdmin();
+  const { isAdminAuthenticated, admin } = useAdmin();
   const { t } = useLanguage();
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -226,6 +228,7 @@ function EmployeesScreen() {
       setSaving(false);
       setModalVisible(false);
       await fetchEmployees();
+      if (admin) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'employee.update', entityType: 'employee', entityId: editingEmployee.id, entityLabel: form.full_name.trim(), oldValues: { role: editingEmployee.role, is_active: editingEmployee.is_active }, newValues: { role: form.role, is_active: form.is_active } });
       const pwMsg = changePassword && form.password ? ' and password changed' : '';
       showToast('Employee updated' + pwMsg);
     } else {
@@ -257,6 +260,7 @@ function EmployeesScreen() {
       setSaving(false);
       setModalVisible(false);
       await fetchEmployees();
+      if (admin) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'employee.create', entityType: 'employee', entityLabel: form.full_name.trim(), newValues: { email: emailLower, role: form.role } });
       showToast('Employee created — they can now log in with their email and password');
     }
   };
@@ -270,6 +274,7 @@ function EmployeesScreen() {
       await callEmployeeAuthFn('delete', { auth_user_id: emp.auth_user_id });
     }
 
+    if (admin && emp) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'employee.delete', entityType: 'employee', entityId: id, entityLabel: emp.full_name });
     setDeleteId(null);
     await fetchEmployees();
     showToast(t.deleted ?? 'Employee removed');
@@ -596,25 +601,14 @@ function EmployeesScreen() {
         </View>
       </Modal>
 
-      {/* Delete confirm modal */}
-      <Modal visible={!!deleteId} transparent animationType="fade" onRequestClose={() => setDeleteId(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { maxWidth: 360 }]}>
-            <Text style={[styles.modalTitle, { padding: Spacing.lg }]}>{t.deleteEmployee}</Text>
-            <Text style={[styles.errorText, { paddingHorizontal: Spacing.lg }]}>
-              {t.cannotBeUndone}{'\n'}This will also delete the employee's login account.
-            </Text>
-            <View style={[styles.modalFooter, { borderTopWidth: 1, borderTopColor: Colors.border }]}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeleteId(null)}>
-                <Text style={styles.cancelBtnText}>{t.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: Colors.error }]} onPress={() => deleteId && handleDelete(deleteId)}>
-                <Text style={styles.saveBtnText}>{t.delete}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmDialog
+        visible={!!deleteId}
+        title={t.deleteEmployee ?? 'Delete Employee'}
+        message={`${t.cannotBeUndone ?? 'This action cannot be undone.'} Their login account will also be deleted.`}
+        confirmLabel={t.delete ?? 'Delete'}
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
 
       <Toast visible={!!toast} message={toast?.message ?? ''} type={toast?.type} />
     </AdminWebDashboard>

@@ -31,6 +31,7 @@ export default function AdminLayout() {
       <Stack.Screen name="marketplace" />
       <Stack.Screen name="campaigns" />
       <Stack.Screen name="gear-reports" />
+      <Stack.Screen name="activity" />
     </Stack>
   );
 }

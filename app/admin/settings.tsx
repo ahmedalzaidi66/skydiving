@@ -15,6 +15,7 @@ import AdminWebDashboard from '@/components/admin/AdminWebDashboard';
 import AdminMobileDashboard from '@/components/admin/AdminMobileDashboard';
 import AdminGuard from '@/components/admin/AdminGuard';
 import { supabase, adminSupabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCMS } from '@/context/CMSContext';
@@ -99,7 +100,7 @@ const THEME_OPTIONS = [
 ];
 
 function SettingsScreen() {
-  const { isAdminAuthenticated } = useAdmin();
+  const { isAdminAuthenticated, admin } = useAdmin();
   const router = useRouter();
   const { isMobile } = useAdminLayout();
   const { t } = useLanguage();
@@ -191,6 +192,7 @@ function SettingsScreen() {
         .from('site_settings')
         .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
     }
+    if (admin) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'settings.update', entityType: 'settings', entityLabel: 'site_settings', newValues: settings });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);

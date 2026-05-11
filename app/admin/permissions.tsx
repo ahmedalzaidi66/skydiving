@@ -25,6 +25,8 @@ import AdminGuard from '@/components/admin/AdminGuard';
 import MobileUnsupported from '@/components/admin/MobileUnsupported';
 import Toast from '@/components/admin/Toast';
 import { supabase, adminSupabase } from '@/lib/supabase';
+import { logAudit } from '@/lib/audit';
+import { useAdmin } from '@/context/AdminContext';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ const SECTION_COLORS: Record<string, string> = {
 
 function PermissionsScreen() {
   const { isMobile } = useAdminLayout();
+  const { admin } = useAdmin();
   const { t } = useLanguage();
   const [tab, setTab] = useState<Tab>('roles');
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -130,9 +133,12 @@ function PermissionsScreen() {
     });
 
     if (error) showToast('Failed to save: ' + error.message, 'error');
-    else showToast('Permissions saved for ' + roleKey.replace(/_/g, ' '));
+    else {
+      showToast('Permissions saved for ' + roleKey.replace(/_/g, ' '));
+      if (admin) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'permissions.role_update', entityType: 'permissions', entityLabel: roleKey, newValues: { role: roleKey, permissions: perms } });
+    }
     setSaving(null);
-  }, [rolePermMap]);
+  }, [rolePermMap, admin]);
 
   const toggleEmployeeCustom = (emp: Employee, permKey: string) => {
     setEmployees((prev) =>
@@ -156,9 +162,12 @@ function PermissionsScreen() {
     });
 
     if (error) showToast('Failed to save: ' + error.message, 'error');
-    else showToast('Permissions saved for ' + emp.full_name);
+    else {
+      showToast('Permissions saved for ' + emp.full_name);
+      if (admin) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'permissions.employee_update', entityType: 'permissions', entityId: emp.id, entityLabel: emp.full_name, newValues: { email: emp.email, permissions: perms } });
+    }
     setSaving(null);
-  }, [rolePermMap]);
+  }, [rolePermMap, admin]);
 
   const resetEmployeeToRole = (emp: Employee) => {
     setEmployees((prev) =>

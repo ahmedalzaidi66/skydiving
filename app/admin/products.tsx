@@ -39,6 +39,8 @@ import ProductImageGallery, { GalleryImage } from '@/components/admin/ProductIma
 import { supabase, adminSupabase, Product, getProductName } from '@/lib/supabase';
 import { autoTranslate } from '@/lib/translate';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
+import { logAudit } from '@/lib/audit';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
 
 const CATEGORIES = ['helmets', 'suits', 'parachutes', 'accessories', 'safety', 'instruments'];
 
@@ -123,6 +125,7 @@ function countMissing(form: FormState): number {
 
 function WebProductsScreen() {
   const { t, language } = useLanguage();
+  const { admin } = useAdmin();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -394,10 +397,12 @@ function WebProductsScreen() {
       const { error } = await db.from('products').update(payload).eq('id', editProduct.id);
       if (error) { showToast('Save failed: ' + error.message, 'error'); setSaving(false); return; }
       productId = editProduct.id;
+      logAudit({ adminId: admin!.id, adminEmail: admin!.email, action: 'product.update', entityType: 'product', entityId: productId, entityLabel: payload.name, oldValues: { name: editProduct.name, price: editProduct.price, status: (editProduct as any).status }, newValues: { name: payload.name, price: payload.price } });
     } else {
       const { data: newP, error } = await db.from('products').insert(payload).select().maybeSingle();
       if (error || !newP) { showToast(error ? 'Save failed: ' + error.message : 'Failed to create product', 'error'); setSaving(false); return; }
       productId = newP.id;
+      logAudit({ adminId: admin!.id, adminEmail: admin!.email, action: 'product.create', entityType: 'product', entityId: productId, entityLabel: payload.name, newValues: { name: payload.name, price: payload.price, category: payload.category } });
     }
 
     // ── Persist gallery: delete all existing rows, then re-insert in order ──
@@ -478,7 +483,8 @@ function WebProductsScreen() {
 
   const handleDelete = async (p: Product) => {
     setDeleting(p.id);
-    await adminSupabase().from('products').delete().eq('id', p.id);
+    await adminSupabase().from('products').update({ deleted_at: new Date().toISOString() }).eq('id', p.id);
+    logAudit({ adminId: admin!.id, adminEmail: admin!.email, action: 'product.delete', entityType: 'product', entityId: p.id, entityLabel: p.name });
     await fetchProducts();
     setDeleting(null);
     setConfirmDelete(null);
@@ -850,26 +856,15 @@ function WebProductsScreen() {
         </View>
       </Modal>
 
-      <Modal visible={!!confirmDelete} animationType="fade" transparent onRequestClose={() => setConfirmDelete(null)}>
-        <View style={styles.confirmOverlay}>
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitle}>{t.deleteProduct}</Text>
-            <Text style={styles.confirmMsg} numberOfLines={2}>{confirmDelete?.name}</Text>
-            <View style={styles.confirmBtns}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setConfirmDelete(null)} activeOpacity={0.7}>
-                <Text style={styles.cancelBtnText}>{t.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: Colors.error }]}
-                onPress={() => confirmDelete && handleDelete(confirmDelete)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.saveBtnText}>{t.delete}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmDialog
+        visible={!!confirmDelete}
+        title={t.deleteProduct ?? 'Delete Product'}
+        message={confirmDelete ? `"${confirmDelete.name}" will be removed from your store.` : ''}
+        confirmLabel={t.delete ?? 'Delete'}
+        loading={deleting === confirmDelete?.id}
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {/* Re-Translate modal */}
       <Modal

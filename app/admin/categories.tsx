@@ -36,6 +36,8 @@ import Toast from '@/components/admin/Toast';
 import { useAdminLayout } from '@/hooks/useAdminLayout';
 import { supabase, adminSupabase, Category } from '@/lib/supabase';
 import { autoTranslate } from '@/lib/translate';
+import { logAudit } from '@/lib/audit';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import { uploadImageToSupabase, validateImageFile } from '@/lib/imageUpload';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
 
@@ -62,7 +64,7 @@ const EMPTY_TRANS: TranslationMap = {
 type CategoryRow = Category & { id: string; slug: string; active: boolean; sort_order: number };
 
 function CategoriesScreen() {
-  const { isAdminAuthenticated } = useAdmin();
+  const { isAdminAuthenticated, admin } = useAdmin();
   const { t } = useLanguage();
   const router = useRouter();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -226,6 +228,10 @@ function CategoriesScreen() {
       )
     );
 
+    if (admin) {
+      const enName = translations.en.name.trim() || slug.trim();
+      logAudit({ adminId: admin.id, adminEmail: admin.email, action: editing ? 'category.update' : 'category.create', entityType: 'category', entityId: categoryId, entityLabel: enName });
+    }
     await loadCategories();
     setSaving(false);
     setModalVisible(false);
@@ -233,7 +239,9 @@ function CategoriesScreen() {
   };
 
   const handleDelete = async (id: string) => {
-    await adminSupabase().from('categories').delete().eq('id', id);
+    const cat = categories.find((c) => c.id === id);
+    await adminSupabase().from('categories').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+    if (admin && cat) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'category.delete', entityType: 'category', entityId: id, entityLabel: cat.slug });
     setDeleteId(null);
     await loadCategories();
     showToast(t.categoryDeleted);
@@ -577,28 +585,15 @@ function CategoriesScreen() {
         </View>
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal visible={!!deleteId} transparent animationType="fade" onRequestClose={() => setDeleteId(null)}>
-        <View style={styles.overlay}>
-          <View style={[styles.modalCard, { maxWidth: 360 }]}>
-            <Text style={[styles.modalTitle, { padding: Spacing.lg }]}>{t.deleteCategory}</Text>
-            <Text style={[styles.hintText, { paddingHorizontal: Spacing.lg, color: Colors.warning }]}>
-              {t.deleteCategoryWarning}
-            </Text>
-            <View style={[styles.modalFooter, { borderTopWidth: 1, borderTopColor: Colors.border }]}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeleteId(null)}>
-                <Text style={styles.cancelBtnText}>{t.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: Colors.error }]}
-                onPress={() => deleteId && handleDelete(deleteId)}
-              >
-                <Text style={styles.saveBtnText}>{t.delete}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmDialog
+        visible={!!deleteId}
+        title={t.deleteCategory ?? 'Delete Category'}
+        message={t.deleteCategoryWarning ?? 'This category will be hidden from the store. Products in this category are not deleted.'}
+        variant="warning"
+        confirmLabel={t.delete ?? 'Delete'}
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
 
       <Toast visible={!!toast} message={toast?.message ?? ''} type={toast?.type} />
     </AdminWebDashboard>

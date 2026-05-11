@@ -15,6 +15,8 @@ import { useRouter } from 'expo-router';
 import { Plus, Pencil, Trash2, Search, X, Tag, Percent, DollarSign, Calendar } from 'lucide-react-native';
 import { useAdmin } from '@/context/AdminContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { logAudit } from '@/lib/audit';
+import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import AdminWebDashboard from '@/components/admin/AdminWebDashboard';
 import AdminMobileDashboard from '@/components/admin/AdminMobileDashboard';
 import AdminGuard from '@/components/admin/AdminGuard';
@@ -33,7 +35,7 @@ const EMPTY_FORM = {
 };
 
 function CouponsScreen() {
-  const { isAdminAuthenticated } = useAdmin();
+  const { isAdminAuthenticated, admin } = useAdmin();
   const { isMobile } = useAdminLayout();
   const { t } = useLanguage();
   const router = useRouter();
@@ -110,9 +112,11 @@ function CouponsScreen() {
     if (editingCoupon) {
       const { error: err } = await db.from('coupons').update(payload).eq('id', editingCoupon.id);
       if (err) { setError(err.message); setSaving(false); return; }
+      if (admin) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'coupon.update', entityType: 'coupon', entityId: editingCoupon.id, entityLabel: payload.code, oldValues: { code: editingCoupon.code, discount_value: editingCoupon.discount_value }, newValues: { code: payload.code, discount_value: payload.discount_value } });
     } else {
-      const { error: err } = await db.from('coupons').insert(payload);
+      const { data: newC, error: err } = await db.from('coupons').insert(payload).select().maybeSingle();
       if (err) { setError(err.message); setSaving(false); return; }
+      if (admin && newC) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'coupon.create', entityType: 'coupon', entityId: newC.id, entityLabel: payload.code, newValues: { code: payload.code, discount_type: payload.discount_type, discount_value: payload.discount_value } });
     }
     await fetchCoupons();
     setSaving(false);
@@ -121,7 +125,9 @@ function CouponsScreen() {
   };
 
   const handleDelete = async (id: string) => {
-    await adminSupabase().from('coupons').delete().eq('id', id);
+    const coupon = coupons.find((c) => c.id === id);
+    await adminSupabase().from('coupons').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+    if (admin && coupon) logAudit({ adminId: admin.id, adminEmail: admin.email, action: 'coupon.delete', entityType: 'coupon', entityId: id, entityLabel: coupon.code });
     setDeleteId(null);
     setCoupons((prev) => prev.filter((c) => c.id !== id));
     showToast('Coupon deleted');
@@ -354,22 +360,14 @@ function CouponsScreen() {
         </View>
       </Modal>
 
-      <Modal visible={!!deleteId} transparent animationType="fade" onRequestClose={() => setDeleteId(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { maxWidth: 360 }]}>
-            <Text style={[styles.modalTitle, { padding: Spacing.lg }]}>{t.deleteCoupon}</Text>
-            <Text style={[styles.errorText, { paddingHorizontal: Spacing.lg }]}>{t.deleteCouponWarning}</Text>
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setDeleteId(null)}>
-                <Text style={styles.cancelBtnText}>{t.cancel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: Colors.error }]} onPress={() => deleteId && handleDelete(deleteId)}>
-                <Text style={styles.saveBtnText}>{t.delete}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmDialog
+        visible={!!deleteId}
+        title={t.deleteCoupon ?? 'Delete Coupon'}
+        message={t.deleteCouponWarning ?? 'This coupon will be permanently removed.'}
+        confirmLabel={t.delete ?? 'Delete'}
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        onCancel={() => setDeleteId(null)}
+      />
 
       <Toast visible={!!toast} message={toast?.message ?? ''} type={toast?.type} />
     </Shell>

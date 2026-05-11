@@ -1,29 +1,75 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ShieldOff, ArrowLeft } from 'lucide-react-native';
 import { useAdmin } from '@/context/AdminContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { supabase, getAdminToken } from '@/lib/supabase';
 import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
+
+const ADMIN_ROLES = new Set(['super_admin', 'admin']);
 
 type Props = {
   permission: string;
   children: React.ReactNode;
 };
 
+/**
+ * Guards an admin screen with two layers:
+ * 1. Client state check (fast path — already loaded from AdminContext)
+ * 2. Server-side token verification via `verify_admin_session` RPC (real protection)
+ *
+ * If either check fails the user is redirected to /admin/login.
+ */
 export default function AdminGuard({ permission, children }: Props) {
   const router = useRouter();
-  const { isAdminAuthenticated, isHydrated } = useAdmin();
+  const { admin, isAdminAuthenticated, isHydrated } = useAdmin();
   const { hasPermission } = usePermissions();
+
+  // 'pending' = server check in flight | 'ok' = verified | 'denied' = failed
+  const [serverCheck, setServerCheck] = useState<'pending' | 'ok' | 'denied'>('pending');
 
   useEffect(() => {
     if (!isHydrated) return;
-    if (!isAdminAuthenticated) {
+
+    // Fast-fail if client state already says not authenticated
+    if (!isAdminAuthenticated || !admin) {
       router.replace('/admin/login');
+      return;
     }
+
+    // Server-side verification: confirm the token is still valid in the DB
+    const token = getAdminToken();
+    if (!token) {
+      router.replace('/admin/login');
+      return;
+    }
+
+    let cancelled = false;
+    supabase.rpc('verify_admin_session', { p_token: token }).then(({ data, error }) => {
+      if (cancelled) return;
+
+      if (error || !data || (data as any[]).length === 0) {
+        router.replace('/admin/login');
+        setServerCheck('denied');
+        return;
+      }
+
+      const row = (data as any[])[0];
+      if (!row.is_active || !ADMIN_ROLES.has(row.role_key)) {
+        router.replace('/admin/login');
+        setServerCheck('denied');
+        return;
+      }
+
+      setServerCheck('ok');
+    });
+
+    return () => { cancelled = true; };
   }, [isHydrated, isAdminAuthenticated]);
 
-  if (!isHydrated) {
+  // Loading: either context not hydrated yet or server check in flight
+  if (!isHydrated || serverCheck === 'pending') {
     return (
       <View style={styles.loader}>
         <ActivityIndicator color={Colors.neonBlue} size="large" />
@@ -31,7 +77,7 @@ export default function AdminGuard({ permission, children }: Props) {
     );
   }
 
-  if (!isAdminAuthenticated) return null;
+  if (!isAdminAuthenticated || serverCheck === 'denied') return null;
 
   if (!hasPermission(permission)) {
     return <AccessDenied />;
@@ -42,7 +88,6 @@ export default function AdminGuard({ permission, children }: Props) {
 
 function AccessDenied() {
   const router = useRouter();
-
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>

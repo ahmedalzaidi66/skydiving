@@ -24,6 +24,7 @@ import CampaignsScreenGuarded from '@/app/admin/campaigns';
 import ShippingTaxScreen from '@/app/admin/shipping';
 import AdminSectionsScreen from '@/app/admin/sections';
 import GearReportsScreen from '@/app/admin/gear-reports';
+import ActivityScreenGuarded from '@/app/admin/activity';
 
 const TAB_SCREENS: Record<string, React.ComponentType> = {
   dashboard:   DashboardScreenGuarded,
@@ -46,6 +47,7 @@ const TAB_SCREENS: Record<string, React.ComponentType> = {
   shipping:     ShippingTaxScreen,
   sections:     AdminSectionsScreen,
   'gear-reports': GearReportsScreen,
+  activity:        ActivityScreenGuarded,
 };
 
 export default function AdminPanel() {
