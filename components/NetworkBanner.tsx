@@ -1,65 +1,104 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
-import { WifiOff, Wifi } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Platform, TouchableOpacity } from 'react-native';
+import { WifiOff } from 'lucide-react-native';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import { FontSize, Spacing } from '@/constants/theme';
+
+const BANNER_HEIGHT = 36;
 
 export default function NetworkBanner() {
-  const { status } = useNetworkStatus();
-  const slideAnim = useRef(new Animated.Value(-48)).current;
-  const prevStatus = useRef(status);
+  const { isOffline, retry } = useNetworkStatus();
+
+  // Keep the banner mounted during the slide-out animation so it doesn't
+  // disappear before the animation completes.
+  const [mounted, setMounted] = useState(false);
+  const slideAnim = useRef(new Animated.Value(-BANNER_HEIGHT)).current;
+  const animRunning = useRef(false);
 
   useEffect(() => {
-    const show = status !== 'online';
-    Animated.timing(slideAnim, {
-      toValue: show ? 0 : -48,
-      duration: 280,
-      useNativeDriver: true,
-    }).start();
-    prevStatus.current = status;
-  }, [status]);
+    if (isOffline) {
+      setMounted(true);
+      // Slight delay before sliding in prevents false-positive flashes
+      // during normal page loads where a request briefly fails.
+      const t = setTimeout(() => {
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 80,
+          friction: 12,
+          useNativeDriver: true,
+        }).start();
+      }, 300);
+      return () => clearTimeout(t);
+    } else {
+      if (!mounted) return;
+      animRunning.current = true;
+      Animated.timing(slideAnim, {
+        toValue: -BANNER_HEIGHT,
+        duration: 220,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setMounted(false);
+          animRunning.current = false;
+        }
+      });
+    }
+  }, [isOffline]);
 
-  if (status === 'online') return null;
-
-  const isOffline = status === 'offline';
+  if (!mounted) return null;
 
   return (
     <Animated.View
       style={[
         styles.banner,
-        isOffline ? styles.offlineBg : styles.slowBg,
         { transform: [{ translateY: slideAnim }] },
       ]}
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
     >
-      {isOffline
-        ? <WifiOff size={14} color="#fff" strokeWidth={2.5} />
-        : <Wifi size={14} color="#fff" strokeWidth={2.5} />
-      }
-      <Text style={styles.text}>
-        {isOffline ? 'No internet connection' : 'Slow connection — some content may take longer to load'}
+      <WifiOff size={12} color="rgba(255,255,255,0.9)" strokeWidth={2.5} />
+      <Text style={styles.text} numberOfLines={1}>
+        No internet connection
       </Text>
+      <TouchableOpacity onPress={retry} style={styles.retryBtn} activeOpacity={0.7}>
+        <Text style={styles.retryText}>Retry</Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   banner: {
+    height: BANNER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 8,
-    paddingHorizontal: Spacing.md,
+    gap: 6,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(30, 30, 30, 0.92)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
     zIndex: 9999,
-    ...(Platform.OS === 'web' ? { position: 'fixed' as any, top: 0, left: 0, right: 0 } : {}),
+    ...(Platform.OS === 'web'
+      ? { position: 'fixed' as any, top: 0, left: 0, right: 0 }
+      : {}),
   },
-  offlineBg: { backgroundColor: '#DC2626' },
-  slowBg: { backgroundColor: '#B45309' },
   text: {
-    color: '#fff',
-    fontSize: FontSize.xs,
-    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
     textAlign: 'center',
-    flexShrink: 1,
+  },
+  retryBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  retryText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
