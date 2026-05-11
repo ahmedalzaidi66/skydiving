@@ -246,6 +246,9 @@ function ShippingTaxContent() {
   const saveShipping = async () => {
     if (!shippingForm.name.trim()) { showToast('Rule name is required', 'error'); return; }
     if (!shippingForm.region) { showToast('Please select a region', 'error'); return; }
+    if (shippingForm.shipping_type !== 'free' && Number(shippingForm.value) <= 0) {
+      showToast('Value must be greater than 0', 'error'); return;
+    }
     setSavingShipping(true);
     const payload = {
       name: shippingForm.name.trim(),
@@ -258,10 +261,16 @@ function ShippingTaxContent() {
     };
     const db = adminSupabase();
     if (editingShipping) {
-      await db.from('shipping_rules').update(payload).eq('id', editingShipping.id);
+      const { error } = await db.from('shipping_rules').update(payload).eq('id', editingShipping.id);
+      if (error) { showToast(error.message, 'error'); setSavingShipping(false); return; }
       showToast('Shipping rule updated');
     } else {
-      await db.from('shipping_rules').insert(payload);
+      const duplicate = shippingRules.find(
+        (r) => r.scope === payload.scope && r.region === payload.region
+      );
+      if (duplicate) { showToast(`A rule for "${payload.region}" already exists`, 'error'); setSavingShipping(false); return; }
+      const { error } = await db.from('shipping_rules').insert(payload);
+      if (error) { showToast(error.message, 'error'); setSavingShipping(false); return; }
       showToast('Shipping rule created');
     }
     setSavingShipping(false);
@@ -270,14 +279,17 @@ function ShippingTaxContent() {
   };
 
   const toggleShipping = async (id: string, enabled: boolean) => {
-    await adminSupabase().from('shipping_rules').update({ is_enabled: enabled }).eq('id', id);
-    setShippingRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, is_enabled: enabled } : r))
-    );
+    setShippingRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_enabled: enabled } : r)));
+    const { error } = await adminSupabase().from('shipping_rules').update({ is_enabled: enabled }).eq('id', id);
+    if (error) {
+      setShippingRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_enabled: !enabled } : r)));
+      showToast(error.message, 'error');
+    }
   };
 
   const deleteShipping = async (id: string) => {
-    await adminSupabase().from('shipping_rules').delete().eq('id', id);
+    const { error } = await adminSupabase().from('shipping_rules').delete().eq('id', id);
+    if (error) { showToast(error.message, 'error'); return; }
     setDeleteShippingId(null);
     showToast('Rule deleted');
     fetchShipping();
@@ -315,19 +327,27 @@ function ShippingTaxContent() {
   const saveTax = async () => {
     if (!taxForm.country) { showToast('Please select a country', 'error'); return; }
     if (!taxForm.tax_label.trim()) { showToast('Tax label is required', 'error'); return; }
+    const pct = Number(taxForm.tax_percentage);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      showToast('Tax percentage must be between 0 and 100', 'error'); return;
+    }
     setSavingTax(true);
     const payload = {
       country: taxForm.country,
-      tax_percentage: Number(taxForm.tax_percentage) || 0,
+      tax_percentage: pct,
       tax_label: taxForm.tax_label.trim(),
       is_enabled: taxForm.is_enabled,
     };
     const db = adminSupabase();
     if (editingTax) {
-      await db.from('tax_rules').update(payload).eq('id', editingTax.id);
+      const { error } = await db.from('tax_rules').update(payload).eq('id', editingTax.id);
+      if (error) { showToast(error.message, 'error'); setSavingTax(false); return; }
       showToast('Tax rule updated');
     } else {
-      await db.from('tax_rules').insert(payload);
+      const duplicate = taxRules.find((r) => r.country === payload.country);
+      if (duplicate) { showToast(`A tax rule for "${payload.country}" already exists`, 'error'); setSavingTax(false); return; }
+      const { error } = await db.from('tax_rules').insert(payload);
+      if (error) { showToast(error.message, 'error'); setSavingTax(false); return; }
       showToast('Tax rule created');
     }
     setSavingTax(false);
@@ -336,14 +356,17 @@ function ShippingTaxContent() {
   };
 
   const toggleTax = async (id: string, enabled: boolean) => {
-    await adminSupabase().from('tax_rules').update({ is_enabled: enabled }).eq('id', id);
-    setTaxRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, is_enabled: enabled } : r))
-    );
+    setTaxRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_enabled: enabled } : r)));
+    const { error } = await adminSupabase().from('tax_rules').update({ is_enabled: enabled }).eq('id', id);
+    if (error) {
+      setTaxRules((prev) => prev.map((r) => (r.id === id ? { ...r, is_enabled: !enabled } : r)));
+      showToast(error.message, 'error');
+    }
   };
 
   const deleteTax = async (id: string) => {
-    await adminSupabase().from('tax_rules').delete().eq('id', id);
+    const { error } = await adminSupabase().from('tax_rules').delete().eq('id', id);
+    if (error) { showToast(error.message, 'error'); return; }
     setDeleteTaxId(null);
     showToast('Tax rule deleted');
     fetchTax();
