@@ -18,6 +18,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { useRouter } from 'expo-router';
 import { openWhatsApp } from '@/components/WhatsAppButton';
 import { supabase, Order, OrderItem } from '@/lib/supabase';
+import { Sentry } from '@/lib/sentry';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import AppHeader from '@/components/AppHeader';
@@ -1095,6 +1096,18 @@ function ProfileView() {
           <LogOut size={16} color={C.error} strokeWidth={2} />
           <Text style={styles.signOutBtnText}>Sign Out</Text>
         </TouchableOpacity>
+
+        {/* ── Dev-only: Sentry test button ─────────────── */}
+        {process.env.NODE_ENV !== 'production' && (
+          <TouchableOpacity
+            style={[styles.signOutBtn, { borderColor: C.warning + '44', marginTop: 8 }]}
+            onPress={() => Sentry.captureException(new Error('Sentry test error — development only'))}
+            activeOpacity={0.8}
+          >
+            <AlertTriangle size={16} color={C.warning} strokeWidth={2} />
+            <Text style={[styles.signOutBtnText, { color: C.warning }]}>Test Sentry Error</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: Spacing.xxl }} />
       </ScrollView>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { sentrySetUser, sentryClearUser, captureError } from '@/lib/sentry';
 
 export type UserProfile = {
   id: string;
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const birthday = await fetchBirthday(data.session.user.id);
         setSession(data.session);
         setUser(buildProfile(data.session.user, birthday));
+        sentrySetUser(data.session.user.id);
       }
       setLoading(false);
     });
@@ -84,9 +86,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const birthday = await fetchBirthday(newSession.user.id);
           setSession(newSession);
           setUser(buildProfile(newSession.user, birthday));
+          sentrySetUser(newSession.user.id);
         } else {
           setSession(null);
           setUser(null);
+          sentryClearUser();
         }
       })();
     });
@@ -104,6 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (error) {
       const msg = error.message ?? '';
+      // Not a crash — expected user errors, capture only unexpected ones
+      if (!msg.toLowerCase().includes('invalid') && !msg.toLowerCase().includes('not confirmed')) {
+        captureError(error, { action: 'login' });
+      }
       if (msg.toLowerCase().includes('email not confirmed') || msg.toLowerCase().includes('not confirmed')) {
         return { success: false, error: 'Please confirm your email address before signing in.' };
       }
@@ -113,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const birthday = await fetchBirthday(data.user.id);
       setSession(data.session);
       setUser(buildProfile(data.user, birthday));
+      sentrySetUser(data.user.id);
     }
     return { success: true };
   }, []);
@@ -193,6 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
+    sentryClearUser();
   }, []);
 
   const forgotPassword = useCallback(async (

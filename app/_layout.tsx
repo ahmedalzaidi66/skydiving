@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +17,19 @@ import { GearWishlistProvider } from '@/context/GearWishlistContext';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import GlobalBackButton from '@/components/GlobalBackButton';
 import NetworkBanner from '@/components/NetworkBanner';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { initSentry, sentrySetRoute } from '@/lib/sentry';
+
+// Initialize once before any component renders
+initSentry();
+
+function RouteTracker() {
+  const pathname = usePathname();
+  useEffect(() => {
+    sentrySetRoute(pathname ?? '/');
+  }, [pathname]);
+  return null;
+}
 
 function AppShell() {
   const pathname = usePathname();
@@ -25,6 +38,7 @@ function AppShell() {
 
   return (
     <View style={{ flex: 1 }}>
+      <RouteTracker />
       <NetworkBanner />
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -47,28 +61,32 @@ export default function RootLayout() {
   useFrameworkReady();
 
   return (
-    <LanguageProvider>
-      <CMSProvider>
-      <ThemeProvider>
-      <LayoutProvider>
-      <UISizeProvider>
-      <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <GearWishlistProvider>
-            <WishlistToastProvider>
-              <AdminProvider>
-                <AppShell />
-              </AdminProvider>
-            </WishlistToastProvider>
-            </GearWishlistProvider>
-          </WishlistProvider>
-        </CartProvider>
-      </AuthProvider>
-      </UISizeProvider>
-      </LayoutProvider>
-      </ThemeProvider>
-      </CMSProvider>
-    </LanguageProvider>
+    <ErrorBoundary fallbackTitle="App failed to load">
+      <LanguageProvider>
+        <CMSProvider>
+        <ThemeProvider>
+        <LayoutProvider>
+        <UISizeProvider>
+        <AuthProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <GearWishlistProvider>
+              <WishlistToastProvider>
+                <AdminProvider>
+                  <ErrorBoundary>
+                    <AppShell />
+                  </ErrorBoundary>
+                </AdminProvider>
+              </WishlistToastProvider>
+              </GearWishlistProvider>
+            </WishlistProvider>
+          </CartProvider>
+        </AuthProvider>
+        </UISizeProvider>
+        </LayoutProvider>
+        </ThemeProvider>
+        </CMSProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 }

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { calculateShippingAndTax, type ShippingTaxResult } from '@/lib/shippingTax';
+import { captureError } from '@/lib/sentry';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -289,6 +290,10 @@ export default function CheckoutScreen() {
 
       if (orderError || !order) {
         const msg = orderError?.message ?? 'Failed to place order. Please try again.';
+        captureError(orderError ?? new Error('order insert returned no data'), {
+          action: 'checkout/place_order',
+          extra: { itemCount: items.length },
+        });
         setErrors({ email: msg.includes('network') || msg.includes('fetch') ? 'No internet connection. Please check your network and try again.' : msg });
         return;
       }
@@ -314,6 +319,7 @@ export default function CheckoutScreen() {
       clearCart();
       setOrderSuccess(order.id.slice(0, 8).toUpperCase());
     } catch (e: any) {
+      captureError(e, { action: 'checkout/place_order' });
       const msg: string = e?.message ?? '';
       if (msg.includes('network') || msg.includes('fetch') || msg.includes('timeout')) {
         setErrors({ email: 'No internet connection. Please check your network and try again.' });

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { captureError } from '@/lib/sentry';
 
 export type ImageUrls = {
   thumb: string;
@@ -100,6 +101,10 @@ export async function uploadImageToSupabase(
     const result = await response.json();
 
     if (!result.success) {
+      captureError(new Error(result.error ?? 'Optimization failed'), {
+        action: 'image_upload/optimize',
+        extra: { folder, status: response.status },
+      });
       return { url: null, urls: null, error: result.error ?? 'Optimization failed' };
     }
 
@@ -108,6 +113,7 @@ export async function uploadImageToSupabase(
     const urls: ImageUrls = result.urls;
     return { url: urls.medium, urls, error: null };
   } catch (err: unknown) {
+    captureError(err, { action: 'image_upload/optimize', extra: { folder } });
     const msg = err instanceof Error ? err.message : 'Upload failed';
     return { url: null, urls: null, error: msg };
   }
