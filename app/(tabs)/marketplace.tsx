@@ -12,12 +12,13 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, TriangleAlert as AlertTriangle, Tag, Package, Star, BadgeCheck, Eye, Zap, Heart } from 'lucide-react-native';
+import { Plus, TriangleAlert as AlertTriangle, Tag, Package, Star, BadgeCheck, Eye, Zap, Heart, WifiOff, RefreshCw } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGearWishlist } from '@/context/GearWishlistContext';
 import AppHeader from '@/components/AppHeader';
+import { GearListingSkeleton } from '@/components/LoadingSkeleton';
 import SearchBar from '@/components/SearchBar';
 import SearchOverlay from '@/components/SearchOverlay';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
@@ -110,6 +111,7 @@ export default function MarketplaceScreen() {
   const [sellerMap, setSellerMap] = useState<Record<string, SellerRatingSummary>>({});
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -189,27 +191,43 @@ export default function MarketplaceScreen() {
     fetchingRef.current = false;
     pageRef.current = 0;
     setLoading(true);
+    setFetchError(null);
     setListings([]);
     setAllListings([]);
     setHasMore(true);
 
-    const { data } = await buildQuery(0, category, sortKey, avail);
-    const rows = (data ?? []) as UsedGearListing[];
+    const timeout = setTimeout(() => {
+      setFetchError('Request timed out. Check your connection and try again.');
+      setLoading(false);
+      setRefreshing(false);
+    }, 12000);
 
-    if (!category) {
-      const { data: allRows } = await supabase
-        .from('used_gear_listings')
-        .select('category')
-        .in('status', ['approved', 'sold']);
-      const cats = Array.from(new Set((allRows ?? []).map((r: any) => r.category).filter(Boolean)));
-      setAllCategories(cats);
+    try {
+      const { data, error } = await buildQuery(0, category, sortKey, avail);
+      clearTimeout(timeout);
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as UsedGearListing[];
+
+      if (!category) {
+        const { data: allRows } = await supabase
+          .from('used_gear_listings')
+          .select('category')
+          .in('status', ['approved', 'sold']);
+        const cats = Array.from(new Set((allRows ?? []).map((r: any) => r.category).filter(Boolean)));
+        setAllCategories(cats);
+      }
+
+      setListings(rows);
+      setHasMore(rows.length === PAGE_SIZE);
+      pageRef.current = 1;
+      await loadSellerProfiles(rows);
+    } catch (e: any) {
+      clearTimeout(timeout);
+      setFetchError(e?.message ?? 'Failed to load listings. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    setListings(rows);
-    setHasMore(rows.length === PAGE_SIZE);
-    pageRef.current = 1;
-    setLoading(false);
-    await loadSellerProfiles(rows);
   }, [buildQuery, loadSellerProfiles]);
 
   const loadMore = useCallback(async () => {
@@ -274,7 +292,6 @@ export default function MarketplaceScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await resetAndLoad(selectedCategory, sort, availFilter);
-    setRefreshing(false);
   }, [resetAndLoad, selectedCategory, sort, availFilter]);
 
   const sortLabel = (k: SortKey) => {
@@ -430,9 +447,24 @@ export default function MarketplaceScreen() {
       </View>
 
       {loading ? (
-        <View style={ms.loadingWrap}>
-          <ActivityIndicator color={C.neonBlue} size="large" />
-          <Text style={ms.loadingText}>{t.loading ?? 'Loading…'}</Text>
+        <View style={{ paddingTop: Spacing.md }}>
+          <GearListingSkeleton count={5} />
+        </View>
+      ) : fetchError ? (
+        <View style={ms.emptyWrap}>
+          <View style={ms.emptyIconWrap}>
+            <WifiOff size={32} color={C.error} strokeWidth={1.5} />
+          </View>
+          <Text style={[ms.emptyTitle, { color: C.error }]}>Connection error</Text>
+          <Text style={ms.emptySubtext}>{fetchError}</Text>
+          <TouchableOpacity
+            onPress={() => resetAndLoad(selectedCategory, sort, availFilter)}
+            activeOpacity={0.8}
+            style={[ms.clearBtn, { flexDirection: 'row', gap: 6, alignItems: 'center' }]}
+          >
+            <RefreshCw size={14} color={C.neonBlue} strokeWidth={2} />
+            <Text style={ms.clearBtnText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : displayedListings.length === 0 ? (
         <View style={ms.emptyWrap}>

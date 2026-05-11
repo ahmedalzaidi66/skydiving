@@ -191,6 +191,7 @@ export default function CheckoutScreen() {
   };
 
   const handlePlaceOrder = async () => {
+    if (loading) return;
     if (!validate()) return;
     setLoading(true);
 
@@ -198,12 +199,10 @@ export default function CheckoutScreen() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      console.log('[CHECKOUT SESSION]', session);
 
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      console.log('[CHECKOUT USER]', user);
 
       // Use session.user for payload — session is what Supabase attaches as the
       // Authorization header, so auth.uid() in RLS equals session.user.id.
@@ -282,8 +281,6 @@ export default function CheckoutScreen() {
         status: 'pending',
       };
 
-      console.log('[CHECKOUT ORDER PAYLOAD]', orderPayload);
-
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert(orderPayload)
@@ -291,8 +288,8 @@ export default function CheckoutScreen() {
         .maybeSingle();
 
       if (orderError || !order) {
-        console.error('[CHECKOUT ORDER ERROR]', orderError);
-        setErrors({ email: orderError?.message ?? 'Failed to place order. Please try again.' });
+        const msg = orderError?.message ?? 'Failed to place order. Please try again.';
+        setErrors({ email: msg.includes('network') || msg.includes('fetch') ? 'No internet connection. Please check your network and try again.' : msg });
         return;
       }
 
@@ -308,7 +305,6 @@ export default function CheckoutScreen() {
 
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) {
-        console.error('[checkout] order_items insert error:', itemsError);
         setErrors({ email: itemsError.message });
         return;
       }
@@ -317,8 +313,13 @@ export default function CheckoutScreen() {
 
       clearCart();
       setOrderSuccess(order.id.slice(0, 8).toUpperCase());
-    } catch {
-      setErrors({ email: 'Something went wrong. Please try again.' });
+    } catch (e: any) {
+      const msg: string = e?.message ?? '';
+      if (msg.includes('network') || msg.includes('fetch') || msg.includes('timeout')) {
+        setErrors({ email: 'No internet connection. Please check your network and try again.' });
+      } else {
+        setErrors({ email: 'Something went wrong. Please try again.' });
+      }
     } finally {
       setLoading(false);
     }

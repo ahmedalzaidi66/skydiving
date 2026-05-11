@@ -9,9 +9,10 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ShoppingBag, ShoppingCart, Heart } from 'lucide-react-native';
+import { ShoppingBag, ShoppingCart, Heart, RefreshCw, WifiOff } from 'lucide-react-native';
 import { fetchProducts, fetchCategories, getProductName, getProductImage, getCategoryName, Product, Category } from '@/lib/supabase';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
@@ -21,6 +22,7 @@ import AppHeader from '@/components/AppHeader';
 import SearchBar from '@/components/SearchBar';
 import SearchOverlay from '@/components/SearchOverlay';
 import StarRating from '@/components/StarRating';
+import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 import { useTheme, useThemeColors, ThemeColors } from '@/context/ThemeContext';
 import { type SuggestionSource } from '@/hooks/useSearchSuggestions';
@@ -67,6 +69,8 @@ export default function ProductsScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(categoryParam ?? null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
@@ -100,24 +104,35 @@ export default function ProductsScreen() {
     setSearchQuery('');
   }, []);
 
-  const resetAndLoad = useCallback(async (lang: string, cat: string | null) => {
-    setLoading(true);
+  const resetAndLoad = useCallback(async (lang: string, cat: string | null, isRefresh = false) => {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    setFetchError(null);
     setProducts([]);
     setAllProducts([]);
     setHasMore(true);
     pageRef.current = 0;
     fetchingRef.current = false;
+    const timeout = setTimeout(() => {
+      setFetchError('Request timed out. Check your connection and try again.');
+      setLoading(false);
+      setRefreshing(false);
+    }, 12000);
     try {
       const [prods, cats] = await Promise.all([
         fetchProducts({ language: lang, category: cat ?? undefined, limit: PAGE_SIZE, offset: 0 }),
         fetchCategories(lang),
       ]);
+      clearTimeout(timeout);
       setProducts(prods);
       setCategories(cats);
       setHasMore(prods.length === PAGE_SIZE);
       pageRef.current = 1;
+    } catch (e: any) {
+      clearTimeout(timeout);
+      setFetchError(e?.message ?? 'Failed to load products. Please try again.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -147,6 +162,10 @@ export default function ProductsScreen() {
     const all = await fetchProducts({ language: lang, category: cat ?? undefined });
     setAllProducts(all);
   }, [allProducts.length]);
+
+  const handleRefresh = useCallback(() => {
+    resetAndLoad(language, selectedCategory, true);
+  }, [language, selectedCategory, resetAndLoad]);
 
   useEffect(() => {
     resetAndLoad(language, selectedCategory);
@@ -272,9 +291,24 @@ export default function ProductsScreen() {
 
       {/* ── Content ── */}
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={C.neonBlue} />
-          <Text style={styles.loadingText}>{t.loading ?? 'Loading…'}</Text>
+        <View style={{ paddingTop: Spacing.md }}>
+          <LoadingSkeleton count={numCols * 3} />
+        </View>
+      ) : fetchError ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIconWrap}>
+            <WifiOff size={32} color={C.error} strokeWidth={1.5} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: C.error }]}>Connection error</Text>
+          <Text style={styles.emptySubtext}>{fetchError}</Text>
+          <TouchableOpacity
+            onPress={() => resetAndLoad(language, selectedCategory)}
+            activeOpacity={0.8}
+            style={[styles.clearSearchBtn, { borderColor: C.neonBlueBorder, flexDirection: 'row', gap: 6, alignItems: 'center' }]}
+          >
+            <RefreshCw size={14} color={C.neonBlue} strokeWidth={2} />
+            <Text style={styles.clearSearchBtnText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : displayedProducts.length === 0 ? (
         <View style={styles.emptyWrap}>
@@ -307,6 +341,14 @@ export default function ProductsScreen() {
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={C.neonBlue}
+              colors={[C.neonBlue]}
+            />
+          }
           renderItem={({ item }) => (
             <ProductCard
               product={item}
@@ -335,17 +377,28 @@ function ProductCard({
   const styles = makeStyles(C);
   const imgH = Math.round(cardW * 0.65);
   const saved = isWishlisted(product.id);
+  const cartPendingRef = useRef(false);
+  const wishlistPendingRef = useRef(false);
 
   const handleAddToCart = useCallback((e: any) => {
     e.stopPropagation();
+    if (cartPendingRef.current) return;
+    cartPendingRef.current = true;
     const result = addToCart(product, 1);
     showCartToast(result.ok ? 'Added to cart' : `Only ${(result as any).available} in stock`);
+    setTimeout(() => { cartPendingRef.current = false; }, 800);
   }, [product, addToCart, showCartToast]);
 
   const handleWishlist = useCallback(async (e: any) => {
     e.stopPropagation();
-    const { added } = await toggle(product);
-    showWishlistToast(added, added ? 'Added to wishlist' : 'Removed from wishlist');
+    if (wishlistPendingRef.current) return;
+    wishlistPendingRef.current = true;
+    try {
+      const { added } = await toggle(product);
+      showWishlistToast(added, added ? 'Added to wishlist' : 'Removed from wishlist');
+    } finally {
+      wishlistPendingRef.current = false;
+    }
   }, [product, toggle, showWishlistToast]);
 
   return (

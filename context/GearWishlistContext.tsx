@@ -37,28 +37,39 @@ export function GearWishlistProvider({ children }: { children: React.ReactNode }
 
   const loadGearWishlist = useCallback(async (userId: string) => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('gear_wishlist')
-      .select(`
-        id,
-        created_at,
-        listing:used_gear_listings(*)
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const queryPromise = supabase
+        .from('gear_wishlist')
+        .select(`
+          id,
+          created_at,
+          listing:used_gear_listings(*)
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      const items: GearWishlistItem[] = (data as any[])
-        .filter((row) => row.listing)
-        .map((row) => ({
-          id: row.id,
-          created_at: row.created_at,
-          listing: row.listing as UsedGearListing,
-        }));
-      setGearWishlistItems(items);
-      setGearWishlistIds(new Set(items.map((i) => i.listing.id)));
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 10000)
+      );
+
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+
+      if (!error && data) {
+        const items: GearWishlistItem[] = (data as any[])
+          .filter((row) => row.listing)
+          .map((row) => ({
+            id: row.id,
+            created_at: row.created_at,
+            listing: row.listing as UsedGearListing,
+          }));
+        setGearWishlistItems(items);
+        setGearWishlistIds(new Set(items.map((i) => i.listing.id)));
+      }
+    } catch {
+      // Network error or timeout — keep existing state
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -99,18 +110,58 @@ export function GearWishlistProvider({ children }: { children: React.ReactNode }
       }
 
       try {
+        let serverError: any = null;
         if (alreadyAdded) {
-          await supabase
+          const { error } = await supabase
             .from('gear_wishlist')
             .delete()
             .eq('user_id', user.id)
             .eq('listing_id', listing.id);
+          serverError = error;
         } else {
-          await supabase
+          const { error } = await supabase
             .from('gear_wishlist')
             .insert({ user_id: user.id, listing_id: listing.id });
+          serverError = error;
         }
+
+        if (serverError) {
+          // Rollback on server error
+          if (alreadyAdded) {
+            setGearWishlistIds((prev) => new Set([...prev, listing.id]));
+            setGearWishlistItems((prev) => [
+              { id: `rollback-${listing.id}`, listing, created_at: new Date().toISOString() },
+              ...prev.filter((i) => i.listing.id !== listing.id),
+            ]);
+          } else {
+            setGearWishlistIds((prev) => {
+              const next = new Set(prev);
+              next.delete(listing.id);
+              return next;
+            });
+            setGearWishlistItems((prev) => prev.filter((i) => i.listing.id !== listing.id));
+          }
+          return { added: alreadyAdded };
+        }
+
         await loadGearWishlist(user.id);
+      } catch {
+        // Network failure — rollback
+        if (alreadyAdded) {
+          setGearWishlistIds((prev) => new Set([...prev, listing.id]));
+          setGearWishlistItems((prev) => [
+            { id: `rollback-${listing.id}`, listing, created_at: new Date().toISOString() },
+            ...prev.filter((i) => i.listing.id !== listing.id),
+          ]);
+        } else {
+          setGearWishlistIds((prev) => {
+            const next = new Set(prev);
+            next.delete(listing.id);
+            return next;
+          });
+          setGearWishlistItems((prev) => prev.filter((i) => i.listing.id !== listing.id));
+        }
+        return { added: alreadyAdded };
       } finally {
         pendingRef.current.delete(listing.id);
       }

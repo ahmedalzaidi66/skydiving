@@ -16,6 +16,7 @@ import { WishlistToastProvider } from '@/context/WishlistToastContext';
 import { GearWishlistProvider } from '@/context/GearWishlistContext';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import GlobalBackButton from '@/components/GlobalBackButton';
+import NetworkBanner from '@/components/NetworkBanner';
 
 function AppShell() {
   const pathname = usePathname();
@@ -24,6 +25,7 @@ function AppShell() {
 
   return (
     <View style={{ flex: 1 }}>
+      <NetworkBanner />
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="product/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />
