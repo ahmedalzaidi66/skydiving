@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -30,9 +30,10 @@ import { captureError } from '@/lib/sentry';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useThemeColors, type ThemeColors } from '@/context/ThemeContext';
 import GlossyButton from '@/components/GlossyButton';
 import CountryPicker, { getCountryByCode } from '@/components/CountryPicker';
-import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
+import { Spacing, FontSize, Radius } from '@/constants/theme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,11 +48,9 @@ type FormData = {
   city: string;
   state: string;
   zip: string;
-  // ISO 3166-1 alpha-2 code (e.g. "US"). countryName is the English display name.
   country: string;
   countryName: string;
   paymentMethod: PaymentMethod;
-  // Card fields (UI only — not sent to server)
   cardNumber: string;
   cardExpiry: string;
   cardCvv: string;
@@ -68,7 +67,7 @@ type FormErrors = Partial<Record<keyof FormData, string>>;
 
 const PAYMENT_METHOD_IDS: PaymentMethod[] = ['card', 'paypal', 'apple', 'google'];
 
-// ─── Card number formatter ─────────────────────────────────────────────────
+// ─── Formatters ───────────────────────────────────────────────────────────────
 
 function formatCardNumber(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 16);
@@ -90,10 +89,634 @@ function getCardBrand(number: string): 'visa' | 'mastercard' | 'amex' | 'discove
   return null;
 }
 
+// ─── Styles factory ───────────────────────────────────────────────────────────
+
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: C.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.md,
+      paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg,
+      paddingBottom: Spacing.md,
+      backgroundColor: C.background,
+      borderBottomWidth: 1,
+      borderBottomColor: C.border,
+    },
+    headerSpacer: {
+      width: 48,
+    },
+    headerTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '700',
+    },
+    secureBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: C.successDim,
+      borderRadius: Radius.full,
+      borderWidth: 1,
+      borderColor: C.success + '40',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    secureBadgeText: {
+      color: C.success,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+    },
+    content: {
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    row: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    sectionLabel: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginTop: Spacing.md,
+      marginBottom: Spacing.xs,
+    },
+    sectionLabelText: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '700',
+    },
+    fieldWrapper: {
+      gap: 4,
+    },
+    fieldLabel: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    fieldRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: C.backgroundInput,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: C.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm + 2,
+    },
+    fieldRowError: {
+      borderColor: C.error,
+      backgroundColor: C.errorDim,
+    },
+    fieldInput: {
+      flex: 1,
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      padding: 0,
+    },
+    fieldError: {
+      color: C.error,
+      fontSize: FontSize.xs,
+      fontWeight: '500',
+    },
+    secureNotice: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: C.successDim,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: C.success + '30',
+      padding: Spacing.sm,
+      marginBottom: Spacing.xs,
+    },
+    secureNoticeText: {
+      flex: 1,
+      color: C.success,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+      lineHeight: 16,
+    },
+    paymentTabs: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    paymentTab: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.md,
+      borderWidth: 1.5,
+      borderColor: C.border,
+      paddingVertical: 13,
+      paddingHorizontal: 4,
+      position: 'relative',
+    },
+    paymentTabActive: {
+      borderColor: C.neonBlue,
+      borderWidth: 2,
+      backgroundColor: C.neonBlueGlow,
+      shadowColor: C.neonBlue,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    paymentTabIcon: {
+      height: 22,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    paymentTabLabel: {
+      color: C.textMuted,
+      fontSize: 10,
+      fontWeight: '600',
+      textAlign: 'center',
+      letterSpacing: 0.2,
+    },
+    paymentTabLabelActive: {
+      color: C.neonBlue,
+      fontWeight: '800',
+    },
+    paymentTabDot: {
+      position: 'absolute',
+      bottom: 5,
+      width: 16,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: C.neonBlue,
+      shadowColor: C.neonBlue,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    cardPanel: {
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.border,
+      padding: Spacing.md,
+      gap: Spacing.md,
+      marginBottom: Spacing.sm,
+    },
+    cardFieldGroup: {
+      gap: 6,
+    },
+    cardFieldLabel: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    cardFieldRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      backgroundColor: C.backgroundInput,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: C.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 14,
+    },
+    cardFieldRowError: {
+      borderColor: C.error,
+      backgroundColor: C.errorDim,
+    },
+    cardInput: {
+      flex: 1,
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      padding: 0,
+      letterSpacing: 0.5,
+    },
+    cardFieldError: {
+      color: C.error,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+    },
+    cardBrandBadge: {
+      backgroundColor: C.neonBlueGlow,
+      borderRadius: Radius.sm,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+    },
+    cardBrandText: {
+      color: C.neonBlue,
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: 1,
+    },
+    cvvLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    cvvHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+    },
+    cvvHintText: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '500',
+    },
+    billingToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: Spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: C.borderLight,
+    },
+    billingToggleLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    billingToggleText: {
+      color: C.textSecondary,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+    },
+    billingOptionalBadge: {
+      backgroundColor: C.backgroundSecondary,
+      borderRadius: Radius.full,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderWidth: 1,
+      borderColor: C.borderLight,
+    },
+    billingOptionalText: {
+      color: C.textMuted,
+      fontSize: 9,
+      fontWeight: '700',
+      letterSpacing: 0.3,
+    },
+    billingAddressSection: {
+      gap: Spacing.sm,
+    },
+    sameAsShippingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 6,
+      borderWidth: 1.5,
+      borderColor: C.border,
+      backgroundColor: C.backgroundInput,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkboxChecked: {
+      backgroundColor: C.neonBlue,
+      borderColor: C.neonBlue,
+    },
+    sameAsShippingText: {
+      color: C.textSecondary,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+    },
+    acceptedCards: {
+      flexDirection: 'row',
+      gap: 6,
+      paddingTop: Spacing.xs,
+      borderTopWidth: 1,
+      borderTopColor: C.borderLight,
+    },
+    acceptedCardChip: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radius.sm,
+      backgroundColor: C.backgroundSecondary,
+      borderWidth: 1,
+      borderColor: C.borderLight,
+    },
+    acceptedCardText: {
+      color: C.textMuted,
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+    walletPanel: {
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.border,
+      padding: Spacing.lg,
+      gap: Spacing.md,
+      alignItems: 'center',
+      marginBottom: Spacing.sm,
+    },
+    paypalLogo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    paypalLogoBlue: {
+      color: '#009cde',
+      fontSize: 28,
+      fontWeight: '900',
+      letterSpacing: -1,
+    },
+    paypalLogoNavy: {
+      color: '#003087',
+      fontSize: 28,
+      fontWeight: '900',
+      letterSpacing: -1,
+    },
+    walletIconCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+    },
+    walletIconApple: {
+      backgroundColor: C.borderLight,
+      borderColor: C.border,
+    },
+    walletIconGoogle: {
+      backgroundColor: C.neonBlueGlow,
+      borderColor: C.neonBlueBorder,
+    },
+    walletIconText: {
+      color: C.textPrimary,
+      fontSize: 22,
+      fontWeight: '800',
+      lineHeight: 26,
+    },
+    walletTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    walletSubtitle: {
+      color: C.textMuted,
+      fontSize: FontSize.sm,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    comingSoonBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: C.warning + '1A',
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: C.warning + '4D',
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+    },
+    comingSoonText: {
+      flex: 1,
+      color: C.warning,
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      lineHeight: 18,
+    },
+    orderSummary: {
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.border,
+      padding: Spacing.md,
+      marginTop: Spacing.md,
+      gap: Spacing.sm,
+    },
+    summaryTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.lg,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    summaryItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: Spacing.sm,
+    },
+    summaryItemName: {
+      flex: 1,
+      color: C.textSecondary,
+      fontSize: FontSize.sm,
+    },
+    summaryItemPrice: {
+      color: C.textPrimary,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+    },
+    summaryDivider: {
+      height: 1,
+      backgroundColor: C.borderLight,
+      marginVertical: 4,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    summaryLabel: {
+      color: C.textSecondary,
+      fontSize: FontSize.md,
+    },
+    freeShippingNote: {
+      color: C.success,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    summaryValue: {
+      color: C.textPrimary,
+      fontSize: FontSize.md,
+      fontWeight: '600',
+    },
+    totalRow: {
+      marginTop: 4,
+    },
+    totalLabel: {
+      color: C.textPrimary,
+      fontSize: FontSize.xl,
+      fontWeight: '800',
+    },
+    totalValue: {
+      color: C.neonBlue,
+      fontSize: FontSize.xl,
+      fontWeight: '900',
+    },
+    globalError: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: C.errorDim,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: C.error + '4D',
+      padding: Spacing.sm,
+    },
+    globalErrorText: {
+      flex: 1,
+      color: C.error,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      lineHeight: 18,
+    },
+    trustRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginTop: Spacing.md,
+      opacity: 0.6,
+    },
+    trustText: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '600',
+    },
+    trustDot: {
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: C.textMuted,
+    },
+    successContainer: {
+      flex: 1,
+      backgroundColor: C.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: Spacing.xl,
+      gap: Spacing.lg,
+    },
+    successIconArea: {
+      width: 120,
+      height: 120,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: Spacing.xs,
+    },
+    successRing: {
+      position: 'absolute',
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      borderWidth: 1.5,
+      borderColor: C.success + '4D',
+      backgroundColor: C.successDim,
+    },
+    successRingOuter: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      borderColor: C.success + '26',
+    },
+    successIconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: C.successDim,
+      borderWidth: 1.5,
+      borderColor: C.success + '66',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: C.success,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+    successTitle: {
+      color: C.textPrimary,
+      fontSize: FontSize.xxl + 4,
+      fontWeight: '900',
+      textAlign: 'center',
+      letterSpacing: -0.5,
+    },
+    successSubtitle: {
+      color: C.textSecondary,
+      fontSize: FontSize.md,
+      textAlign: 'center',
+      lineHeight: 24,
+      marginTop: -Spacing.sm,
+    },
+    orderIdBox: {
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.neonBlueBorder,
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: Spacing.md,
+      alignItems: 'center',
+      gap: 4,
+      width: '80%',
+    },
+    orderIdLabel: {
+      color: C.textMuted,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+    },
+    orderIdValue: {
+      color: C.neonBlue,
+      fontSize: FontSize.xxl,
+      fontWeight: '900',
+      letterSpacing: 2,
+    },
+    successNextSteps: {
+      width: '100%',
+      gap: Spacing.sm,
+      backgroundColor: C.backgroundCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: C.border,
+      padding: Spacing.md,
+    },
+    successStep: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.md,
+    },
+    successStepIcon: {
+      fontSize: 20,
+      lineHeight: 24,
+    },
+    successStepText: {
+      flex: 1,
+      color: C.textSecondary,
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      lineHeight: 20,
+    },
+  });
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function CheckoutScreen() {
   const router = useRouter();
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   const { items, subtotal, clearCart } = useCart();
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -134,7 +757,6 @@ export default function CheckoutScreen() {
   const refreshRates = useCallback(async (countryCode: string, countryName: string) => {
     if (!countryCode) return;
     setRatesLoading(true);
-    // Pass both code and name so shippingTax can match on either
     const result = await calculateShippingAndTax(countryCode, countryName, subtotal);
     setRates(result);
     setRatesLoading(false);
@@ -153,7 +775,6 @@ export default function CheckoutScreen() {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   }, [errors]);
 
-  // Card number — format on input
   const handleCardNumber = useCallback((raw: string) => {
     setField('cardNumber', formatCardNumber(raw));
   }, [setField]);
@@ -182,7 +803,6 @@ export default function CheckoutScreen() {
     if (!zipRe.test(form.zip.trim()))                                 newErrors.zip       = t.fieldRequired;
     if (!form.country)                                                  newErrors.country   = t.fieldRequired;
 
-    // Card UI validation
     if (form.paymentMethod === 'card') {
       const cardDigits = form.cardNumber.replace(/\s/g, '');
       if (cardDigits.length < 13 || cardDigits.length > 16) newErrors.cardNumber = 'Enter a valid card number';
@@ -203,19 +823,10 @@ export default function CheckoutScreen() {
     setLoading(true);
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      // Use session.user for payload — session is what Supabase attaches as the
-      // Authorization header, so auth.uid() in RLS equals session.user.id.
-      // Never use the editable email field for the user_id or email when logged in.
       const sessionUser = session?.user ?? null;
-
       const resolvedUserId: string | null = sessionUser?.id ?? null;
       const resolvedEmail: string = sessionUser?.email
         ? sessionUser.email
@@ -343,27 +954,26 @@ export default function CheckoutScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={S.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.headerTitle}>{t.checkout}</Text>
-        {/* Secure badge */}
-        <View style={styles.secureBadge}>
-          <Lock size={12} color={Colors.success} strokeWidth={2.5} />
-          <Text style={styles.secureBadgeText}>Secure</Text>
+      <View style={S.header}>
+        <View style={S.headerSpacer} />
+        <Text style={S.headerTitle}>{t.checkout}</Text>
+        <View style={S.secureBadge}>
+          <Lock size={12} color={C.success} strokeWidth={2.5} />
+          <Text style={S.secureBadgeText}>Secure</Text>
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={S.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* ── Shipping info ── */}
-        <SectionLabel title={t.shippingInfo} icon={<User size={16} color={Colors.neonBlue} />} />
-        <View style={styles.row}>
+        <SectionLabel title={t.shippingInfo} icon={<User size={16} color={C.neonBlue} />} />
+        <View style={S.row}>
           <FormField
             label={t.firstName}
             value={form.firstName}
@@ -386,7 +996,7 @@ export default function CheckoutScreen() {
           error={errors.email}
           keyboardType="email-address"
           autoCapitalize="none"
-          icon={<Mail size={14} color={Colors.textMuted} />}
+          icon={<Mail size={14} color={C.textMuted} />}
         />
         <FormField
           label={t.phone}
@@ -395,18 +1005,18 @@ export default function CheckoutScreen() {
           error={errors.phone}
           keyboardType="phone-pad"
           autoCapitalize="none"
-          icon={<Phone size={14} color={Colors.textMuted} />}
+          icon={<Phone size={14} color={C.textMuted} />}
         />
 
         {/* ── Address ── */}
-        <SectionLabel title={t.address} icon={<MapPin size={16} color={Colors.neonBlue} />} />
+        <SectionLabel title={t.address} icon={<MapPin size={16} color={C.neonBlue} />} />
         <FormField
           label={t.address}
           value={form.street}
           onChange={(v) => setField('street', v)}
           error={errors.street}
         />
-        <View style={styles.row}>
+        <View style={S.row}>
           <FormField
             label={t.city}
             value={form.city}
@@ -422,7 +1032,7 @@ export default function CheckoutScreen() {
             style={{ flex: 1 }}
           />
         </View>
-        <View style={styles.row}>
+        <View style={S.row}>
           <FormField
             label={t.zip}
             value={form.zip}
@@ -447,18 +1057,16 @@ export default function CheckoutScreen() {
         </View>
 
         {/* ── Payment method ── */}
-        <SectionLabel title={t.paymentMethod} icon={<CreditCard size={16} color={Colors.neonBlue} />} />
+        <SectionLabel title={t.paymentMethod} icon={<CreditCard size={16} color={C.neonBlue} />} />
 
-        {/* Secure payment notice */}
-        <View style={styles.secureNotice}>
-          <ShieldCheck size={14} color={Colors.success} strokeWidth={2} />
-          <Text style={styles.secureNoticeText}>
+        <View style={S.secureNotice}>
+          <ShieldCheck size={14} color={C.success} strokeWidth={2} />
+          <Text style={S.secureNoticeText}>
             Your payment information is encrypted and never stored on our servers.
           </Text>
         </View>
 
-        {/* Payment method selector tabs */}
-        <View style={styles.paymentTabs}>
+        <View style={S.paymentTabs}>
           <PaymentTab
             id="card"
             label="Card"
@@ -489,7 +1097,6 @@ export default function CheckoutScreen() {
           />
         </View>
 
-        {/* Payment method panels */}
         {form.paymentMethod === 'card' && (
           <CardPaymentPanel
             form={form}
@@ -515,60 +1122,60 @@ export default function CheckoutScreen() {
         {form.paymentMethod === 'google' && <WalletPayPanel type="google" />}
 
         {/* ── Order summary ── */}
-        <View style={styles.orderSummary}>
-          <Text style={styles.summaryTitle}>{t.orderSummary}</Text>
+        <View style={S.orderSummary}>
+          <Text style={S.summaryTitle}>{t.orderSummary}</Text>
           {items.map((item) => (
-            <View key={item.product.id} style={styles.summaryItem}>
-              <Text style={styles.summaryItemName} numberOfLines={1}>
+            <View key={item.product.id} style={S.summaryItem}>
+              <Text style={S.summaryItemName} numberOfLines={1}>
                 {item.product.name} ×{item.quantity}
               </Text>
-              <Text style={styles.summaryItemPrice}>
+              <Text style={S.summaryItemPrice}>
                 ${(item.product.price * item.quantity).toLocaleString()}
               </Text>
             </View>
           ))}
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>{t.subtotal}</Text>
-            <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+          <View style={S.summaryDivider} />
+          <View style={S.summaryRow}>
+            <Text style={S.summaryLabel}>{t.subtotal}</Text>
+            <Text style={S.summaryValue}>${subtotal.toFixed(2)}</Text>
           </View>
-          <View style={styles.summaryRow}>
+          <View style={S.summaryRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.summaryLabel}>{t.shipping}</Text>
+              <Text style={S.summaryLabel}>{t.shipping}</Text>
               {rates.freeShipping && rates.shippingRuleName && (
-                <Text style={styles.freeShippingNote}>Free shipping applied</Text>
+                <Text style={S.freeShippingNote}>Free shipping applied</Text>
               )}
             </View>
             {ratesLoading ? (
-              <Text style={styles.summaryValue}>...</Text>
+              <Text style={S.summaryValue}>...</Text>
             ) : (
-              <Text style={[styles.summaryValue, shipping === 0 && { color: Colors.success }]}>
+              <Text style={[S.summaryValue, shipping === 0 && { color: C.success }]}>
                 {shipping === 0 ? t.free : `$${shipping.toFixed(2)}`}
               </Text>
             )}
           </View>
           {tax > 0 && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
+            <View style={S.summaryRow}>
+              <Text style={S.summaryLabel}>
                 {rates.taxLabel || 'Tax'} ({rates.taxPercentage}%)
               </Text>
               {ratesLoading ? (
-                <Text style={styles.summaryValue}>...</Text>
+                <Text style={S.summaryValue}>...</Text>
               ) : (
-                <Text style={styles.summaryValue}>${tax.toFixed(2)}</Text>
+                <Text style={S.summaryValue}>${tax.toFixed(2)}</Text>
               )}
             </View>
           )}
-          <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>{t.total}</Text>
-            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+          <View style={[S.summaryRow, S.totalRow]}>
+            <Text style={S.totalLabel}>{t.total}</Text>
+            <Text style={S.totalValue}>${total.toFixed(2)}</Text>
           </View>
         </View>
 
         {errors.email && (
-          <View style={styles.globalError}>
-            <Info size={14} color={Colors.error} strokeWidth={2} />
-            <Text style={styles.globalErrorText}>{errors.email}</Text>
+          <View style={S.globalError}>
+            <Info size={14} color={C.error} strokeWidth={2} />
+            <Text style={S.globalErrorText}>{errors.email}</Text>
           </View>
         )}
 
@@ -581,13 +1188,12 @@ export default function CheckoutScreen() {
           style={{ marginTop: Spacing.md }}
         />
 
-        {/* Bottom trust row */}
-        <View style={styles.trustRow}>
-          <Lock size={12} color={Colors.textMuted} strokeWidth={2} />
-          <Text style={styles.trustText}>256-bit SSL encryption</Text>
-          <View style={styles.trustDot} />
-          <ShieldCheck size={12} color={Colors.textMuted} strokeWidth={2} />
-          <Text style={styles.trustText}>PCI DSS compliant</Text>
+        <View style={S.trustRow}>
+          <Lock size={12} color={C.textMuted} strokeWidth={2} />
+          <Text style={S.trustText}>256-bit SSL encryption</Text>
+          <View style={S.trustDot} />
+          <ShieldCheck size={12} color={C.textMuted} strokeWidth={2} />
+          <Text style={S.trustText}>PCI DSS compliant</Text>
         </View>
 
         <View style={{ height: Spacing.xxl }} />
@@ -601,17 +1207,19 @@ export default function CheckoutScreen() {
 function PaymentTab({
   label, active, onPress, icon,
 }: { id: string; label: string; active: boolean; onPress: () => void; icon: React.ReactNode }) {
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   return (
     <TouchableOpacity
-      style={[styles.paymentTab, active && styles.paymentTabActive]}
+      style={[S.paymentTab, active && S.paymentTabActive]}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      <View style={styles.paymentTabIcon}>{icon}</View>
-      <Text style={[styles.paymentTabLabel, active && styles.paymentTabLabelActive]} numberOfLines={1}>
+      <View style={S.paymentTabIcon}>{icon}</View>
+      <Text style={[S.paymentTabLabel, active && S.paymentTabLabelActive]} numberOfLines={1}>
         {label}
       </Text>
-      {active && <View style={styles.paymentTabDot} />}
+      {active && <View style={S.paymentTabDot} />}
     </TouchableOpacity>
   );
 }
@@ -640,21 +1248,22 @@ function CardPaymentPanel({
   onBillingCountry: (code: string, name: string) => void;
   language: string;
 }) {
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   const brand = getCardBrand(form.cardNumber);
 
   return (
-    <View style={styles.cardPanel}>
-      {/* Card number */}
-      <View style={styles.cardFieldGroup}>
-        <Text style={styles.cardFieldLabel}>Card Number</Text>
-        <View style={[styles.cardFieldRow, !!errors.cardNumber && styles.cardFieldRowError]}>
-          <CreditCard size={16} color={Colors.textMuted} strokeWidth={1.8} />
+    <View style={S.cardPanel}>
+      <View style={S.cardFieldGroup}>
+        <Text style={S.cardFieldLabel}>Card Number</Text>
+        <View style={[S.cardFieldRow, !!errors.cardNumber && S.cardFieldRowError]}>
+          <CreditCard size={16} color={C.textMuted} strokeWidth={1.8} />
           <TextInput
-            style={styles.cardInput}
+            style={S.cardInput}
             value={form.cardNumber}
             onChangeText={onCardNumber}
             placeholder="1234  5678  9012  3456"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={C.textMuted}
             keyboardType="numeric"
             autoComplete="cc-number"
             autoCorrect={false}
@@ -662,25 +1271,24 @@ function CardPaymentPanel({
             maxLength={19}
           />
           {brand && (
-            <View style={styles.cardBrandBadge}>
-              <Text style={styles.cardBrandText}>{brand.toUpperCase()}</Text>
+            <View style={S.cardBrandBadge}>
+              <Text style={S.cardBrandText}>{brand.toUpperCase()}</Text>
             </View>
           )}
         </View>
-        {errors.cardNumber && <Text style={styles.cardFieldError}>{errors.cardNumber}</Text>}
+        {errors.cardNumber && <Text style={S.cardFieldError}>{errors.cardNumber}</Text>}
       </View>
 
-      {/* Expiry + CVV row */}
-      <View style={styles.row}>
-        <View style={[styles.cardFieldGroup, { flex: 1 }]}>
-          <Text style={styles.cardFieldLabel}>Expiry Date</Text>
-          <View style={[styles.cardFieldRow, !!errors.cardExpiry && styles.cardFieldRowError]}>
+      <View style={S.row}>
+        <View style={[S.cardFieldGroup, { flex: 1 }]}>
+          <Text style={S.cardFieldLabel}>Expiry Date</Text>
+          <View style={[S.cardFieldRow, !!errors.cardExpiry && S.cardFieldRowError]}>
             <TextInput
-              style={styles.cardInput}
+              style={S.cardInput}
               value={form.cardExpiry}
               onChangeText={onCardExpiry}
               placeholder="MM/YY"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={C.textMuted}
               keyboardType="numeric"
               autoComplete="cc-exp"
               autoCorrect={false}
@@ -688,24 +1296,24 @@ function CardPaymentPanel({
               maxLength={5}
             />
           </View>
-          {errors.cardExpiry && <Text style={styles.cardFieldError}>{errors.cardExpiry}</Text>}
+          {errors.cardExpiry && <Text style={S.cardFieldError}>{errors.cardExpiry}</Text>}
         </View>
 
-        <View style={[styles.cardFieldGroup, { flex: 1 }]}>
-          <View style={styles.cvvLabelRow}>
-            <Text style={styles.cardFieldLabel}>CVV</Text>
-            <View style={styles.cvvHint}>
-              <Lock size={10} color={Colors.textMuted} strokeWidth={2} />
-              <Text style={styles.cvvHintText}>3–4 digits</Text>
+        <View style={[S.cardFieldGroup, { flex: 1 }]}>
+          <View style={S.cvvLabelRow}>
+            <Text style={S.cardFieldLabel}>CVV</Text>
+            <View style={S.cvvHint}>
+              <Lock size={10} color={C.textMuted} strokeWidth={2} />
+              <Text style={S.cvvHintText}>3–4 digits</Text>
             </View>
           </View>
-          <View style={[styles.cardFieldRow, !!errors.cardCvv && styles.cardFieldRowError]}>
+          <View style={[S.cardFieldRow, !!errors.cardCvv && S.cardFieldRowError]}>
             <TextInput
-              style={styles.cardInput}
+              style={S.cardInput}
               value={form.cardCvv}
               onChangeText={onCardCvv}
               placeholder="•••"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={C.textMuted}
               keyboardType="numeric"
               secureTextEntry
               autoComplete="cc-csc"
@@ -714,58 +1322,56 @@ function CardPaymentPanel({
               maxLength={4}
             />
           </View>
-          {errors.cardCvv && <Text style={styles.cardFieldError}>{errors.cardCvv}</Text>}
+          {errors.cardCvv && <Text style={S.cardFieldError}>{errors.cardCvv}</Text>}
         </View>
       </View>
 
-      {/* Cardholder name */}
-      <View style={styles.cardFieldGroup}>
-        <Text style={styles.cardFieldLabel}>Cardholder Name</Text>
-        <View style={[styles.cardFieldRow, !!errors.cardName && styles.cardFieldRowError]}>
+      <View style={S.cardFieldGroup}>
+        <Text style={S.cardFieldLabel}>Cardholder Name</Text>
+        <View style={[S.cardFieldRow, !!errors.cardName && S.cardFieldRowError]}>
           <TextInput
-            style={styles.cardInput}
+            style={S.cardInput}
             value={form.cardName}
             onChangeText={onCardName}
             placeholder="As printed on the card"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={C.textMuted}
             autoCorrect={false}
             autoCapitalize="words"
           />
         </View>
-        {errors.cardName && <Text style={styles.cardFieldError}>{errors.cardName}</Text>}
+        {errors.cardName && <Text style={S.cardFieldError}>{errors.cardName}</Text>}
       </View>
 
-      {/* Billing address toggle */}
       <TouchableOpacity
-        style={styles.billingToggle}
+        style={S.billingToggle}
         onPress={onToggleBilling}
         activeOpacity={0.8}
       >
-        <View style={styles.billingToggleLeft}>
-          <MapPin size={14} color={Colors.textMuted} strokeWidth={2} />
-          <Text style={styles.billingToggleText}>Billing address</Text>
-          <View style={styles.billingOptionalBadge}>
-            <Text style={styles.billingOptionalText}>Optional</Text>
+        <View style={S.billingToggleLeft}>
+          <MapPin size={14} color={C.textMuted} strokeWidth={2} />
+          <Text style={S.billingToggleText}>Billing address</Text>
+          <View style={S.billingOptionalBadge}>
+            <Text style={S.billingOptionalText}>Optional</Text>
           </View>
         </View>
         {showBillingAddress
-          ? <ChevronUp size={16} color={Colors.textMuted} strokeWidth={2} />
-          : <ChevronDown size={16} color={Colors.textMuted} strokeWidth={2} />}
+          ? <ChevronUp size={16} color={C.textMuted} strokeWidth={2} />
+          : <ChevronDown size={16} color={C.textMuted} strokeWidth={2} />}
       </TouchableOpacity>
 
       {showBillingAddress && (
-        <View style={styles.billingAddressSection}>
+        <View style={S.billingAddressSection}>
           <TouchableOpacity
-            style={styles.sameAsShippingRow}
+            style={S.sameAsShippingRow}
             onPress={() => onBillingSame(!form.billingSameAsShipping)}
             activeOpacity={0.8}
           >
-            <View style={[styles.checkbox, form.billingSameAsShipping && styles.checkboxChecked]}>
+            <View style={[S.checkbox, form.billingSameAsShipping && S.checkboxChecked]}>
               {form.billingSameAsShipping && (
-                <CheckCircle size={14} color={Colors.background} strokeWidth={2.5} />
+                <CheckCircle size={14} color={C.background} strokeWidth={2.5} />
               )}
             </View>
-            <Text style={styles.sameAsShippingText}>Same as shipping address</Text>
+            <Text style={S.sameAsShippingText}>Same as shipping address</Text>
           </TouchableOpacity>
 
           {!form.billingSameAsShipping && (
@@ -775,7 +1381,7 @@ function CardPaymentPanel({
                 value={form.billingStreet}
                 onChange={onBillingStreet}
               />
-              <View style={styles.row}>
+              <View style={S.row}>
                 <FormField
                   label="City"
                   value={form.billingCity}
@@ -802,11 +1408,10 @@ function CardPaymentPanel({
         </View>
       )}
 
-      {/* Accepted cards */}
-      <View style={styles.acceptedCards}>
+      <View style={S.acceptedCards}>
         {['VISA', 'MC', 'AMEX', 'DISC'].map((b) => (
-          <View key={b} style={styles.acceptedCardChip}>
-            <Text style={styles.acceptedCardText}>{b}</Text>
+          <View key={b} style={S.acceptedCardChip}>
+            <Text style={S.acceptedCardText}>{b}</Text>
           </View>
         ))}
       </View>
@@ -817,20 +1422,22 @@ function CardPaymentPanel({
 // ─── PayPal panel ─────────────────────────────────────────────────────────────
 
 function PayPalPanel() {
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   return (
-    <View style={styles.walletPanel}>
-      <View style={styles.paypalLogo}>
-        <Text style={styles.paypalLogoBlue}>Pay</Text>
-        <Text style={styles.paypalLogoNavy}>Pal</Text>
+    <View style={S.walletPanel}>
+      <View style={S.paypalLogo}>
+        <Text style={S.paypalLogoBlue}>Pay</Text>
+        <Text style={S.paypalLogoNavy}>Pal</Text>
       </View>
-      <Text style={styles.walletTitle}>Pay with PayPal</Text>
-      <View style={styles.comingSoonBadge}>
-        <Info size={13} color={Colors.warning} strokeWidth={2} />
-        <Text style={styles.comingSoonText}>
+      <Text style={S.walletTitle}>Pay with PayPal</Text>
+      <View style={S.comingSoonBadge}>
+        <Info size={13} color={C.warning} strokeWidth={2} />
+        <Text style={S.comingSoonText}>
           PayPal connection will be enabled later
         </Text>
       </View>
-      <Text style={styles.walletSubtitle}>
+      <Text style={S.walletSubtitle}>
         You will be redirected to PayPal to complete your purchase securely once this option is live.
       </Text>
     </View>
@@ -840,20 +1447,22 @@ function PayPalPanel() {
 // ─── Apple Pay / Google Pay placeholder panel ─────────────────────────────────
 
 function WalletPayPanel({ type }: { type: 'apple' | 'google' }) {
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   const isApple = type === 'apple';
   return (
-    <View style={styles.walletPanel}>
-      <View style={[styles.walletIconCircle, isApple ? styles.walletIconApple : styles.walletIconGoogle]}>
-        <Text style={styles.walletIconText}>{isApple ? '' : 'G'}</Text>
+    <View style={S.walletPanel}>
+      <View style={[S.walletIconCircle, isApple ? S.walletIconApple : S.walletIconGoogle]}>
+        <Text style={S.walletIconText}>{isApple ? '' : 'G'}</Text>
       </View>
-      <Text style={styles.walletTitle}>{isApple ? 'Apple Pay' : 'Google Pay'}</Text>
-      <View style={styles.comingSoonBadge}>
-        <Info size={13} color={Colors.warning} strokeWidth={2} />
-        <Text style={styles.comingSoonText}>
+      <Text style={S.walletTitle}>{isApple ? 'Apple Pay' : 'Google Pay'}</Text>
+      <View style={S.comingSoonBadge}>
+        <Info size={13} color={C.warning} strokeWidth={2} />
+        <Text style={S.comingSoonText}>
           {isApple ? 'Apple Pay' : 'Google Pay'} will be enabled later
         </Text>
       </View>
-      <Text style={styles.walletSubtitle}>
+      <Text style={S.walletSubtitle}>
         Complete your purchase quickly with {isApple ? 'Face ID / Touch ID' : 'your Google account'} once this option is live.
       </Text>
     </View>
@@ -863,29 +1472,33 @@ function WalletPayPanel({ type }: { type: 'apple' | 'google' }) {
 // ─── Icon components ──────────────────────────────────────────────────────────
 
 function CardIcon({ active }: { active: boolean }) {
-  return <CreditCard size={18} color={active ? Colors.neonBlue : Colors.textMuted} strokeWidth={1.8} />;
+  const C = useThemeColors();
+  return <CreditCard size={18} color={active ? C.neonBlue : C.textMuted} strokeWidth={1.8} />;
 }
 
 function PayPalIcon({ active }: { active: boolean }) {
+  const C = useThemeColors();
   return (
     <View style={{ flexDirection: 'row' }}>
-      <Text style={{ color: active ? '#009cde' : Colors.textMuted, fontWeight: '900', fontSize: 13 }}>P</Text>
-      <Text style={{ color: active ? '#003087' : Colors.textMuted, fontWeight: '900', fontSize: 13 }}>P</Text>
+      <Text style={{ color: active ? '#009cde' : C.textMuted, fontWeight: '900', fontSize: 13 }}>P</Text>
+      <Text style={{ color: active ? '#003087' : C.textMuted, fontWeight: '900', fontSize: 13 }}>P</Text>
     </View>
   );
 }
 
 function AppleIcon({ active }: { active: boolean }) {
+  const C = useThemeColors();
   return (
-    <Text style={{ color: active ? Colors.textPrimary : Colors.textMuted, fontSize: 16, fontWeight: '600', lineHeight: 18 }}>
+    <Text style={{ color: active ? C.textPrimary : C.textMuted, fontSize: 16, fontWeight: '600', lineHeight: 18 }}>
 
     </Text>
   );
 }
 
 function GoogleIcon({ active }: { active: boolean }) {
+  const C = useThemeColors();
   return (
-    <Text style={{ color: active ? '#4285F4' : Colors.textMuted, fontSize: 14, fontWeight: '900', lineHeight: 18 }}>
+    <Text style={{ color: active ? '#4285F4' : C.textMuted, fontSize: 14, fontWeight: '900', lineHeight: 18 }}>
       G
     </Text>
   );
@@ -894,10 +1507,12 @@ function GoogleIcon({ active }: { active: boolean }) {
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
 function SectionLabel({ title, icon }: { title: string; icon: React.ReactNode }) {
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   return (
-    <View style={styles.sectionLabel}>
+    <View style={S.sectionLabel}>
       {icon}
-      <Text style={styles.sectionLabelText}>{title}</Text>
+      <Text style={S.sectionLabelText}>{title}</Text>
     </View>
   );
 }
@@ -914,22 +1529,24 @@ function FormField({
   icon?: React.ReactNode;
   style?: object;
 }) {
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   return (
-    <View style={[styles.fieldWrapper, style]}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={[styles.fieldRow, !!error && styles.fieldRowError]}>
+    <View style={[S.fieldWrapper, style]}>
+      <Text style={S.fieldLabel}>{label}</Text>
+      <View style={[S.fieldRow, !!error && S.fieldRowError]}>
         {icon && <View style={{ marginRight: 6 }}>{icon}</View>}
         <TextInput
-          style={styles.fieldInput}
+          style={S.fieldInput}
           value={value}
           onChangeText={onChange}
           keyboardType={keyboardType}
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={C.textMuted}
           autoCapitalize={autoCapitalize ?? 'words'}
           autoCorrect={false}
         />
       </View>
-      {error && <Text style={styles.fieldError}>{error}</Text>}
+      {error && <Text style={S.fieldError}>{error}</Text>}
     </View>
   );
 }
@@ -938,6 +1555,8 @@ function FormField({
 
 function OrderSuccessScreen({ orderId, onContinue }: { orderId: string; onContinue: () => void }) {
   const { t } = useLanguage();
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   const ring1 = useRef(new Animated.Value(0.6)).current;
   const ring2 = useRef(new Animated.Value(0.6)).current;
   const iconScale = useRef(new Animated.Value(0)).current;
@@ -966,26 +1585,24 @@ function OrderSuccessScreen({ orderId, onContinue }: { orderId: string; onContin
   }, []);
 
   return (
-    <View style={styles.successContainer}>
-      {/* Pulsing rings */}
-      <View style={styles.successIconArea}>
-        <Animated.View style={[styles.successRing, { transform: [{ scale: ring1 }] }]} />
-        <Animated.View style={[styles.successRing, styles.successRingOuter, { transform: [{ scale: ring2 }] }]} />
-        <Animated.View style={[styles.successIconCircle, { transform: [{ scale: iconScale }] }]}>
-          <CheckCircle size={48} color={Colors.success} strokeWidth={1.5} />
+    <View style={S.successContainer}>
+      <View style={S.successIconArea}>
+        <Animated.View style={[S.successRing, { transform: [{ scale: ring1 }] }]} />
+        <Animated.View style={[S.successRing, S.successRingOuter, { transform: [{ scale: ring2 }] }]} />
+        <Animated.View style={[S.successIconCircle, { transform: [{ scale: iconScale }] }]}>
+          <CheckCircle size={48} color={C.success} strokeWidth={1.5} />
         </Animated.View>
       </View>
 
-      <Text style={styles.successTitle}>{t.orderPlaced}</Text>
-      <Text style={styles.successSubtitle}>{t.orderPlacedSubtitle}</Text>
+      <Text style={S.successTitle}>{t.orderPlaced}</Text>
+      <Text style={S.successSubtitle}>{t.orderPlacedSubtitle}</Text>
 
-      <View style={styles.orderIdBox}>
-        <Text style={styles.orderIdLabel}>Order ID</Text>
-        <Text style={styles.orderIdValue}>#{orderId}</Text>
+      <View style={S.orderIdBox}>
+        <Text style={S.orderIdLabel}>Order ID</Text>
+        <Text style={S.orderIdValue}>#{orderId}</Text>
       </View>
 
-      {/* What's next */}
-      <View style={styles.successNextSteps}>
+      <View style={S.successNextSteps}>
         <SuccessStep icon="⏳" text="Your order is pending admin approval" />
         <SuccessStep icon="📧" text="You'll be notified once it's confirmed" />
         <SuccessStep icon="🚚" text="Shipping details will follow after approval" />
@@ -999,646 +1616,12 @@ function OrderSuccessScreen({ orderId, onContinue }: { orderId: string; onContin
 }
 
 function SuccessStep({ icon, text }: { icon: string; text: string }) {
+  const C = useThemeColors();
+  const S = useMemo(() => makeStyles(C), [C]);
   return (
-    <View style={styles.successStep}>
-      <Text style={styles.successStepIcon}>{icon}</Text>
-      <Text style={styles.successStepText}>{text}</Text>
+    <View style={S.successStep}>
+      <Text style={S.successStepIcon}>{icon}</Text>
+      <Text style={S.successStepText}>{text}</Text>
     </View>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Platform.OS === 'ios' ? 56 : Spacing.lg,
-    paddingBottom: Spacing.md,
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  headerSpacer: {
-    width: 48,
-  },
-  headerTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-  },
-  secureBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0,230,118,0.1)',
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(0,230,118,0.25)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  secureBadgeText: {
-    color: Colors.success,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-  },
-  content: {
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  sectionLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.xs,
-  },
-  sectionLabelText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-  },
-  fieldWrapper: {
-    gap: 4,
-  },
-  fieldLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-  },
-  fieldRowError: {
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorDim,
-  },
-  fieldInput: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    padding: 0,
-  },
-  fieldError: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-  },
-
-  // ── Secure notice ──
-  secureNotice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: 'rgba(0,230,118,0.06)',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(0,230,118,0.18)',
-    padding: Spacing.sm,
-    marginBottom: Spacing.xs,
-  },
-  secureNoticeText: {
-    flex: 1,
-    color: Colors.success,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-
-  // ── Payment tabs ──
-  paymentTabs: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  paymentTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.md,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    paddingVertical: 13,
-    paddingHorizontal: 4,
-    position: 'relative',
-  },
-  paymentTabActive: {
-    borderColor: Colors.neonBlue,
-    borderWidth: 2,
-    backgroundColor: 'rgba(0,191,255,0.1)',
-    shadowColor: Colors.neonBlue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  paymentTabIcon: {
-    height: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  paymentTabLabel: {
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: 0.2,
-  },
-  paymentTabLabelActive: {
-    color: Colors.neonBlue,
-    fontWeight: '800',
-  },
-  paymentTabDot: {
-    position: 'absolute',
-    bottom: 5,
-    width: 16,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: Colors.neonBlue,
-    shadowColor: Colors.neonBlue,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  // ── Card panel ──
-  cardPanel: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    gap: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  cardFieldGroup: {
-    gap: 6,
-  },
-  cardFieldLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  cardFieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 14,
-  },
-  cardFieldRowError: {
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorDim,
-  },
-  cardInput: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    padding: 0,
-    letterSpacing: 0.5,
-  },
-  cardFieldError: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  cardBrandBadge: {
-    backgroundColor: 'rgba(0,191,255,0.15)',
-    borderRadius: Radius.sm,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-  },
-  cardBrandText: {
-    color: Colors.neonBlue,
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  cvvLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cvvHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  cvvHintText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-  },
-  billingToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-  },
-  billingToggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  billingToggleText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  billingOptionalBadge: {
-    backgroundColor: Colors.backgroundSecondary,
-    borderRadius: Radius.full,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  billingOptionalText: {
-    color: Colors.textMuted,
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  billingAddressSection: {
-    gap: Spacing.sm,
-  },
-  sameAsShippingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.backgroundInput,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: Colors.neonBlue,
-    borderColor: Colors.neonBlue,
-  },
-  sameAsShippingText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  acceptedCards: {
-    flexDirection: 'row',
-    gap: 6,
-    paddingTop: Spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
-  },
-  acceptedCardChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  acceptedCardText: {
-    color: Colors.textMuted,
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-
-  // ── Wallet/PayPal panel ──
-  walletPanel: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  paypalLogo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  paypalLogoBlue: {
-    color: '#009cde',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -1,
-  },
-  paypalLogoNavy: {
-    color: '#003087',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -1,
-  },
-  walletIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-  },
-  walletIconApple: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  walletIconGoogle: {
-    backgroundColor: 'rgba(66,133,244,0.08)',
-    borderColor: 'rgba(66,133,244,0.25)',
-  },
-  walletIconText: {
-    color: Colors.textPrimary,
-    fontSize: 22,
-    fontWeight: '800',
-    lineHeight: 26,
-  },
-  walletTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  walletSubtitle: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  comingSoonBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,179,0,0.1)',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,179,0,0.3)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-  },
-  comingSoonText: {
-    flex: 1,
-    color: Colors.warning,
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-
-  // ── Order summary ──
-  orderSummary: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-    marginTop: Spacing.md,
-    gap: Spacing.sm,
-  },
-  summaryTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  summaryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  summaryItemName: {
-    flex: 1,
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-  },
-  summaryItemPrice: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: Colors.borderLight,
-    marginVertical: 4,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-  },
-  freeShippingNote: {
-    color: Colors.success,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  summaryValue: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-    fontWeight: '600',
-  },
-  totalRow: {
-    marginTop: 4,
-  },
-  totalLabel: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.xl,
-    fontWeight: '800',
-  },
-  totalValue: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xl,
-    fontWeight: '900',
-  },
-
-  // ── Global error ──
-  globalError: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: Colors.errorDim,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,68,68,0.3)',
-    padding: Spacing.sm,
-  },
-  globalErrorText: {
-    flex: 1,
-    color: Colors.error,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    lineHeight: 18,
-  },
-
-  // ── Trust row ──
-  trustRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: Spacing.md,
-    opacity: 0.6,
-  },
-  trustText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-  },
-  trustDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: Colors.textMuted,
-  },
-
-  // ── Success ──
-  successContainer: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  successIconArea: {
-    width: 120,
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-  successRing: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,230,118,0.3)',
-    backgroundColor: 'rgba(0,230,118,0.04)',
-  },
-  successRingOuter: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderColor: 'rgba(0,230,118,0.15)',
-  },
-  successIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0,230,118,0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,230,118,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: Colors.success,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  successTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.xxl + 4,
-    fontWeight: '900',
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-  successSubtitle: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginTop: -Spacing.sm,
-  },
-  orderIdBox: {
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.neonBlueBorder,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    gap: 4,
-    width: '80%',
-  },
-  orderIdLabel: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  orderIdValue: {
-    color: Colors.neonBlue,
-    fontSize: FontSize.xxl,
-    fontWeight: '900',
-    letterSpacing: 2,
-  },
-  successNextSteps: {
-    width: '100%',
-    gap: Spacing.sm,
-    backgroundColor: Colors.backgroundCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.md,
-  },
-  successStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  successStepIcon: {
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  successStepText: {
-    flex: 1,
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-});
