@@ -9,7 +9,8 @@ import {
   Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu, User, ShoppingCart, ChevronLeft, ChevronRight, Heart } from 'lucide-react-native';
+import { Menu, ShoppingCart, ChevronLeft, ChevronRight, Heart } from 'lucide-react-native';
+import NotificationBell from '@/components/NotificationBell';
 import { useCart } from '@/context/CartContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCMS } from '@/context/CMSContext';
@@ -83,9 +84,7 @@ export default function AppHeader({ showBack = false, title }: Props) {
   // Build trailing icons so they can be reused for both LTR and RTL
   const trailingIcons = showIcons ? (
     <>
-      <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/account')}>
-        <User size={20} color={colors.textPrimary} strokeWidth={2} />
-      </TouchableOpacity>
+      <NotificationBell />
       <TouchableOpacity style={styles.iconBtn} activeOpacity={0.7} onPress={() => router.push('/(tabs)/wishlist')}>
         <Animated.View style={{ transform: [{ scale: heartScale }] }}>
           <Heart size={20} color={wishlistCount > 0 ? '#FF4D6D' : colors.textPrimary} fill={wishlistCount > 0 ? '#FF4D6D' : 'transparent'} strokeWidth={2} />

@@ -14,6 +14,7 @@ import { UISizeProvider } from '@/context/UISizeContext';
 import { WishlistProvider } from '@/context/WishlistContext';
 import { WishlistToastProvider } from '@/context/WishlistToastContext';
 import { GearWishlistProvider } from '@/context/GearWishlistContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import GlobalBackButton from '@/components/GlobalBackButton';
 import NetworkBanner from '@/components/NetworkBanner';
@@ -72,11 +73,13 @@ export default function RootLayout() {
             <WishlistProvider>
               <GearWishlistProvider>
               <WishlistToastProvider>
+              <NotificationProvider>
                 <AdminProvider>
                   <ErrorBoundary>
                     <AppShell />
                   </ErrorBoundary>
                 </AdminProvider>
+              </NotificationProvider>
               </WishlistToastProvider>
               </GearWishlistProvider>
             </WishlistProvider>
