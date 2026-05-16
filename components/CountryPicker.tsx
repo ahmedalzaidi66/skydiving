@@ -1,27 +1,19 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, {
+  useState, useCallback, useMemo, useRef, useEffect,
+} from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  KeyboardAvoidingView,
-  SafeAreaView,
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  FlatList, Modal, Platform, Pressable, KeyboardAvoidingView,
+  SafeAreaView, I18nManager,
 } from 'react-native';
-import { ChevronDown, Search, X, MapPin } from 'lucide-react-native';
-import { Colors, Spacing, FontSize, Radius } from '@/constants/theme';
+import { ChevronDown, Search, X } from 'lucide-react-native';
+import { useThemeColors } from '@/context/ThemeContext';
+import { Spacing, FontSize, Radius } from '@/constants/theme';
 
-export type Country = {
-  code: string;   // ISO 3166-1 alpha-2
-  en: string;     // English name
-  ar: string;     // Arabic name
-};
+// ─── Country data ──────────────────────────────────────────────────────────────
 
-// Full country list with ISO codes and Arabic names
+export type Country = { code: string; en: string; ar: string };
+
 export const COUNTRIES: Country[] = [
   { code: 'AF', en: 'Afghanistan', ar: 'أفغانستان' },
   { code: 'AL', en: 'Albania', ar: 'ألبانيا' },
@@ -233,25 +225,37 @@ export function getCountryDisplayName(country: Country, language: string): strin
   return language === 'ar' ? country.ar : country.en;
 }
 
+// ─── Emoji flag from ISO code ──────────────────────────────────────────────────
+
+function countryFlag(code: string): string {
+  if (!code || code.length !== 2) return '🌐';
+  const offset = 127397;
+  return String.fromCodePoint(
+    code.toUpperCase().charCodeAt(0) + offset,
+    code.toUpperCase().charCodeAt(1) + offset,
+  );
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 type Props = {
-  value: string;        // ISO code (e.g. "US"), or empty string
+  value: string;       // ISO-2 code or ''
   onChange: (code: string, displayName: string) => void;
-  language?: string;    // current app language
+  language?: string;
   label?: string;
   error?: string;
   style?: object;
   placeholder?: string;
 };
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function CountryPicker({
-  value,
-  onChange,
-  language = 'en',
-  label,
-  error,
-  style,
-  placeholder,
+  value, onChange, language = 'en', label, error, style, placeholder,
 }: Props) {
+  const Colors = useThemeColors();
+  const isRTL = I18nManager.isRTL;
+
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const searchRef = useRef<TextInput>(null);
@@ -266,7 +270,7 @@ export default function CountryPicker({
       (c) =>
         c.en.toLowerCase().includes(q) ||
         c.ar.includes(query.trim()) ||
-        c.code.toLowerCase() === q
+        c.code.toLowerCase() === q,
     );
   }, [query]);
 
@@ -276,14 +280,13 @@ export default function CountryPicker({
       setOpen(false);
       setQuery('');
     },
-    [onChange]
+    [onChange],
   );
 
   const handleOpen = useCallback(() => {
     setOpen(true);
     setQuery('');
-    // Focus search on next tick
-    setTimeout(() => searchRef.current?.focus(), 100);
+    setTimeout(() => searchRef.current?.focus(), 80);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -291,94 +294,141 @@ export default function CountryPicker({
     setQuery('');
   }, []);
 
+  // ── Trigger (shared web+mobile) ──────────────────────────────────────────────
+
+  const triggerBorderColor = error ? Colors.error : open ? Colors.neonBlue : Colors.border;
+  const triggerBg = error ? Colors.errorDim : Colors.backgroundInput;
+
+  const trigger = (
+    <TouchableOpacity
+      onPress={handleOpen}
+      activeOpacity={0.8}
+      style={[
+        styles.trigger,
+        {
+          backgroundColor: triggerBg,
+          borderColor: triggerBorderColor,
+          flexDirection: isRTL ? 'row-reverse' : 'row',
+        },
+        style,
+      ]}
+    >
+      {/* Left icon — matches FormField icon size/color exactly */}
+      {selected ? (
+        <Text style={styles.flagEmoji}>{countryFlag(selected.code)}</Text>
+      ) : (
+        // Globe placeholder at the same size as other field icons (14px, textMuted)
+        <Text style={[styles.flagEmoji, { color: Colors.textMuted, fontSize: 14, lineHeight: 18 }]}>🌐</Text>
+      )}
+
+      {/* Label */}
+      <Text
+        style={[
+          styles.triggerText,
+          { color: selected ? Colors.textPrimary : Colors.textMuted, flex: 1,
+            textAlign: isRTL ? 'right' : 'left' },
+        ]}
+        numberOfLines={1}
+      >
+        {selected ? displayName : (placeholder ?? (language === 'ar' ? 'اختر الدولة' : 'Select country'))}
+      </Text>
+
+      {/* Chevron — never pushes via marginLeft auto; uses absolute RTL-aware position */}
+      <ChevronDown
+        size={14}
+        color={Colors.textMuted}
+        strokeWidth={2}
+        style={open ? { transform: [{ rotate: '180deg' }] } : undefined}
+      />
+    </TouchableOpacity>
+  );
+
+  // ── Inner list (shared) ──────────────────────────────────────────────────────
+
   const renderItem = useCallback(
     ({ item }: { item: Country }) => {
       const name = getCountryDisplayName(item, language);
       const isSelected = item.code === value;
       return (
         <TouchableOpacity
-          style={[styles.item, isSelected && styles.itemSelected]}
+          style={[
+            styles.item,
+            { borderBottomColor: Colors.borderLight,
+              backgroundColor: isSelected ? Colors.neonBlueGlow : 'transparent',
+              flexDirection: isRTL ? 'row-reverse' : 'row' },
+          ]}
           onPress={() => handleSelect(item)}
           activeOpacity={0.7}
         >
           <Text style={styles.itemFlag}>{countryFlag(item.code)}</Text>
-          <Text style={[styles.itemName, isSelected && styles.itemNameSelected]} numberOfLines={1}>
+          <Text
+            style={[
+              styles.itemName,
+              { color: isSelected ? Colors.neonBlue : Colors.textPrimary,
+                fontWeight: isSelected ? '700' : '500',
+                flex: 1, textAlign: isRTL ? 'right' : 'left' },
+            ]}
+            numberOfLines={1}
+          >
             {name}
           </Text>
-          {language === 'ar' && item.en !== item.ar && (
-            <Text style={styles.itemSub} numberOfLines={1}>{item.en}</Text>
-          )}
           {isSelected && (
-            <View style={styles.selectedDot} />
+            <View style={[styles.selectedTick, { backgroundColor: Colors.neonBlue }]} />
           )}
         </TouchableOpacity>
       );
     },
-    [value, language, handleSelect]
-  );
-
-  const triggerContent = (
-    <TouchableOpacity
-      style={[styles.trigger, !!error && styles.triggerError, style]}
-      onPress={handleOpen}
-      activeOpacity={0.8}
-    >
-      {selected ? (
-        <>
-          <Text style={styles.triggerFlag}>{countryFlag(selected.code)}</Text>
-          <Text style={styles.triggerValue} numberOfLines={1}>{displayName}</Text>
-        </>
-      ) : (
-        <>
-          <MapPin size={14} color={Colors.textMuted} strokeWidth={2} />
-          <Text style={styles.triggerPlaceholder} numberOfLines={1}>
-            {placeholder ?? (language === 'ar' ? 'اختر الدولة' : 'Select country')}
-          </Text>
-        </>
-      )}
-      <ChevronDown size={16} color={Colors.textMuted} strokeWidth={2} style={{ marginLeft: 'auto' } as any} />
-    </TouchableOpacity>
+    [value, language, isRTL, handleSelect, Colors],
   );
 
   const listContent = (
     <>
-      {/* Search bar */}
-      <View style={styles.searchRow}>
+      {/* Search */}
+      <View
+        style={[
+          styles.searchRow,
+          { backgroundColor: Colors.backgroundSecondary,
+            borderBottomColor: Colors.border,
+            flexDirection: isRTL ? 'row-reverse' : 'row' },
+        ]}
+      >
         <Search size={14} color={Colors.textMuted} strokeWidth={2} />
         <TextInput
           ref={searchRef}
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: Colors.textPrimary }]}
           value={query}
           onChangeText={setQuery}
-          placeholder={language === 'ar' ? 'ابحث بالعربية أو الإنجليزية...' : 'Search countries...'}
+          placeholder={language === 'ar' ? 'ابحث...' : 'Search...'}
           placeholderTextColor={Colors.textMuted}
           autoCorrect={false}
           autoCapitalize="none"
-          clearButtonMode="while-editing"
+          textAlign={isRTL ? 'right' : 'left'}
         />
         {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <X size={14} color={Colors.textMuted} strokeWidth={2} />
+          <TouchableOpacity
+            onPress={() => setQuery('')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <X size={13} color={Colors.textMuted} strokeWidth={2} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Country list */}
+      {/* Countries */}
       <FlatList
         data={filtered}
-        keyExtractor={(item) => item.code}
+        keyExtractor={(c) => c.code}
         renderItem={renderItem}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         initialNumToRender={20}
         maxToRenderPerBatch={30}
         windowSize={5}
-        getItemLayout={(_, index) => ({ length: 48, offset: 48 * index, index })}
-        style={styles.list}
+        style={{ maxHeight: 260 }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              {language === 'ar' ? 'لا توجد نتائج' : 'No countries found'}
+            <Text style={[styles.emptyText, { color: Colors.textMuted }]}>
+              {language === 'ar' ? 'لا توجد نتائج' : 'No results'}
             </Text>
           </View>
         }
@@ -386,166 +436,192 @@ export default function CountryPicker({
     </>
   );
 
+  // ── Web: Modal overlay so dropdown escapes all parent clipping ───────────────
+  // Using a full-screen Modal with a transparent backdrop lets us position the
+  // panel relative to the viewport without fighting flex/overflow constraints.
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.wrapper}>
+        {label && (
+          <Text style={[styles.label, { color: Colors.textMuted }]}>{label}</Text>
+        )}
+        {trigger}
+        {error && (
+          <Text style={[styles.errorText, { color: Colors.error }]}>{error}</Text>
+        )}
+
+        {open && (
+          <Modal
+            visible
+            transparent
+            animationType="none"
+            onRequestClose={handleClose}
+            // statusBarTranslucent keeps it above status bar on Android web preview
+            statusBarTranslucent
+          >
+            {/* Full-screen backdrop — click outside closes */}
+            <Pressable style={styles.webBackdrop} onPress={handleClose} />
+
+            {/* Panel — centred horizontally, positioned near top-of-screen for
+                predictable layout. On narrow viewports it fills the width.   */}
+            <View style={styles.webPanelPositioner}>
+              <View
+                style={[
+                  styles.webPanel,
+                  {
+                    backgroundColor: Colors.backgroundCard,
+                    borderColor: Colors.border,
+                  },
+                ]}
+              >
+                {listContent}
+              </View>
+            </View>
+          </Modal>
+        )}
+      </View>
+    );
+  }
+
+  // ── Mobile: bottom sheet Modal ───────────────────────────────────────────────
   return (
     <View style={styles.wrapper}>
-      {label && <Text style={styles.label}>{label}</Text>}
-      {triggerContent}
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      {/* Platform-specific dropdown */}
-      {Platform.OS === 'web' ? (
-        open ? (
-          <>
-            {/* Click-away backdrop */}
-            <Pressable style={styles.webBackdrop} onPress={handleClose} />
-            <View style={styles.webDropdown}>
-              {listContent}
-            </View>
-          </>
-        ) : null
-      ) : (
-        <Modal
-          visible={open}
-          animationType="slide"
-          transparent
-          onRequestClose={handleClose}
-        >
-          <View style={styles.modalBackdrop}>
-            <Pressable style={StyleSheet.absoluteFill as any} onPress={handleClose} />
-            <KeyboardAvoidingView
-              behavior="padding"
-              style={styles.modalSheet}
-            >
-              <SafeAreaView style={{ flex: 1 }}>
-                {/* Handle */}
-                <View style={styles.sheetHandle} />
-                {/* Header */}
-                <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>
-                    {language === 'ar' ? 'اختر الدولة' : 'Select Country'}
-                  </Text>
-                  <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <X size={20} color={Colors.textMuted} strokeWidth={2} />
-                  </TouchableOpacity>
-                </View>
-                {listContent}
-              </SafeAreaView>
-            </KeyboardAvoidingView>
-          </View>
-        </Modal>
+      {label && (
+        <Text style={[styles.label, { color: Colors.textMuted }]}>{label}</Text>
       )}
+      {trigger}
+      {error && (
+        <Text style={[styles.errorText, { color: Colors.error }]}>{error}</Text>
+      )}
+
+      <Modal
+        visible={open}
+        transparent
+        animationType="slide"
+        onRequestClose={handleClose}
+      >
+        <View style={styles.mobileBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+          <KeyboardAvoidingView behavior="padding" style={styles.mobileSheet}>
+            <SafeAreaView
+              style={[styles.mobileSheetInner, { backgroundColor: Colors.backgroundCard, borderColor: Colors.border }]}
+            >
+              {/* Handle */}
+              <View style={[styles.sheetHandle, { backgroundColor: Colors.border }]} />
+              {/* Header */}
+              <View style={[styles.sheetHeader, { borderBottomColor: Colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.sheetTitle, { color: Colors.textPrimary }]}>
+                  {language === 'ar' ? 'اختر الدولة' : 'Select Country'}
+                </Text>
+                <TouchableOpacity onPress={handleClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={20} color={Colors.textMuted} strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+              {listContent}
+              <View style={{ height: 12 }} />
+            </SafeAreaView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-// Emoji flag from ISO code
-function countryFlag(code: string): string {
-  if (!code || code.length !== 2) return '🌐';
-  const offset = 127397;
-  return String.fromCodePoint(
-    code.toUpperCase().charCodeAt(0) + offset,
-    code.toUpperCase().charCodeAt(1) + offset
-  );
-}
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   wrapper: {
     gap: 4,
-    position: 'relative',
   },
+
+  // Label — identical to checkout fieldLabel
   label: {
-    color: Colors.textMuted,
     fontSize: FontSize.xs,
     fontWeight: '600',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
+
+  // Trigger row — pixel-for-pixel match with checkout `fieldRow`
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.backgroundInput,
-    borderRadius: Radius.md,
+    gap: 6,
+    borderRadius: Radius.md,           // 10
     borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm + 2,
-    minHeight: 44,
+    paddingHorizontal: Spacing.md,     // 12
+    paddingVertical: Spacing.sm + 2,   // 8  (Spacing.sm=6 + 2)
   },
-  triggerError: {
-    borderColor: Colors.error,
-    backgroundColor: Colors.errorDim,
+
+  flagEmoji: {
+    fontSize: 16,
+    lineHeight: 20,
+    width: 22,
+    textAlign: 'center',
   },
-  triggerFlag: {
-    fontSize: 18,
-    lineHeight: 22,
+
+  triggerText: {
+    fontSize: FontSize.md,   // 14 — matches fieldInput
+    padding: 0,
   },
-  triggerValue: {
-    flex: 1,
-    color: Colors.textPrimary,
-    fontSize: FontSize.md,
-  },
-  triggerPlaceholder: {
-    flex: 1,
-    color: Colors.textMuted,
-    fontSize: FontSize.md,
-  },
-  error: {
-    color: Colors.error,
+
+  errorText: {
     fontSize: FontSize.xs,
     fontWeight: '500',
   },
 
-  // ── Web dropdown ──
+  // ── Web modal overlay ──
   webBackdrop: {
-    position: 'fixed' as any,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    zIndex: 1000,
+  },
+  webPanelPositioner: {
+    position: 'absolute' as any,
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1001,
+    // Let touches through to backdrop except on the panel itself
+    pointerEvents: 'box-none' as any,
   },
-  webDropdown: {
-    position: 'absolute' as any,
-    top: '100%',
-    left: 0,
-    right: 0,
-    zIndex: 1000,
-    backgroundColor: Colors.backgroundCard,
+  webPanel: {
+    width: '100%',
+    maxWidth: 420,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    marginTop: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 16,
-    maxHeight: 320,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 32,
+    elevation: 24,
   },
 
-  // ── Mobile modal sheet ──
-  modalBackdrop: {
+  // ── Mobile bottom sheet ──
+  mobileBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(5,10,20,0.75)',
     justifyContent: 'flex-end',
   },
-  modalSheet: {
-    backgroundColor: Colors.backgroundCard,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-    minHeight: 400,
+  mobileSheet: {
+    width: '100%',
+  },
+  mobileSheetInner: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
     borderBottomWidth: 0,
+    maxHeight: '85%' as any,
+    overflow: 'hidden',
   },
   sheetHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 4,
@@ -555,77 +631,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   sheetTitle: {
-    color: Colors.textPrimary,
     fontSize: FontSize.lg,
     fontWeight: '700',
   },
 
-  // ── Search ──
+  // ── Search bar ──
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: Colors.backgroundSecondary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
+    borderBottomWidth: 1,
   },
   searchInput: {
     flex: 1,
-    color: Colors.textPrimary,
     fontSize: FontSize.md,
     padding: 0,
   },
 
-  // ── List items ──
-  list: {
-    flex: 1,
-  },
+  // ── List item ──
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    minHeight: 48,
-  },
-  itemSelected: {
-    backgroundColor: Colors.neonBlueGlow,
   },
   itemFlag: {
-    fontSize: 20,
-    lineHeight: 24,
-    width: 28,
+    fontSize: 18,
+    lineHeight: 22,
+    width: 26,
     textAlign: 'center',
   },
   itemName: {
-    flex: 1,
-    color: Colors.textPrimary,
     fontSize: FontSize.md,
-    fontWeight: '500',
+    lineHeight: 20,
   },
-  itemNameSelected: {
-    color: Colors.neonBlue,
-    fontWeight: '700',
-  },
-  itemSub: {
-    color: Colors.textMuted,
-    fontSize: FontSize.xs,
-    maxWidth: 100,
-  },
-  selectedDot: {
+  selectedTick: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.neonBlue,
+    flexShrink: 0,
   },
 
   emptyState: {
@@ -633,7 +685,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: Colors.textMuted,
     fontSize: FontSize.sm,
   },
 });
