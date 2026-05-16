@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import {
   CreditCard,
   CircleCheck as CheckCircle,
-  ArrowLeft,
   MapPin,
   User,
   Phone,
@@ -348,9 +347,7 @@ export default function CheckoutScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.6} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2.5} />
-        </TouchableOpacity>
+        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>{t.checkout}</Text>
         {/* Secure badge */}
         <View style={styles.secureBadge}>
@@ -1028,20 +1025,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  backBtn: {
+  headerSpacer: {
     width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 24,
-    backgroundColor: 'rgba(5,10,20,0.82)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,191,255,0.55)',
-    shadowColor: '#00BFFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
   },
   headerTitle: {
     color: Colors.textPrimary,
