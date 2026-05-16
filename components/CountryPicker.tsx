@@ -354,7 +354,7 @@ export default function CountryPicker({
           style={[
             styles.item,
             { borderBottomColor: Colors.borderLight,
-              backgroundColor: isSelected ? Colors.neonBlueGlow : 'transparent',
+              backgroundColor: isSelected ? Colors.neonBlueGlow : Colors.backgroundCard,
               flexDirection: isRTL ? 'row-reverse' : 'row' },
           ]}
           onPress={() => handleSelect(item)}
@@ -395,7 +395,7 @@ export default function CountryPicker({
         <Search size={14} color={Colors.textMuted} strokeWidth={2} />
         <TextInput
           ref={searchRef}
-          style={[styles.searchInput, { color: Colors.textPrimary }]}
+          style={[styles.searchInput, { color: Colors.textPrimary, backgroundColor: Colors.backgroundSecondary }]}
           value={query}
           onChangeText={setQuery}
           placeholder={language === 'ar' ? 'ابحث...' : 'Search...'}
@@ -424,9 +424,9 @@ export default function CountryPicker({
         initialNumToRender={20}
         maxToRenderPerBatch={30}
         windowSize={5}
-        style={{ maxHeight: 260 }}
+        style={{ maxHeight: 260, backgroundColor: Colors.backgroundCard }}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
+          <View style={[styles.emptyState, { backgroundColor: Colors.backgroundCard }]}>
             <Text style={[styles.emptyText, { color: Colors.textMuted }]}>
               {language === 'ar' ? 'لا توجد نتائج' : 'No results'}
             </Text>
@@ -652,6 +652,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: FontSize.md,
     padding: 0,
+    borderWidth: 0,
+    // Suppress browser default outline on web focus
+    ...(Platform.OS === 'web' ? { outlineWidth: 0 } as any : {}),
   },
 
   // ── List item ──
