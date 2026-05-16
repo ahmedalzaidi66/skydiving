@@ -227,7 +227,7 @@ export function getCountryDisplayName(country: Country, language: string): strin
 
 // ─── Emoji flag from ISO code ──────────────────────────────────────────────────
 
-function countryFlag(code: string): string {
+export function countryFlag(code: string): string {
   if (!code || code.length !== 2) return '🌐';
   const offset = 127397;
   return String.fromCodePoint(
