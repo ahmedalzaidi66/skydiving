@@ -33,42 +33,44 @@ const BUCKET_MAP: Record<string, string> = {
 };
 
 /**
- * Resize + convert image bytes to WebP using Deno's built-in ImageData API
- * via OffscreenCanvas (available in Deno Deploy / Edge Runtime).
+ * Attempt to resize + convert to WebP using createImageBitmap + OffscreenCanvas.
+ * Returns null if the APIs are unavailable or fail, so the caller can store
+ * the original bytes as a fallback.
  */
-async function resizeToWebP(
+async function tryResizeToWebP(
   inputBytes: Uint8Array,
   maxDim: number,
-): Promise<Uint8Array> {
-  // Decode the input image using createImageBitmap (Web API available in Deno Deploy)
-  const blob = new Blob([inputBytes]);
-  const bitmap = await createImageBitmap(blob);
-
-  const srcW = bitmap.width;
-  const srcH = bitmap.height;
-
-  // Compute output dimensions keeping aspect ratio
-  let outW = srcW;
-  let outH = srcH;
-  if (srcW > maxDim || srcH > maxDim) {
-    if (srcW >= srcH) {
-      outW = maxDim;
-      outH = Math.round((srcH / srcW) * maxDim);
-    } else {
-      outH = maxDim;
-      outW = Math.round((srcW / srcH) * maxDim);
+): Promise<Uint8Array | null> {
+  try {
+    if (typeof createImageBitmap === 'undefined' || typeof OffscreenCanvas === 'undefined') {
+      return null;
     }
+
+    const blob = new Blob([inputBytes]);
+    const bitmap = await createImageBitmap(blob);
+
+    let outW = bitmap.width;
+    let outH = bitmap.height;
+    if (outW > maxDim || outH > maxDim) {
+      if (outW >= outH) {
+        outH = Math.round((outH / outW) * maxDim);
+        outW = maxDim;
+      } else {
+        outW = Math.round((outW / outH) * maxDim);
+        outH = maxDim;
+      }
+    }
+
+    const canvas = new OffscreenCanvas(outW, outH);
+    const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
+    ctx.drawImage(bitmap, 0, 0, outW, outH);
+
+    const outputBlob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.85 });
+    const buffer = await outputBlob.arrayBuffer();
+    return new Uint8Array(buffer);
+  } catch {
+    return null;
   }
-
-  // Draw onto an OffscreenCanvas
-  const canvas = new OffscreenCanvas(outW, outH);
-  const ctx = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D;
-  ctx.drawImage(bitmap, 0, 0, outW, outH);
-
-  // Export as WebP
-  const outputBlob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.85 });
-  const buffer = await outputBlob.arrayBuffer();
-  return new Uint8Array(buffer);
 }
 
 Deno.serve(async (req: Request) => {
@@ -123,20 +125,32 @@ Deno.serve(async (req: Request) => {
 
     const inputBytes = new Uint8Array(fileBuffer);
     const baseKey = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const originalExt = originalName.split('.').pop()?.toLowerCase() ?? 'jpg';
 
     const urls: Record<string, string> = {};
 
     for (const [suffix, maxDim] of SIZE_CONFIGS) {
-      const webpBytes = await resizeToWebP(inputBytes, maxDim);
-      const path = `${baseKey}-${suffix}.webp`;
+      const webpBytes = await tryResizeToWebP(inputBytes, maxDim);
 
+      let uploadBytes: Uint8Array;
+      let contentType: string;
+      let ext: string;
+
+      if (webpBytes) {
+        uploadBytes = webpBytes;
+        contentType = 'image/webp';
+        ext = 'webp';
+      } else {
+        // Optimization unavailable — store original bytes for this size slot
+        uploadBytes = inputBytes;
+        contentType = 'application/octet-stream';
+        ext = originalExt;
+      }
+
+      const path = `${baseKey}-${suffix}.${ext}`;
       const { data, error: uploadErr } = await serviceClient.storage
         .from(bucket)
-        .upload(path, webpBytes, {
-          contentType: 'image/webp',
-          upsert: false,
-          cacheControl: '31536000', // 1 year CDN cache
-        });
+        .upload(path, uploadBytes, { contentType, upsert: false, cacheControl: '31536000' });
 
       if (uploadErr) {
         return jsonResponse({ success: false, error: `Storage error (${suffix}): ${uploadErr.message}` }, 400);
@@ -146,12 +160,7 @@ Deno.serve(async (req: Request) => {
       urls[suffix] = urlData.publicUrl;
     }
 
-    return jsonResponse({
-      success: true,
-      urls,
-      // Convenience: publicUrl points to medium for backwards compatibility
-      publicUrl: urls.medium,
-    });
+    return jsonResponse({ success: true, urls, publicUrl: urls.medium });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Internal error';
     return jsonResponse({ success: false, error: msg }, 500);

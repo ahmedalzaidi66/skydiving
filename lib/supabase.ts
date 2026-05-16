@@ -13,9 +13,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // across separate HTTP requests, unlike the old transaction-local set_config approach.
 
 let _adminSessionToken: string | null = null;
+// Cached JWT so adminSupabase() can inject it synchronously.
+// Updated whenever setAdminSessionToken() is called.
+let _adminJwt: string | null = null;
 
 export function setAdminSessionToken(token: string | null) {
   _adminSessionToken = token;
+  if (!token) {
+    _adminJwt = null;
+    return;
+  }
+  // Eagerly cache the current auth JWT so the first adminSupabase() call
+  // can inject it synchronously via the Authorization header.
+  supabase.auth.getSession().then(({ data }) => {
+    _adminJwt = data.session?.access_token ?? null;
+  });
 }
 
 export function getAdminToken(): string | null {
@@ -25,36 +37,33 @@ export function getAdminToken(): string | null {
 /**
  * Returns a Supabase client for admin operations.
  *
- * After login the shared `supabase` singleton holds a valid Supabase Auth
- * session (JWT), which satisfies both:
- *  - storage RLS: "Authenticated users can upload" (auth.uid() IS NOT NULL)
- *  - table RLS:   is_admin_request() reads x-admin-token from PostgREST headers
+ * Injects both:
+ *  - x-admin-token  → satisfies is_admin_request() RLS on tables
+ *  - Authorization  → satisfies "TO authenticated" role requirement on those policies
  *
- * We attach x-admin-token via a thin fetch wrapper so the shared singleton
- * carries it on every PostgREST request while still reusing the live session.
+ * The JWT is cached synchronously at login time so there is no async race
+ * between client creation and the first database request.
  */
 export function adminSupabase() {
   if (!_adminSessionToken) return supabase;
 
   const token = _adminSessionToken;
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
+  const jwt = _adminJwt;
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
     global: {
-      headers: { 'x-admin-token': token },
       fetch: (url: RequestInfo | URL, init?: RequestInit) => {
         const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
         headers.set('x-admin-token', token);
+        // Inject cached JWT so PostgREST sees the `authenticated` role.
+        // Without this the client acts as `anon` and RLS policies gated on
+        // `TO authenticated` are never evaluated.
+        if (jwt) headers.set('Authorization', `Bearer ${jwt}`);
         return fetch(url, { ...init, headers });
       },
     },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-
-  // Copy the live auth session so this client also acts as the authenticated role
-  supabase.auth.getSession().then(({ data }) => {
-    if (data.session) client.auth.setSession(data.session);
-  });
-
-  return client;
 }
 
 export function hasAdminSession(): boolean {

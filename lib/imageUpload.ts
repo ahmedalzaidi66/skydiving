@@ -55,10 +55,12 @@ export function validateImageFile(file: File): string | null {
   return null;
 }
 
+// Edge function timeout — if it doesn't respond in 25s, fall back to direct upload.
+const EDGE_TIMEOUT_MS = 25_000;
+
 /**
- * Upload an image through the image-optimize edge function.
- * Returns three WebP sizes: thumb (240px), medium (800px), full (1920px).
- * Falls back to direct storage upload for SVGs and non-optimizable types.
+ * Upload an image through the image-optimize edge function (WebP resize, 3 sizes).
+ * Falls back to direct storage upload if the edge function times out or errors.
  */
 export async function uploadImageToSupabase(
   file: File,
@@ -67,26 +69,35 @@ export async function uploadImageToSupabase(
 ): Promise<UploadResult> {
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session) {
-    return { url: null, urls: null, error: 'Not authenticated. Please log out and log in again.' };
+    return { url: null, urls: null, error: 'Not authenticated. Please log in again.' };
   }
 
-  // SVGs and GIFs bypass optimization (upload direct)
+  // SVGs and GIFs skip optimization
   if (file.type === 'image/svg+xml' || file.type === 'image/gif') {
-    return uploadDirect(file, folder, sessionData.session.access_token);
+    return uploadDirect(file, folder, onProgress);
   }
 
   onProgress?.(10);
 
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+  const endpoint = `${supabaseUrl}/functions/v1/image-optimize`;
+
+  let arrayBuffer: ArrayBuffer;
   try {
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-    const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-    const endpoint = `${supabaseUrl}/functions/v1/image-optimize`;
+    arrayBuffer = await file.arrayBuffer();
+  } catch (err: unknown) {
+    return { url: null, urls: null, error: 'Failed to read file: ' + (err instanceof Error ? err.message : String(err)) };
+  }
+  onProgress?.(30);
 
-    const arrayBuffer = await file.arrayBuffer();
-    onProgress?.(30);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), EDGE_TIMEOUT_MS);
 
+  try {
     const response = await fetch(endpoint, {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${sessionData.session.access_token}`,
         Apikey: anonKey,
@@ -95,47 +106,57 @@ export async function uploadImageToSupabase(
       },
       body: arrayBuffer,
     });
-
+    clearTimeout(timeoutId);
     onProgress?.(85);
 
-    const result = await response.json();
+    let result: any;
+    try {
+      result = await response.json();
+    } catch {
+      // Non-JSON response from edge function — fall back to direct upload
+      console.error('[imageUpload] edge function returned non-JSON, status:', response.status, '— falling back to direct upload');
+      return uploadDirect(file, folder, onProgress);
+    }
 
     if (!result.success) {
-      captureError(new Error(result.error ?? 'Optimization failed'), {
-        action: 'image_upload/optimize',
-        extra: { folder, status: response.status },
-      });
-      return { url: null, urls: null, error: result.error ?? 'Optimization failed' };
+      console.error('[imageUpload] edge function error:', result.error, '| status:', response.status, '— falling back to direct upload');
+      captureError(new Error(result.error ?? 'Optimization failed'), { action: 'image_upload/optimize', extra: { folder, status: response.status } });
+      return uploadDirect(file, folder, onProgress);
     }
 
     onProgress?.(100);
-
     const urls: ImageUrls = result.urls;
     return { url: urls.medium, urls, error: null };
   } catch (err: unknown) {
-    captureError(err, { action: 'image_upload/optimize', extra: { folder } });
-    const msg = err instanceof Error ? err.message : 'Upload failed';
-    return { url: null, urls: null, error: msg };
+    clearTimeout(timeoutId);
+    const isTimeout = err instanceof Error && err.name === 'AbortError';
+    console.error('[imageUpload] edge function', isTimeout ? 'timed out' : 'threw:', err, '— falling back to direct upload');
+    captureError(err, { action: 'image_upload/optimize', extra: { folder, isTimeout } });
+    return uploadDirect(file, folder, onProgress);
   }
 }
 
 async function uploadDirect(
   file: File,
   folder: UploadFolder,
-  _accessToken: string,
+  onProgress?: (pct: number) => void,
 ): Promise<UploadResult> {
   const bucket = BUCKET_MAP[folder];
   const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
   const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+  onProgress?.(50);
 
   const { error } = await supabase.storage
     .from(bucket)
     .upload(filename, file, { contentType: file.type, upsert: false });
 
   if (error) {
-    return { url: null, urls: null, error: `Storage error (bucket: ${bucket}): ${error.message}` };
+    console.error('[imageUpload] direct upload failed:', { bucket, filename, error: error.message });
+    return { url: null, urls: null, error: `Storage upload failed (${bucket}): ${error.message}` };
   }
 
+  onProgress?.(100);
   const { data } = supabase.storage.from(bucket).getPublicUrl(filename);
   const url = data.publicUrl;
   return { url, urls: { thumb: url, medium: url, full: url }, error: null };
