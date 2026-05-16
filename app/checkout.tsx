@@ -33,7 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useThemeColors, type ThemeColors } from '@/context/ThemeContext';
 import GlossyButton from '@/components/GlossyButton';
-import CountryPicker, { getCountryByCode } from '@/components/CountryPicker';
+import CountryPicker from '@/components/CountryPicker';
 import { Spacing, FontSize, Radius } from '@/constants/theme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
