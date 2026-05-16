@@ -32,6 +32,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import GlossyButton from '@/components/GlossyButton';
+import CountryPicker, { getCountryByCode } from '@/components/CountryPicker';
 import { Colors, Spacing, FontSize, Radius, Shadow } from '@/constants/theme';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,7 +48,9 @@ type FormData = {
   city: string;
   state: string;
   zip: string;
+  // ISO 3166-1 alpha-2 code (e.g. "US"). countryName is the English display name.
   country: string;
+  countryName: string;
   paymentMethod: PaymentMethod;
   // Card fields (UI only — not sent to server)
   cardNumber: string;
@@ -58,6 +61,7 @@ type FormData = {
   billingCity: string;
   billingZip: string;
   billingCountry: string;
+  billingCountryName: string;
   billingSameAsShipping: boolean;
 };
 
@@ -93,7 +97,7 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { items, subtotal, clearCart } = useCart();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [form, setForm] = useState<FormData>({
     firstName: (user as any)?.firstName ?? '',
@@ -104,7 +108,8 @@ export default function CheckoutScreen() {
     city: '',
     state: '',
     zip: '',
-    country: 'United States',
+    country: '',
+    countryName: '',
     paymentMethod: 'card',
     cardNumber: '',
     cardExpiry: '',
@@ -114,6 +119,7 @@ export default function CheckoutScreen() {
     billingCity: '',
     billingZip: '',
     billingCountry: '',
+    billingCountryName: '',
     billingSameAsShipping: true,
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -126,17 +132,18 @@ export default function CheckoutScreen() {
     freeShipping: false, shippingRuleName: null,
   });
 
-  const refreshRates = useCallback(async (country: string) => {
-    if (!country.trim()) return;
+  const refreshRates = useCallback(async (countryCode: string, countryName: string) => {
+    if (!countryCode) return;
     setRatesLoading(true);
-    const result = await calculateShippingAndTax(country.trim(), subtotal);
+    // Pass both code and name so shippingTax can match on either
+    const result = await calculateShippingAndTax(countryCode, countryName, subtotal);
     setRates(result);
     setRatesLoading(false);
   }, [subtotal]);
 
   useEffect(() => {
-    refreshRates(form.country);
-  }, [form.country, subtotal]);
+    refreshRates(form.country, form.countryName);
+  }, [form.country, form.countryName, subtotal]);
 
   const shipping = rates.shipping;
   const tax = rates.tax;
@@ -174,7 +181,7 @@ export default function CheckoutScreen() {
     if (!form.city.trim()    || form.city.trim().length    > 100)     newErrors.city      = t.fieldRequired;
     if (!form.state.trim()   || form.state.trim().length   > 100)     newErrors.state     = t.fieldRequired;
     if (!zipRe.test(form.zip.trim()))                                 newErrors.zip       = t.fieldRequired;
-    if (!form.country.trim() || form.country.trim().length > 100)     newErrors.country   = t.fieldRequired;
+    if (!form.country)                                                  newErrors.country   = t.fieldRequired;
 
     // Card UI validation
     if (form.paymentMethod === 'card') {
@@ -273,7 +280,7 @@ export default function CheckoutScreen() {
         city:                form.city.trim().slice(0, 100),
         state:               form.state.trim().slice(0, 100),
         zip:                 form.zip.trim().slice(0, 10),
-        country:             form.country.trim().slice(0, 100),
+        country:             (form.countryName || form.country).slice(0, 100),
         payment_method:      PAYMENT_METHOD_IDS.includes(form.paymentMethod) ? form.paymentMethod : 'card',
         subtotal,
         shipping,
@@ -428,13 +435,18 @@ export default function CheckoutScreen() {
             autoCapitalize="none"
             style={{ flex: 1 }}
           />
-          <FormField
-            label={t.country}
-            value={form.country}
-            onChange={(v) => setField('country', v)}
-            error={errors.country}
-            style={{ flex: 2 }}
-          />
+          <View style={{ flex: 2 }}>
+            <CountryPicker
+              value={form.country}
+              onChange={(code, name) => {
+                setForm((f) => ({ ...f, country: code, countryName: name }));
+                if (errors.country) setErrors((e) => ({ ...e, country: undefined }));
+              }}
+              language={language}
+              label={t.country}
+              error={errors.country}
+            />
+          </View>
         </View>
 
         {/* ── Payment method ── */}
@@ -495,7 +507,10 @@ export default function CheckoutScreen() {
             onBillingStreet={(v) => setField('billingStreet', v)}
             onBillingCity={(v) => setField('billingCity', v)}
             onBillingZip={(v) => setField('billingZip', v)}
-            onBillingCountry={(v) => setField('billingCountry', v)}
+            onBillingCountry={(code, name) =>
+              setForm((f) => ({ ...f, billingCountry: code, billingCountryName: name }))
+            }
+            language={language}
           />
         )}
         {form.paymentMethod === 'paypal' && <PayPalPanel />}
@@ -611,6 +626,7 @@ function CardPaymentPanel({
   showBillingAddress, onToggleBilling,
   onCardNumber, onCardExpiry, onCardCvv, onCardName,
   onBillingSame, onBillingStreet, onBillingCity, onBillingZip, onBillingCountry,
+  language,
 }: {
   form: FormData;
   errors: FormErrors;
@@ -624,7 +640,8 @@ function CardPaymentPanel({
   onBillingStreet: (v: string) => void;
   onBillingCity: (v: string) => void;
   onBillingZip: (v: string) => void;
-  onBillingCountry: (v: string) => void;
+  onBillingCountry: (code: string, name: string) => void;
+  language: string;
 }) {
   const brand = getCardBrand(form.cardNumber);
 
@@ -777,10 +794,11 @@ function CardPaymentPanel({
                   style={{ flex: 1 }}
                 />
               </View>
-              <FormField
-                label="Country"
+              <CountryPicker
                 value={form.billingCountry}
                 onChange={onBillingCountry}
+                language={language}
+                label="Country"
               />
             </View>
           )}

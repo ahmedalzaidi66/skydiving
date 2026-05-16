@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getCountryByCode, getCountryByName } from '@/components/CountryPicker';
 
 export type ShippingRule = {
   id: string;
@@ -47,7 +48,30 @@ const COUNTRY_CONTINENT: Record<string, string> = {
 };
 
 export function getContinent(country: string): string | null {
-  return COUNTRY_CONTINENT[country] ?? null;
+  // Accept either English display name or ISO code
+  if (COUNTRY_CONTINENT[country]) return COUNTRY_CONTINENT[country];
+  // Try resolving ISO code → English name
+  const byCode = getCountryByCode(country.toUpperCase());
+  if (byCode && COUNTRY_CONTINENT[byCode.en]) return COUNTRY_CONTINENT[byCode.en];
+  return null;
+}
+
+/**
+ * Resolve a country input (ISO code or display name) to the canonical English
+ * name used as the key in COUNTRY_CONTINENT and shipping/tax rule lookups.
+ */
+function resolveCountryName(codeOrName: string, displayName?: string): string {
+  // If caller supplied a pre-resolved English display name, prefer it
+  if (displayName && displayName.trim()) return displayName.trim();
+  // If it looks like an ISO code (2 chars), resolve to English name
+  if (codeOrName.length === 2) {
+    const c = getCountryByCode(codeOrName.toUpperCase());
+    if (c) return c.en;
+  }
+  // Try matching by English or Arabic name
+  const c = getCountryByName(codeOrName);
+  if (c) return c.en;
+  return codeOrName;
 }
 
 export type ShippingTaxResult = {
@@ -60,9 +84,23 @@ export type ShippingTaxResult = {
 };
 
 export async function calculateShippingAndTax(
-  country: string,
-  subtotal: number
+  countryCodeOrName: string,
+  countryNameOrSubtotal: string | number,
+  subtotalArg?: number,
 ): Promise<ShippingTaxResult> {
+  // Support both old 2-arg call (country, subtotal) and new 3-arg call (code, name, subtotal)
+  let subtotal: number;
+  let resolvedName: string;
+  if (typeof countryNameOrSubtotal === 'number') {
+    subtotal = countryNameOrSubtotal;
+    resolvedName = resolveCountryName(countryCodeOrName);
+  } else {
+    subtotal = subtotalArg ?? 0;
+    resolvedName = resolveCountryName(countryCodeOrName, countryNameOrSubtotal);
+  }
+
+  const country = resolvedName;
+
   const [{ data: shippingRules }, { data: taxRules }] = await Promise.all([
     supabase.from('shipping_rules').select('*').eq('is_enabled', true),
     supabase.from('tax_rules').select('*').eq('is_enabled', true),
