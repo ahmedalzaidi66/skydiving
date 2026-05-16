@@ -36,6 +36,7 @@ const SELF_MANAGED_BACK = [
   /^\/product\/[^/]+$/,
   /^\/marketplace\/[^/]+$/,
   /^\/marketplace\/edit\/[^/]+$/,
+  /^\/checkout$/,
 ];
 
 function isTabRoot(pathname: string): boolean {
