@@ -30,6 +30,7 @@ import {
   ShieldAlert,
   Megaphone,
   Flag,
+  Store,
 } from 'lucide-react-native';
 import { useAdmin, ROLE_LABELS } from '@/context/AdminContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -197,7 +198,17 @@ export default function AdminMobileLayout({ children, title, showBack }: Props) 
         </View>
 
         <Text style={styles.topBarTitle} numberOfLines={1}>{title}</Text>
-        <View style={styles.topBarRight} />
+        <View style={styles.topBarRight}>
+          <TouchableOpacity
+            style={styles.viewStoreBtn}
+            onPress={() => router.push('/')}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Store size={15} color={Colors.neonBlue} strokeWidth={2} />
+            <Text style={styles.viewStoreBtnText}>{t.viewStore}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Full-width content — zero left offset */}
@@ -282,6 +293,16 @@ export default function AdminMobileLayout({ children, title, showBack }: Props) 
               </View>
             </View>
             <TouchableOpacity
+              style={styles.viewStoreDrawerBtn}
+              onPress={() => {
+                closeDrawer(() => router.push('/'));
+              }}
+              activeOpacity={0.7}
+            >
+              <Store size={15} color={Colors.neonBlue} strokeWidth={2} />
+              <Text style={styles.viewStoreDrawerText}>{t.viewStore}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={styles.logoutBtn}
               onPress={handleLogout}
               activeOpacity={0.7}
@@ -330,6 +351,25 @@ const styles = StyleSheet.create({
   },
   topBarRight: {
     minWidth: 80,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  viewStoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.neonBlueBorder,
+    backgroundColor: Colors.neonBlueGlow,
+  },
+  viewStoreBtnText: {
+    color: Colors.neonBlue,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   iconBtn: {
     width: 40,
@@ -491,6 +531,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'capitalize',
     letterSpacing: 0.3,
+  },
+  viewStoreDrawerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  viewStoreDrawerText: {
+    color: Colors.neonBlue,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
   },
   logoutBtn: {
     flexDirection: 'row',
